@@ -252,6 +252,44 @@ Ordered for implementation (dependencies respected):
 
    Do NOT create companion frontend test stories for backend-only stories (API-only, database, CLI, background jobs, library code).
 
+   **5.2.3: Detect backend projects and create CI story.**
+
+   <!-- Governing: ADR-0020, SPEC-0016 REQ "Go Code Quality Guidelines" -->
+
+   After grouping requirements into stories, determine if the spec targets a backend project. A spec targets a backend project if ANY of the following are true:
+
+   - The project root (or module root) contains a backend manifest (`go.mod`, `requirements.txt`, `Cargo.toml`, `pom.xml`, `build.gradle`, `Gemfile`, `mix.exs`, `Package.swift`, `composer.json`, `pyproject.toml`)
+   - The spec requirements reference server-side concerns: API endpoints, database operations, background workers, message queues, service boundaries
+   - The grouped stories involve concurrency, error handling across service boundaries, or database interactions
+
+   **When a backend project is detected and no CI story already exists for this spec:**
+
+   Create a single **CI setup story** with the following checklist:
+
+   ```markdown
+   ## Requirements
+
+   - [ ] **Static analysis**: Configure and run static analysis tooling appropriate to the project's language/runtime
+   - [ ] **Test runner with race detection**: Configure the test runner to enable race detection (or equivalent concurrency safety checks) in CI
+   - [ ] **Formatting enforcement**: Configure automated formatting checks in CI to enforce consistent code style
+   - [ ] **CI pipeline integration**: Add the above checks to the project's CI/CD pipeline so they run on every PR
+   ```
+
+   - Title: "CI: Static Analysis, Race Detection, and Formatting for {Capability Title}"
+   - Apply the `ci` and `foundation` labels using the try-then-create pattern
+   - The CI story SHOULD be a foundation story (merged before feature stories)
+   - All language-agnostic: use "static analysis" not "go vet", "race detection" not "-race flag", "formatting" not "gofmt"
+
+   Do NOT create a CI story if:
+   - The spec is purely frontend, documentation, or configuration
+   - A CI story already exists for this spec (check existing issues)
+
+   **5.2.4: No retroactive governing comment PRs.**
+
+   <!-- Governing: ADR-0020, SPEC-0016 REQ "Go Code Quality Guidelines" -->
+
+   When planning stories, MUST NOT create standalone issues or PRs whose sole purpose is to add governing comments to existing code retroactively. Governing comments (per ADR-0020) are added as part of feature implementation — they go in the PR that implements or modifies the governed code, not in a separate cleanup PR.
+
    **5.3: Write task checklists.** Each story issue body MUST include a `## Requirements` section with a task checklist. The format varies by tracker:
 
    **For GitHub, Gitea, GitLab, Jira, and Linear** — use markdown task checklists:
@@ -448,6 +486,10 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - Engineer B MUST provide a substantive objection for any story that has a weak requirement, vague scope, or missing spec reference — generic approval without review is not acceptable (Governing: SPEC-0012 REQ "Scrum Team Composition")
 - The sprint report MUST be emitted at the end of every `--scrum` run, even if all stories were deferred (Governing: SPEC-0012 REQ "Sprint Report")
 - `--scrum` and `--review` are mutually exclusive; if both are provided, `--scrum` takes precedence and `--review` is silently ignored
+- MUST detect backend projects from manifests and create a CI foundation story with static analysis, race detection, and formatting checks when applicable (Governing: SPEC-0016 REQ "Go Code Quality Guidelines")
+- CI stories MUST be language-agnostic: "static analysis" not "go vet", "race detection" not "-race flag", "formatting" not "gofmt"
+- MUST NOT create standalone PRs or issues whose sole purpose is to retroactively add governing comments to existing code (Governing: ADR-0020)
+- Governing comments are added as part of feature implementation PRs, not in separate cleanup PRs
 - MUST identify shared types, packages, and helper functions needed by 2+ stories and extract them into `foundation`-labeled stories (Governing: SPEC-0015 REQ "Foundation Story Detection", ADR-0017 Layer 1)
 - Foundation stories MUST be scheduled to merge before any dependent feature story begins work
 - When multiple features require the same config fields or server wiring, MUST create a single consolidated wiring story rather than allowing independent additions
