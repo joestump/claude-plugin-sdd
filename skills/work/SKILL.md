@@ -1,4 +1,4 @@
-<!-- Governing: ADR-0017 (Parallel Agent Coordination), SPEC-0015 REQ "Issue Lifecycle Labels", SPEC-0015 REQ "Pre-Flight PR Awareness", SPEC-0015 REQ "Topological Merge Ordering" -->
+<!-- Governing: ADR-0017 (Parallel Agent Coordination), ADR-0020 (Governing Comments), SPEC-0015 REQ "Issue Lifecycle Labels", SPEC-0015 REQ "Pre-Flight PR Awareness", SPEC-0015 REQ "Topological Merge Ordering", SPEC-0015 REQ "Design Document Isolation" -->
 
 ---
 name: work
@@ -80,6 +80,21 @@ You are picking up tracker issues and implementing them in parallel using git wo
    **For Gitea:** Use `ToolSearch` to discover label MCP tools (e.g., `mcp__gitea__label_write`). Create labels via the API equivalent. If labels already exist, the API will return an error — ignore it and proceed.
 
    **For `tasks.md` fallback:** Skip label creation (labels are not applicable to file-based tracking).
+
+3b. **Define protected paths** (Governing: ADR-0017, ADR-0020, SPEC-0015 REQ "Design Document Isolation"):
+
+   The following paths are **protected** and MUST NOT be modified by worker agents in feature branches:
+
+   | Protected Path | Reason |
+   |---------------|--------|
+   | `{spec-dir}` | Spec changes require coordinated review |
+   | `{adr-dir}` | ADR changes require coordinated review |
+   | `CLAUDE.md` (project root) | Shared configuration — concurrent edits cause conflicts |
+   | `.claude-plugin-design.json` | Plugin configuration — concurrent edits cause conflicts |
+
+   **Exception:** Governing comments (per ADR-0020) MUST be added in feature PRs, not deferred. These are inline code comments (e.g., `// Governing: ADR-XXXX, SPEC-XXXX REQ "..."`) and are NOT considered design document modifications.
+
+   This list is passed to every worker in step 9.4 and enforced in worker step 7a.
 
 4. **Discover workable issues**: Search the tracker for open issues:
    - If a **spec** was provided: find all open issues referencing that spec.
@@ -270,6 +285,28 @@ You are picking up tracker issues and implementing them in parallel using git wo
        BUNDLE_REQUEST: #42 implementation is trivially small (8 lines changed, comments only). Requesting additional issues to bundle into this branch before opening a PR.
        ```
        Wait for the lead to either assign additional issues or confirm proceeding with a small PR (e.g., queue is exhausted). If additional issues are assigned, return to step 2 for each, implementing them in the same worktree, then proceed with a combined commit and PR covering all bundled issues.
+    7a. **Validate diff against protected paths** (Governing: SPEC-0015 REQ "Design Document Isolation"):
+        Before staging, check for modifications to protected paths defined in step 3b:
+        ```bash
+        git -C {worktree-path} diff --name-only
+        ```
+        For each modified file, check if it falls under a protected path (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-design.json`).
+
+        **If protected files are found:**
+        1. Revert each protected file:
+           ```bash
+           git -C {worktree-path} checkout -- {protected-file}
+           ```
+        2. Record the intended changes as deferred updates. For each reverted file, capture what was changed and why.
+        3. Include a `### Deferred Design Doc Updates` section in the PR body listing each deferred change:
+           ```markdown
+           ### Deferred Design Doc Updates
+           - `docs/adrs/ADR-0005.md`: Update status from "proposed" to "accepted"
+           - `docs/openspec/specs/auth/spec.md`: Add new requirement for token rotation
+           ```
+
+        **Exception:** Governing comments in source code files are NOT protected — they are inline code annotations, not design document modifications. Only files under the protected paths listed in step 3b are subject to this validation.
+
     8. Stage and commit changes:
        ```bash
        git -C {worktree-path} add .
@@ -370,7 +407,22 @@ You are picking up tracker issues and implementing them in parallel using git wo
     - Options: "Yes, clean up" / "No, keep them"
     - If yes: `git worktree remove .claude/worktrees/{branch-name}` for each successful issue.
 
-    **12.3: Final report.**
+    **12.3: Batch deferred design doc updates** (Governing: SPEC-0015 REQ "Design Document Isolation"):
+
+    After all sprint PRs are merged, collect deferred design document updates from all PR bodies:
+
+    1. Scan each merged PR body for a `### Deferred Design Doc Updates` section.
+    2. If any deferred updates exist, create a single batch PR:
+       - Branch: `docs/sprint-{N}-design-updates` (or `docs/design-updates-{date}` if no sprint number is available)
+       - Apply all deferred changes to the protected files on this branch
+       - PR title: "Update design docs for Sprint {N}" (or "Batch design doc updates for {date}")
+       - PR body: List all changes grouped by file, with references to the originating PRs
+       - Label: `documentation`
+    3. If no deferred updates were found across any PRs, skip this step.
+
+    This ensures design documents are updated in a single, reviewable PR rather than risking merge conflicts from parallel modifications.
+
+    **12.4: Final report.**
 
     ```
     ## Work Complete: [SPEC-0003 | issue batch]
@@ -433,6 +485,9 @@ You are picking up tracker issues and implementing them in parallel using git wo
 | Rebase fails during merge ordering | Preserve the worktree, report conflicting files, skip that PR, and continue with remaining PRs |
 | Circular file dependency in merge order | Report the cycle to the user and request manual merge order specification |
 | All PRs have file overlaps (no Tier 0) | Start with foundation PRs, then proceed by overlap count (fewest overlaps first) |
+| Worker modifies protected path (design docs) | Revert the protected file, record change in `### Deferred Design Doc Updates` PR body section, continue with implementation |
+| No deferred design doc updates after sprint | Skip batch PR creation — nothing to consolidate |
+| Batch design doc PR conflicts | Report conflict to user for manual resolution |
 
 ## Rules
 
@@ -495,3 +550,9 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST auto-rebase all remaining open PRs after each merge
 - MUST detect circular file dependencies in the merge order graph and request manual resolution — do NOT merge PRs in a cycle without user input
 - If a rebase fails during merge ordering, MUST preserve the worktree and report the conflict for manual resolution
+- Workers MUST NOT modify protected paths (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-design.json`) in feature branches (Governing: SPEC-0015 REQ "Design Document Isolation")
+- Workers MUST run `git diff --name-only` before staging and revert any protected files that were modified
+- Workers MUST record reverted protected-file changes in a `### Deferred Design Doc Updates` section in the PR body
+- Governing comments (per ADR-0020) are inline code annotations and MUST be added in feature PRs — they are NOT subject to design document isolation
+- Lead MUST collect all deferred design doc updates after sprint PRs merge and create a single batch PR for them
+- If no deferred design doc updates exist across any PRs, the batch PR step MUST be skipped
