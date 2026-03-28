@@ -5,6 +5,8 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, T
 argument-hint: [SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run]
 ---
 
+<!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
+
 # Review and Merge PRs
 
 You are reviewing PRs produced by `/design:work` using reviewer-responder agent pairs. Each pair processes PRs through exactly one review-response round: the reviewer checks the diff against spec acceptance criteria, the responder addresses feedback, and the reviewer re-evaluates. Approved PRs are merged; unresolved PRs are left with comments for human follow-up. See ADR-0010 and SPEC-0009.
@@ -19,7 +21,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
    - If `$ARGUMENTS` is empty (ignoring flags), list available specs by globbing `docs/openspec/specs/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec's PRs to review.
 
    **Flag parsing:**
-   - `--pairs N`: Number of reviewer-responder pairs (default 2). Read `.claude-plugin-design.json` `review.max_pairs` as fallback default.
+   - `--pairs N`: Number of reviewer-responder pairs (default 2). Read CLAUDE.md `Review > Max Pairs` as fallback default.
    - `--no-merge`: Approve PRs but do not merge them. Leave for manual merge.
    - `--dry-run`: Preview which PRs would be reviewed without taking any action.
 
@@ -37,7 +39,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
    - If no governing spec can be inferred (e.g., PRs specified by number with no spec reference), proceed with general code review only and note in the report that spec compliance could not be verified.
    - This context will be sent to all reviewer agents.
 
-5. **Read `.claude-plugin-design.json` review config**: Read the `review` section (see plugin's `references/shared-patterns.md` § "Config Schema"). Defaults: `max_pairs`=2, `merge_strategy`="squash", `auto_cleanup`=false. CLI flags override: `--pairs N` overrides `max_pairs`, `--no-merge` prevents merging.
+5. **Read review config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `#### Review` subsection from the `### Design Plugin Configuration` section in CLAUDE.md. Defaults: `Max Pairs`=2, `Merge Strategy`="squash", `Auto Cleanup`=false. CLI flags override: `--pairs N` overrides `Max Pairs`, `--no-merge` prevents merging.
 
 6. **Dry-run gate**: If `--dry-run` is set, output a preview table and stop:
 
@@ -128,7 +130,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
        - **GitLab**: Use MCP tools or `glab mr merge`.
        - The tracker's native close-on-merge behavior will automatically close the linked story issue.
     6. **Close parent epic if all stories are done**: After a successful merge, check whether the closed story's parent epic should also be closed:
-       a. Parse the PR body for an epic reference (e.g., `Part of #XX` or the configured `ref_keyword` from `.claude-plugin-design.json`). If no epic reference is found, skip this step.
+       a. Parse the PR body for an epic reference (e.g., `Part of #XX` or the configured `Ref Keyword` from CLAUDE.md `PR Conventions`). If no epic reference is found, skip this step.
        b. Fetch the epic issue and extract its child story references. Identify child stories by:
           - **GitHub**: Search for open issues that reference the epic number in their body (`Part of #{epic-number}`), or list issues in the same project/milestone.
           - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to list issues referencing the epic, or query the epic's milestone for open issues.
@@ -146,7 +148,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
 
     **12.1: Shut down team.** Send `shutdown_request` to all agents via `SendMessage`.
 
-    **12.2: Offer worktree cleanup.** If `.claude-plugin-design.json` `review.auto_cleanup` is `true`, remove worktrees for successfully-processed PRs automatically. Otherwise, preserve them.
+    **12.2: Offer worktree cleanup.** If CLAUDE.md `Review > Auto Cleanup` is `true`, remove worktrees for successfully-processed PRs automatically. Otherwise, preserve them.
 
     **12.3: Final report.**
 
@@ -205,7 +207,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
 
 - MUST load spec and design context before dispatching reviewers
 - MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
-- MUST check `.claude-plugin-design.json` for saved tracker preference before running detection
+- MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
 - MUST use round-robin distribution across pairs (Governing: SPEC-0009 REQ "PR Distribution")
 - MUST limit to exactly one review-response round per PR — no unbounded iteration (Governing: ADR-0010)
 - Reviewers MUST reference spec acceptance criteria in their reviews — not just style (Governing: SPEC-0009 REQ "Review Protocol")
@@ -216,7 +218,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
 - MUST NOT merge PRs when `--no-merge` is set
 - MUST check for parent epic closure after every successful merge — if all child stories under the epic are closed, close the epic automatically
 - MUST NOT close an epic if any child story is still open
-- Default merge strategy is squash — configurable via `.claude-plugin-design.json` `review.merge_strategy`
+- Default merge strategy is squash — configurable via CLAUDE.md `Review > Merge Strategy`
 - MUST report all failures with actionable details — never silently skip (Governing: SPEC-0009 REQ "Error Handling")
 - `--dry-run` MUST NOT submit reviews, push commits, or merge PRs
 - Adaptive pair count: reduce pairs to min(PR count, configured pairs) for small batches
@@ -224,4 +226,4 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
 - MUST verify all CI/CD status checks (GitHub Actions, Gitea Actions, GitLab CI) are green before reviewing a PR — never review a PR with failing checks
 - MUST re-verify CI status after responder pushes fixes — never merge with failing checks
 - MUST NOT merge a PR unless ALL status checks are passing
-- This skill reads `.claude-plugin-design.json` but MUST NOT write to it (consumer, not producer) (Governing: SPEC-0009 REQ "Configuration Persistence")
+- This skill reads CLAUDE.md configuration but MUST NOT write to it (consumer, not producer) (Governing: SPEC-0009 REQ "Configuration Persistence")

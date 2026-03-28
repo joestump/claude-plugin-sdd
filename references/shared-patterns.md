@@ -1,3 +1,5 @@
+<!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern in shared-patterns.md" -->
+
 # Shared Patterns Reference
 
 Patterns used across multiple design plugin skills. Skills reference specific sections by heading instead of duplicating the content.
@@ -11,11 +13,88 @@ Resolve a spec identifier to a file path:
 - If no spec identifier is provided (ignoring flags), list available specs by globbing `docs/openspec/specs/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to use.
 - If the spec doesn't exist, tell the user and suggest `/design:spec` to create one.
 
+## Config Resolution
+
+Canonical algorithm for reading plugin configuration from CLAUDE.md. All skills that need configuration MUST use this pattern. No skill SHALL read `.claude-plugin-design.json` directly.
+
+### Step 1: Read Root CLAUDE.md
+
+Read the project-root `CLAUDE.md` and look for a `### Design Plugin Configuration` section. If found, parse the subsections (`#### Tracker`, `#### Branch Conventions`, `#### PR Conventions`, `#### Review`, `#### Worktrees`, `#### Projects`) to extract configuration values.
+
+### Step 2: Merge Module Config (if applicable)
+
+If a `--module` flag is provided, also read the module's `CLAUDE.md` and look for a `### Design Plugin Configuration` section. Module-level values override root-level values (deepest wins). Missing keys at the module level inherit from root.
+
+### Step 3: Apply Defaults
+
+For any keys not found in either CLAUDE.md, apply these defaults:
+
+- **Tracker**: (none — fall through to auto-detection)
+- **Branch Conventions**: `prefix`=`feature`, `epic_prefix`=`epic`, `slug_max_length`=50, `enabled`=true
+- **PR Conventions**: `close_keyword`=(tracker-specific default), `ref_keyword`="Part of", `include_spec_reference`=true, `enabled`=true
+- **Review**: `max_pairs`=2, `merge_strategy`="squash", `auto_cleanup`=false
+- **Worktrees**: `base_dir`=`.claude/worktrees/`, `max_agents`=3, `auto_cleanup`=false, `pr_mode`="ready"
+- **Projects**: `default_mode`="per-epic", `views`=["All Work", "Board", "Roadmap"], `columns`=["Todo", "In Progress", "In Review", "Done"], `iteration_weeks`=2
+
+### Step 4: Fall Through
+
+If no `### Design Plugin Configuration` section exists in any CLAUDE.md, fall through to auto-detection (e.g., Tracker Detection for trackers). Skills SHOULD suggest running `/design:init` to persist configuration.
+
+### CLAUDE.md Configuration Format
+
+The `### Design Plugin Configuration` section in CLAUDE.md uses the following markdown structure. All subsections and keys are optional; missing keys use the defaults above.
+
+```markdown
+### Design Plugin Configuration
+
+#### Tracker
+- **Type**: github
+- **Owner**: myorg
+- **Repo**: myproject
+
+#### Branch Conventions
+- **Enabled**: true
+- **Prefix**: feature
+- **Epic Prefix**: epic
+- **Slug Max Length**: 50
+
+#### PR Conventions
+- **Enabled**: true
+- **Close Keyword**: Closes
+- **Ref Keyword**: Part of
+- **Include Spec Reference**: true
+
+#### Review
+- **Max Pairs**: 2
+- **Merge Strategy**: squash
+- **Auto Cleanup**: false
+
+#### Worktrees
+- **Base Dir**: .claude/worktrees/
+- **Max Agents**: 3
+- **Auto Cleanup**: false
+- **PR Mode**: ready
+
+#### Projects
+- **Default Mode**: per-epic
+- **Views**: All Work, Board, Roadmap
+- **Columns**: Todo, In Progress, In Review, Done
+- **Iteration Weeks**: 2
+```
+
+**Tracker-specific keys** (in the `#### Tracker` subsection):
+- **GitHub/Gitea/GitLab**: `Owner`, `Repo`
+- **Jira**: `Project Key`
+- **Linear**: `Team ID`
+- **Beads**: (no extra config needed)
+
+Skills MAY tolerate minor natural-language variations in key names (e.g., "Branch prefix" vs. "Prefix") since Claude interprets these as natural language.
+
 ## Tracker Detection
 
 ### Check for Saved Preference
 
-Read `.claude-plugin-design.json` in the project root. If it exists and contains a `"tracker"` key, use that tracker directly. If it also has `"tracker_config"`, use those settings (owner, repo, project key, etc.). If the saved tracker's tools are no longer available, warn the user and fall through to detection.
+Read the `### Design Plugin Configuration` section in the project-root `CLAUDE.md` (following the Config Resolution pattern above). If it contains a `#### Tracker` subsection with a `- **Type**: {tracker}` entry, use that tracker directly. If it also has tracker-specific keys (Owner, Repo, Project Key, etc.), use those settings. If the saved tracker's tools are no longer available, warn the user and fall through to detection.
 
 ### Detect Available Trackers
 
@@ -34,54 +113,7 @@ Read `.claude-plugin-design.json` in the project root. If it exists and contains
 
 ### Save Preference
 
-When the user agrees to save, write `.claude-plugin-design.json` in the project root. If the file already exists with other keys, merge — don't overwrite.
-
-## Config Schema (`.claude-plugin-design.json`)
-
-```json
-{
-  "tracker": "{tracker-name}",
-  "tracker_config": {},
-  "projects": {
-    "default_mode": "per-epic",
-    "project_ids": {},
-    "views": ["All Work", "Board", "Roadmap"],
-    "columns": ["Todo", "In Progress", "In Review", "Done"],
-    "iteration_weeks": 2
-  },
-  "branches": {
-    "enabled": true,
-    "prefix": null,
-    "epic_prefix": "epic",
-    "slug_max_length": 50
-  },
-  "pr_conventions": {
-    "enabled": true,
-    "close_keyword": null,
-    "ref_keyword": "Part of",
-    "include_spec_reference": true
-  },
-  "worktrees": {
-    "base_dir": null,
-    "max_agents": 3,
-    "auto_cleanup": false,
-    "pr_mode": "ready"
-  },
-  "review": {
-    "max_pairs": 2,
-    "merge_strategy": "squash",
-    "auto_cleanup": false
-  }
-}
-```
-
-**Tracker-specific `tracker_config`:**
-- **GitHub/Gitea/GitLab**: `{ "owner": "...", "repo": "..." }`
-- **Jira**: `{ "project_key": "..." }`
-- **Linear**: `{ "team_id": "..." }`
-- **Beads**: `{}` (no extra config needed)
-
-All keys are optional and backward-compatible. `null` values mean "use tracker defaults." When writing, merge into the existing file — do not overwrite other sections.
+When the user agrees to save, write the tracker configuration into the `### Design Plugin Configuration` section in the project-root `CLAUDE.md`. If the section already exists with other subsections, merge — don't overwrite. If it doesn't exist, create it. See the "CLAUDE.md Configuration Format" in the Config Resolution section above for the canonical format.
 
 ## Team Handoff Protocol
 
@@ -103,14 +135,14 @@ Default colors: `epic`=#6E40C9, `story`=#1D76DB, `spec`=#0E8A16, other=#CCCCCC.
 
 ## Branch Naming Conventions
 
-- **Stories**: `feature/{issue-number}-{slug}` (or custom prefix from `--branch-prefix` or config `branches.prefix`)
-- **Epics**: `epic/{issue-number}-{slug}` (or custom prefix from config `branches.epic_prefix`)
-- Slug: derived from title, kebab-case, max 50 chars (or config `branches.slug_max_length`), trailing hyphens removed after truncation.
+- **Stories**: `feature/{issue-number}-{slug}` (or custom prefix from `--branch-prefix` or CLAUDE.md `Branch Conventions > Prefix`)
+- **Epics**: `epic/{issue-number}-{slug}` (or custom prefix from CLAUDE.md `Branch Conventions > Epic Prefix`)
+- Slug: derived from title, kebab-case, max 50 chars (or CLAUDE.md `Branch Conventions > Slug Max Length`), trailing hyphens removed after truncation.
 - Requires two-pass: create the issue first to get the number, then update the body with the branch section.
 
 ## PR Close Keywords
 
-Tracker-specific close keywords (or use config `pr_conventions.close_keyword`):
+Tracker-specific close keywords (or use CLAUDE.md `PR Conventions > Close Keyword`):
 
 - **GitHub/Gitea**: `Closes #{issue-number}`
 - **GitLab**: `Closes #{issue-number}` (in MR description)

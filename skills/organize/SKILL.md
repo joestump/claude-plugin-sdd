@@ -5,6 +5,8 @@ allowed-tools: Read, Glob, Grep, Bash, Write, Edit, ToolSearch, AskUserQuestion
 argument-hint: [SPEC-XXXX or spec-name] [--project <name>] [--dry-run]
 ---
 
+<!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
+
 # Organize Issues into Projects
 
 You are retroactively grouping existing tracker issues into tracker-native projects and enriching project workspaces. You use a three-tier intervention model that lets the operator control how invasive the changes are. See ADR-0012 and SPEC-0011.
@@ -22,7 +24,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
 3. **Read spec**: Read `docs/openspec/specs/{capability-name}/spec.md` and `design.md` to understand the spec number, requirement names, and architecture.
 
-4. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`. Also read `projects` settings from `.claude-plugin-design.json` for cached project IDs and enrichment config (views, columns, iteration_weeks). If no tracker is found, error — projects require a tracker.
+4. **Detect tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Also read `Projects` settings from the `### Design Plugin Configuration` section in CLAUDE.md for cached project IDs and enrichment config (Views, Columns, Iteration Weeks). If no tracker is found, error — projects require a tracker.
 
 5. **Find existing issues**: Search the tracker for issues whose body references the spec number.
    - **GitHub**: `gh issue list --search "SPEC-XXXX" --json number,title,body,labels --limit 100`
@@ -73,12 +75,12 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    **GitHub workspace enrichment (tier b/c):**
    - Set project description referencing the spec
    - Write project README via GraphQL (agent-navigable context with spec refs, ADR links, story index, dependencies)
-   - Create "Sprint" iteration field via GraphQL with cycle length from `.claude-plugin-design.json` `projects.iteration_weeks` (default: 2 weeks)
-   - Create named views via GraphQL using `.claude-plugin-design.json` `projects.views` (default: "All Work" table, "Board" board, "Roadmap" roadmap)
+   - Create "Sprint" iteration field via GraphQL with cycle length from CLAUDE.md `Projects > Iteration Weeks` (default: 2 weeks)
+   - Create named views via GraphQL using CLAUDE.md `Projects > Views` (default: "All Work" table, "Board" board, "Roadmap" roadmap)
 
    **Gitea workspace enrichment (tier b/c):**
    - Create milestones (one per epic), assign stories to milestones
-   - Configure board columns from `.claude-plugin-design.json` `projects.columns` (default: Todo, In Progress, In Review, Done)
+   - Configure board columns from CLAUDE.md `Projects > Columns` (default: Todo, In Progress, In Review, Done)
 
    **Tier (c) additional steps:**
    - Re-label issues using try-then-create pattern
@@ -93,11 +95,11 @@ You are retroactively grouping existing tracker issues into tracker-native proje
     - Number of issues organized/updated
     - Skipped enrichments (graceful degradation)
     - Any failures encountered (with issue numbers)
-    - Whether `.claude-plugin-design.json` was updated with project IDs
+    - Whether CLAUDE.md `Projects` section was updated with project IDs
 
 ## Config Reference
 
-This skill reads and writes the `projects` section of `.claude-plugin-design.json`. See the plugin's `references/shared-patterns.md` § "Config Schema" for the full schema. All keys are optional with sensible defaults. When writing, merge — do not overwrite.
+This skill reads and writes the `Projects` subsection of the `### Design Plugin Configuration` section in CLAUDE.md. See the plugin's `references/shared-patterns.md` § "Config Resolution" for the canonical format and defaults. All keys are optional with sensible defaults. When writing, merge — do not overwrite.
 
 ## Rules
 
@@ -108,8 +110,9 @@ This skill reads and writes the `projects` section of `.claude-plugin-design.jso
 - MUST skip projects that already exist (idempotent)
 - MUST use `ToolSearch` for project tools at runtime
 - Failures MUST be reported but MUST NOT stop processing remaining issues
-- MUST check `.claude-plugin-design.json` for saved tracker preference and cached project IDs before creating
-- When merging into `.claude-plugin-design.json`, preserve existing keys
+- MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
+- MUST check CLAUDE.md `Projects` for cached project IDs before creating
+- When writing config to CLAUDE.md, preserve existing keys
 - MUST link created projects to the repository for trackers that support project-repository associations (e.g., GitHub Projects V2 via `gh project link`, Gitea)
 - MUST use try-then-create pattern for all label applications in tier (c) (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - MUST degrade gracefully when tracker features are unavailable — skip and report, never fail (Governing: SPEC-0011 REQ "Graceful Degradation")

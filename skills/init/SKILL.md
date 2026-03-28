@@ -1,15 +1,53 @@
 ---
 name: init
 description: Set up CLAUDE.md with design plugin references for architecture-aware sessions. Use when the user installs the plugin, says "initialize design", or wants to configure CLAUDE.md for the design plugin.
-allowed-tools: Read, Write, Edit, Glob, Grep, AskUserQuestion
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 argument-hint:
 ---
+
+<!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Migration from JSON to CLAUDE.md" -->
 
 # Initialize Design Plugin
 
 Set up the project's `CLAUDE.md` with architecture context so Claude sessions are design-aware.
 
 ## Process
+
+0. **Check for `.claude-plugin-design.json` migration** (Governing: SPEC-0014 REQ "Migration from JSON to CLAUDE.md"):
+
+   Before the main init flow, check for a `.claude-plugin-design.json` file in the project root.
+
+   **If `.claude-plugin-design.json` exists:**
+
+   a. Read the JSON file and parse its contents.
+
+   b. Translate each JSON key-value pair into the equivalent CLAUDE.md markdown format. The translation maps the JSON structure to the `### Design Plugin Configuration` section format defined in `references/shared-patterns.md` § "Config Resolution > CLAUDE.md Configuration Format":
+
+      - `"tracker"` and `"tracker_config"` → `#### Tracker` subsection with bold-key list items (e.g., `- **Type**: github`, `- **Owner**: myorg`, `- **Repo**: myproject`)
+      - `"branches"` → `#### Branch Conventions` subsection (e.g., `- **Enabled**: true`, `- **Prefix**: feature`, `- **Epic Prefix**: epic`, `- **Slug Max Length**: 50`)
+      - `"pr_conventions"` → `#### PR Conventions` subsection (e.g., `- **Enabled**: true`, `- **Close Keyword**: Closes`, `- **Ref Keyword**: Part of`, `- **Include Spec Reference**: true`)
+      - `"review"` → `#### Review` subsection (e.g., `- **Max Pairs**: 2`, `- **Merge Strategy**: squash`, `- **Auto Cleanup**: false`)
+      - `"worktrees"` → `#### Worktrees` subsection (e.g., `- **Base Dir**: .claude/worktrees/`, `- **Max Agents**: 3`, `- **Auto Cleanup**: false`, `- **PR Mode**: ready`)
+      - `"projects"` → `#### Projects` subsection (e.g., `- **Default Mode**: per-epic`, `- **Views**: All Work, Board, Roadmap`, `- **Columns**: Todo, In Progress, In Review, Done`, `- **Iteration Weeks**: 2`)
+      - Omit keys with `null` values (they will use defaults).
+      - Only generate subsections for JSON keys that are actually present.
+
+   c. Show the user the generated markdown and ask via `AskUserQuestion`:
+      - "Found existing configuration in `.claude-plugin-design.json`. I've translated it to CLAUDE.md format. Write this configuration to CLAUDE.md?"
+      - Options: "Yes, migrate to CLAUDE.md" / "No, skip migration"
+
+   d. If the user approves:
+      - If CLAUDE.md already has a `### Design Plugin Configuration` section, merge the new values into existing subsections (CLAUDE.md values take precedence on conflicts — do not overwrite existing keys).
+      - If CLAUDE.md does not have the section, it will be added during the main init flow (step 3 below) or appended after existing content.
+      - Write the `### Design Plugin Configuration` section to CLAUDE.md.
+
+   e. After successful migration, ask via `AskUserQuestion`:
+      - "Migration complete. Delete `.claude-plugin-design.json`? (The configuration now lives in CLAUDE.md.)"
+      - Options: "Yes, delete the JSON file" / "No, keep it"
+      - If the user approves deletion, delete `.claude-plugin-design.json` using `Bash` (`rm`).
+      - If the user declines, emit a warning: "Warning: Dual config sources exist (`.claude-plugin-design.json` and CLAUDE.md). Skills will read from CLAUDE.md only. Consider removing the JSON file to avoid confusion."
+
+   **If `.claude-plugin-design.json` does not exist**, skip this step and proceed to step 1.
 
 1. **Check for existing CLAUDE.md**: Look for `CLAUDE.md` in the project root.
 
@@ -96,7 +134,12 @@ CLAUDE.md already contains architecture context references. No changes made.
 ## Rules
 
 - MUST be idempotent -- running twice produces no duplicate content
-- MUST NOT remove or modify any existing content in CLAUDE.md
+- MUST NOT remove or modify any existing content in CLAUDE.md (except merging config during migration)
 - MUST append the Architecture Context section after existing content, not prepend
 - If CLAUDE.md does not exist, create it -- this is the normal first-run case, not an error
 - Do NOT create `docs/adrs/` or `docs/openspec/specs/` directories -- those are created by `/design:adr` and `/design:spec` when needed
+- MUST detect `.claude-plugin-design.json` before the main init flow and offer migration (Governing: SPEC-0014 REQ "Migration from JSON to CLAUDE.md")
+- MUST preserve all configuration values exactly during migration -- no lossy translation
+- MUST NOT delete `.claude-plugin-design.json` without explicit user consent via `AskUserQuestion`
+- When merging migrated config into an existing `### Design Plugin Configuration` section, CLAUDE.md values take precedence on conflicts
+- Migration MUST translate JSON key names to the canonical CLAUDE.md format defined in `references/shared-patterns.md` § "Config Resolution > CLAUDE.md Configuration Format"
