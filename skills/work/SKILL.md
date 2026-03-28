@@ -1,4 +1,4 @@
-<!-- Governing: ADR-0017 (Parallel Agent Coordination), SPEC-0015 REQ "Issue Lifecycle Labels" -->
+<!-- Governing: ADR-0017 (Parallel Agent Coordination), SPEC-0015 REQ "Issue Lifecycle Labels", SPEC-0015 REQ "Pre-Flight PR Awareness", SPEC-0015 REQ "Topological Merge Ordering" -->
 
 ---
 name: work
@@ -174,6 +174,31 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
    If `TeamCreate` fails, fall back to single-agent sequential mode: work through each issue one at a time in the main session using `git worktree add` for each.
 
+8a. **Build sibling PR manifest** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"):
+
+   Before dispatching any workers, build a pre-flight awareness manifest so each agent knows what siblings are doing. Follow the **Pre-Flight PR Awareness** pattern in `references/shared-patterns.md`.
+
+   1. **Query the tracker for all open PRs** in the current sprint, epic, or spec scope:
+      ```bash
+      gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url,labels --limit 50
+      ```
+      Include PRs from previous `/design:work` runs that haven't merged yet.
+
+   2. **For each open PR, extract file ownership:**
+      ```bash
+      gh pr diff {number} --name-only
+      ```
+      Scan the diff for new type/struct/interface/class/function definitions to identify shared artifacts.
+
+   3. **For foundation PRs** (labeled `foundation`), catalog all shared types and helpers with their file paths and merge status (merged = available on main, open = available after merge).
+
+   4. **Assemble the Sibling PR Manifest** with three sections:
+      - **Files Currently Being Modified by Siblings** — file paths with owning PR/issue numbers
+      - **Shared Types Available** — types, helpers, and their locations (with merge status)
+      - **In-Progress Sibling PRs** — table of PR number, issue, branch, files, and status
+
+   This manifest is injected into each worker's context in step 9.4. Workers keep it current via live `SendMessage` broadcasts per the **Worker Communication Protocol** in `references/shared-patterns.md`.
+
 9. **Create worktrees and assign work**: For each workable issue (respecting dependency order and max-agents concurrency):
 
    **9.1: Create the worktree.**
@@ -208,6 +233,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
     - Spec content (spec.md) — if a spec was resolved for this issue; omitted otherwise
     - Design content (design.md) — if a spec was resolved; omitted otherwise
     - ADR content (any referenced ADRs) — if a spec was resolved; omitted otherwise
+    - **Sibling PR Manifest** (from step 8a) — files being modified by siblings, shared types available, in-progress sibling PRs
     - Worktree absolute path
     - Whether to run tests (`--no-tests` flag)
     - PR mode (`draft` or `ready`)
@@ -216,7 +242,17 @@ You are picking up tracker issues and implementing them in parallel using git wo
     1. All file operations use the worktree absolute path (read, write, edit, glob, grep).
     2. Read the issue body and understand the acceptance criteria.
     3. Explore existing code in the worktree to understand the codebase structure.
-    3a. **Coordinate with sibling workers.** Follow the "Worker Communication Protocol" in `references/shared-patterns.md`. Workers MUST broadcast FILE_CLAIM, TYPE_CREATED, and handle CONFLICT_ALERT per the protocol.
+    3a. **Coordinate with sibling workers** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"). Follow the "Worker Communication Protocol" in `references/shared-patterns.md`. Before modifying any file:
+       - **Check the Sibling PR Manifest** for files already claimed by siblings. If the file appears under "Files Currently Being Modified by Siblings", send `CONFLICT_ALERT` and wait for lead coordination instead of modifying it.
+       - **Check for shared types** in the manifest's "Shared Types Available" section. If a needed type, struct, interface, or helper already exists (from a merged foundation PR or an in-progress sibling), import it from the expected location instead of creating a duplicate.
+       - **Broadcast live updates** via `SendMessage` to all siblings:
+         - `FILE_CLAIM: #{issue} claiming {file-path}` — before modifying any file
+         - `TYPE_CREATED: #{issue} created {TypeName} in {file-path}` — after creating new shared types, structs, interfaces, or helpers
+         - `AVAILABILITY: #{issue} PR merged — {artifact list} now on main` — when the lead detects a sibling PR has merged
+       - **Listen for sibling broadcasts** and update the local manifest accordingly:
+         - On `FILE_CLAIM` from a sibling: add the file to the "avoid modifying" list
+         - On `TYPE_CREATED` from a sibling: add the type to "Shared Types Available" and import it rather than recreating
+         - On `AVAILABILITY` from lead: move artifacts from "in-progress" to "available on main" and lift file avoidance for those files
     4. Implement changes to satisfy the acceptance criteria.
     5. If spec context was provided, leave governing comments in the code per `references/shared-patterns.md` § "Governing Comment Format":
        ```
@@ -269,6 +305,61 @@ You are picking up tracker issues and implementing them in parallel using git wo
     - If a worker reports failure, note it and continue with other issues. The freed slot is available for queued work. The issue retains its `in-progress` label (do NOT transition failed issues to `merged`).
     - **Handle bundle requests**: When a worker sends a `BUNDLE_REQUEST`, check the issue queue for additional issues that could be bundled into the same branch. If available (and not blocked by dependencies), assign them to the same worker with instructions to implement in the same worktree before creating a PR. If the queue is exhausted or all remaining issues are blocked, tell the worker to proceed with the small PR as-is.
     - **Queue status reporting**: After each agent completion or queue change, log the current state: "Active: {N}/{limit}, Queued: {Q}, Completed: {C}, Failed: {F}, Blocked: {B}"
+
+11a. **Compute topological merge order** (Governing: SPEC-0015 REQ "Topological Merge Ordering"):
+
+   After all workers have completed and PRs are in `in-review` state, compute the optimal merge order before merging begins. Follow the **Topological Merge Ordering** pattern in `references/shared-patterns.md`.
+
+   1. **Collect file lists for each PR:**
+      ```bash
+      gh pr diff {number} --name-only
+      ```
+
+   2. **Build file overlap graph.** For each pair of PRs, compute the intersection of modified files. PRs that share files have an ordering dependency.
+
+   3. **Classify PRs into tiers:**
+      - **Tier 0 (isolated)**: PRs with zero file overlap with any other PR — merge first, in any order
+      - **Tier 1 (foundation)**: PRs labeled `foundation` with dependents — merge after Tier 0
+      - **Tier N (dependent)**: PRs overlapping with Tier N-1 PRs — merge after predecessors, rebase first
+
+   4. **Detect circular dependencies.** If the overlap graph contains a cycle, report it to the user and request manual resolution:
+      ```
+      Circular file dependency detected between PRs #X and #Y (both modify {files}).
+      Please specify which should merge first.
+      ```
+      Do NOT proceed with merging the cycle until the user resolves it.
+
+   5. **Offer PR stacking** when a direct dependency exists (PR B depends on PR A via issue body AND they share files):
+      ```
+      PR #143 depends on PR #141. Stack #143 on top of #141's branch to avoid rebase conflicts? (Y/n)
+      ```
+
+   6. **Report the merge order** to the user before merging:
+      ```
+      ### Merge Order
+
+      | Order | PR | Issue | Overlapping Files | Action |
+      |-------|----|-------|-------------------|--------|
+      | 1 | #142 | #42 Isolated feature | (none) | Merge |
+      | 1 | #145 | #45 Another isolated | (none) | Merge |
+      | 2 | #141 | #41 Foundation types | main.go, sync.go | Merge, then rebase remaining |
+      | 3 | #143 | #43 Depends on #141 | sync.go | Rebase, then merge |
+      | 4 | #144 | #44 Touches everything | main.go, sync.go, config.go | Rebase, then merge |
+
+      Proceed with this merge order? (Y/n)
+      ```
+
+   7. **Execute the merge sequence** (after user approval):
+      - Merge all Tier 0 PRs (parallel-safe)
+      - After each merge, auto-rebase all remaining open PRs against main:
+        ```bash
+        git fetch origin main
+        git -C {worktree-path} rebase origin/main
+        git -C {worktree-path} push --force-with-lease
+        ```
+      - If a rebase fails, report the failure and preserve the worktree for manual resolution
+      - Proceed tier by tier until all PRs are merged
+      - **Transition merged issues** to `merged` label per step 11's lifecycle rules
 
 12. **Cleanup and report**: After all issues are processed:
 
@@ -337,6 +428,11 @@ You are picking up tracker issues and implementing them in parallel using git wo
 | Dependency issue not found in tracker | Treat as unblocked (dependency may have been deleted or moved) with a warning |
 | All issues are blocked by dependencies | Report the dependency graph and suggest resolving blocking issues first |
 | Circular dependency detected | Report the cycle and refuse to start any issue in the cycle; suggest the user break the cycle manually |
+| Sibling PR manifest query fails | Proceed without manifest — workers operate independently with live broadcasting only |
+| `gh pr diff` fails for a sibling PR | Omit that PR from the manifest with a warning; continue with available data |
+| Rebase fails during merge ordering | Preserve the worktree, report conflicting files, skip that PR, and continue with remaining PRs |
+| Circular file dependency in merge order | Report the cycle to the user and request manual merge order specification |
+| All PRs have file overlaps (no Tier 0) | Start with foundation PRs, then proceed by overlap count (fewest overlaps first) |
 
 ## Rules
 
@@ -386,3 +482,16 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST place blocked issues in a deferred queue and re-check when dependencies transition to `merged`
 - MUST detect circular dependencies and refuse to start any issue in the cycle
 - Queue status reporting MUST include blocked count: "Active: {N}/{limit}, Queued: {Q}, Completed: {C}, Failed: {F}, Blocked: {B}"
+- MUST build a sibling PR manifest before dispatching workers by querying the tracker for all open PRs in the sprint/epic scope (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness")
+- MUST inject the sibling PR manifest into each worker's context when assigning work
+- Workers MUST check the sibling PR manifest before modifying files or creating types — if a file or type is already claimed by a sibling, the worker MUST coordinate rather than duplicate
+- Workers MUST update their local manifest dynamically via `SendMessage` broadcasts (FILE_CLAIM, TYPE_CREATED, AVAILABILITY)
+- Lead MUST broadcast `AVAILABILITY` messages when foundation or sibling PRs merge so workers can lift file avoidance directives
+- MUST compute topological merge order based on file overlap analysis after all PRs reach `in-review` state (Governing: SPEC-0015 REQ "Topological Merge Ordering")
+- PRs with zero file overlap MUST be merged first (Tier 0, any order)
+- PRs sharing files with already-merged PRs MUST rebase before merging
+- MUST report the computed merge order to the user and await approval before merging begins
+- MUST offer PR stacking when two PRs have a direct dependency relationship AND share modified files
+- MUST auto-rebase all remaining open PRs after each merge
+- MUST detect circular file dependencies in the merge order graph and request manual resolution — do NOT merge PRs in a cycle without user input
+- If a rebase fails during merge ordering, MUST preserve the worktree and report the conflict for manual resolution
