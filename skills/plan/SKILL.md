@@ -218,6 +218,40 @@ Ordered for implementation (dependencies respected):
 
    Do NOT add the security checklist to stories that do not involve HTTP endpoints.
 
+   **5.2.2: Detect UI stories and create companion test stories.**
+
+   <!-- Governing: ADR-0019 (Frontend Quality Standards), SPEC-0016 REQ "Frontend Test Scaffolding" -->
+
+   After grouping requirements into stories, determine which stories touch UI components. A story touches UI if ANY of the following are true:
+
+   - The story implements, modifies, or tests HTML templates or server-rendered pages
+   - The grouped requirements reference templates, browser UI, frontend components, forms, modals, dashboards, or interactive elements
+   - The story involves JavaScript (inline or external), CSS, or HTMX interactions
+   - The story title or description references: UI, template, page, form, modal, dialog, dashboard, frontend, component, widget
+
+   A story does NOT touch UI if it exclusively involves: database migrations, background jobs, CLI commands, API-only endpoints with no HTML rendering, library refactoring, configuration setup, CI/CD pipelines, or documentation.
+
+   For each story that touches UI, you MUST create a **companion test story** alongside the feature story. Companion test stories cover:
+
+   - **Template render tests**: Verify that templates produce correct HTML structure for given input data
+   - **JavaScript unit tests**: Test inline or external JS functions for correctness
+   - **HTMX integration tests**: Verify that HTMX swap targets, triggers, and server responses produce the expected DOM state
+
+   **Companion test story format:**
+   - Title: "Tests: {Feature Story Title}" (e.g., "Tests: Dashboard Layout and Navigation")
+   - Body MUST include:
+     - A reference to the feature story it covers (e.g., "Covers #{feature-issue-number}")
+     - A `## Test Requirements` section listing the specific test types needed:
+       - `- [ ] Template render tests: {what to verify}`
+       - `- [ ] JS unit tests: {what to verify}` (only if the feature story involves JavaScript)
+       - `- [ ] HTMX integration tests: {what to verify}` (only if the feature story involves HTMX)
+     - Acceptance criteria for test coverage
+   - Apply the `test` label using the try-then-create pattern (see `references/shared-patterns.md`)
+   - The companion test story SHOULD be estimated at no more than half the effort of the feature story
+   - The companion test story MUST depend on (be blocked by) its corresponding feature story
+
+   Do NOT create companion frontend test stories for backend-only stories (API-only, database, CLI, background jobs, library code).
+
    **5.3: Write task checklists.** Each story issue body MUST include a `## Requirements` section with a task checklist. The format varies by tracker:
 
    **For GitHub, Gitea, GitLab, Jira, and Linear** — use markdown task checklists:
@@ -346,6 +380,7 @@ Ordered for implementation (dependencies respected):
    - **Foundation stories** created (if any), with the `foundation` label and their dependent feature stories
    - **Dependency graph** showing the ordering of foundation stories, serialized stories, and parallelizable stories (Governing: SPEC-0015 REQ "Foundation Story Detection")
    - **Hotspot analysis results**: list of detected hotspot files with percentages, and any serialization constraints applied (Governing: SPEC-0015 REQ "Hotspot Analysis")
+   - **Companion test stories** created for UI-touching stories (if any), with references to the feature stories they cover (Governing: SPEC-0016 REQ "Frontend Test Scaffolding")
    - Number of project groupings created (or "skipped" if `--no-projects` was set)
    - Whether branch naming conventions were included in issue bodies (or "skipped" if `--no-branches`)
    - Whether PR conventions were included in issue bodies (or "skipped" if `--no-branches`)
@@ -405,6 +440,11 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - Stories that involve HTTP endpoints MUST include a `## Security Checklist` section with authentication, input validation, output encoding, rate limiting, and body size limit items (Governing: ADR-0018, SPEC-0016 REQ "Security Checklist in Issues")
 - The security checklist MUST NOT be added to stories that do not involve HTTP endpoints (DB migrations, background jobs, CLI commands, library refactoring, etc.) (Governing: SPEC-0016 REQ "Security Checklist in Issues")
 - The security checklist MUST be placed after `## Acceptance Criteria` and before `### Branch` / `### PR Convention` sections
+- Stories that touch UI components (HTML templates, JavaScript, CSS, HTMX) MUST have companion test stories created alongside them (Governing: ADR-0019, SPEC-0016 REQ "Frontend Test Scaffolding")
+- Companion test stories MUST cover template render tests, JS unit tests (if JS is involved), and HTMX integration tests (if HTMX is involved)
+- Companion test stories MUST reference the feature story they cover and MUST depend on (be blocked by) that feature story
+- Companion test stories MUST NOT be created for backend-only stories (API-only, database, CLI, background jobs, library code)
+- Companion test stories SHOULD be estimated at no more than half the effort of the feature story
 - Engineer B MUST provide a substantive objection for any story that has a weak requirement, vague scope, or missing spec reference — generic approval without review is not acceptable (Governing: SPEC-0012 REQ "Scrum Team Composition")
 - The sprint report MUST be emitted at the end of every `--scrum` run, even if all stories were deferred (Governing: SPEC-0012 REQ "Sprint Report")
 - `--scrum` and `--review` are mutually exclusive; if both are provided, `--scrum` takes precedence and `--review` is silently ignored
