@@ -152,6 +152,31 @@ Set up the project's `CLAUDE.md` with architecture context so Claude sessions ar
 
    d. **Order of operations when both `.gitmodules` and `.claude-plugin-design.json` exist**: Migration (step 0) runs first, then workspace setup (this step). This ensures the migrated configuration is in CLAUDE.md before workspace modules are appended.
 
+5a. **Backend project detection and suggestions** (Governing: ADR-0020, SPEC-0016 REQ "Go Code Quality Guidelines"):
+
+   After workspace setup, detect the project type from manifests in the project root (or module roots for workspaces):
+
+   | Manifest | Project Type |
+   |----------|-------------|
+   | `go.mod` | Backend (compiled) |
+   | `package.json` | Backend or Frontend (check for server frameworks) |
+   | `requirements.txt` / `pyproject.toml` / `setup.py` | Backend (interpreted) |
+   | `Cargo.toml` | Backend (compiled) |
+   | `pom.xml` / `build.gradle` | Backend (JVM) |
+   | `Gemfile` | Backend (interpreted) |
+   | `mix.exs` | Backend (compiled) |
+   | `Package.swift` | Backend (compiled) |
+   | `composer.json` | Backend (interpreted) |
+
+   For `package.json`, check `dependencies` for server frameworks (e.g., `express`, `fastify`, `hapi`, `koa`, `nest`, `next` with API routes) to distinguish backend from pure frontend.
+
+   **For detected backend projects:**
+
+   Scan the existing ADRs (if any) for a structured logging decision. If no ADR covers structured logging, suggest:
+   > "This looks like a backend project. Consider creating an ADR for structured logging to establish consistent observability patterns: `/design:adr structured logging approach`"
+
+   This suggestion is informational only — do not block init or require user action.
+
 6. **Report what happened** using the appropriate output format below.
 
 ## Content to Add
@@ -235,3 +260,6 @@ CLAUDE.md already contains architecture context references. No changes made.
 - MUST write `### Workspace Modules` table in root CLAUDE.md when workspace is detected
 - MUST skip submodules that already have CLAUDE.md (unless user explicitly requests update)
 - When `.gitmodules` and `.claude-plugin-design.json` both exist, migration (step 0) runs before workspace setup (step 5)
+- MUST detect backend projects from manifests (`go.mod`, `requirements.txt`, `Cargo.toml`, `pom.xml`, `Gemfile`, etc.) and suggest structured logging ADR when none exists (Governing: SPEC-0016)
+- Backend project detection MUST be language-agnostic — reference "project manifest" not specific filenames in suggestions
+- Structured logging suggestion is informational only — MUST NOT block init or require action

@@ -158,6 +158,75 @@ Modals and dialogs MUST implement focus management:
 - Focus MUST return to the triggering element when the modal is closed
 ```
 
+## Backend Quality Detection and Guidelines Injection
+
+<!-- Governing: ADR-0020, SPEC-0016 REQ "Go Code Quality Guidelines" -->
+
+Before writing the spec, determine whether the capability involves **backend quality concerns**. Detect backend projects by examining the codebase for indicators:
+
+### Detection Signals
+
+A spec involves backend quality concerns if ANY of the following are true:
+
+- **Concurrency**: The capability involves parallel workers, async tasks, threads, coroutines, background jobs, worker pools, fan-out/fan-in patterns, or concurrent request handling
+- **Error handling**: The capability involves service boundaries, external API calls, database operations, file I/O, network requests, or any operation that can fail at runtime
+- **Database interactions**: The capability involves queries, migrations, transactions, connection pooling, or ORM usage
+- **Backend manifests**: The project contains backend manifests (`go.mod`, `requirements.txt`, `Cargo.toml`, `pom.xml`, `build.gradle`, `Gemfile`, `mix.exs`, `Package.swift`, `composer.json`, or similar)
+
+A spec does NOT involve backend quality concerns if it exclusively involves: static documentation, pure frontend UI (no backend logic), CSS/styling, or purely declarative configuration.
+
+### When Backend Quality Concerns Are Detected
+
+Inject the relevant subsections below into the spec's `## Requirements` section as additional requirements. Only inject subsections that match the detected signals — do not inject all subsections for every backend spec.
+
+#### When Error Handling Is Involved
+
+Inject error handling guidelines as a requirement:
+
+```markdown
+### Requirement: Error Handling Standards
+
+All error-producing operations MUST follow structured error handling:
+
+- Errors MUST be wrapped with contextual information at each layer boundary (e.g., "failed to create user: database insert failed: connection refused")
+- Sentinel errors MUST be defined for domain-specific failure modes that callers need to distinguish programmatically
+- Silent error swallowing MUST NOT occur — every error MUST be either returned to the caller, logged with sufficient context, or explicitly handled with a documented reason for suppression
+- Structured logging MUST be used for error reporting (key-value pairs, not string interpolation)
+```
+
+#### When Concurrency Is Involved
+
+Inject concurrency guidelines as a requirement:
+
+```markdown
+### Requirement: Concurrency Safety
+
+All concurrent operations MUST follow safe concurrency patterns:
+
+- Context propagation MUST be used for cancellation and timeout signaling across all concurrent boundaries (parent tasks, worker pools, background jobs)
+- Worker lifecycle MUST be explicitly managed — all workers MUST have clean startup and graceful shutdown sequences
+- Race safety MUST be ensured — shared mutable state MUST be protected by appropriate synchronization primitives or eliminated via message passing
+- Concurrent tests MUST be run with race detection enabled in CI
+```
+
+#### When Database Interactions Are Involved
+
+Inject database guidelines as a requirement:
+
+```markdown
+### Requirement: Database Operation Standards
+
+All database operations MUST follow structured data access patterns:
+
+- Transactions MUST be used for multi-step mutations that require atomicity
+- Connection lifecycle MUST be explicitly managed — connections MUST be returned to the pool after use, with timeouts configured
+- Query parameters MUST use parameterized queries — string interpolation in queries MUST NOT occur
+```
+
+### When Backend Quality Concerns Are NOT Detected
+
+Do NOT inject backend quality requirements. Proceed with the standard spec template only.
+
 ## Auth-by-Default in Endpoint Tables
 
 <!-- Governing: ADR-0018 (Security-by-Default), SPEC-0016 REQ "Auth-by-Default" -->
@@ -298,3 +367,8 @@ Example endpoint table with auth-by-default:
 - MUST NOT inject the Security Requirements section for non-web specs (CLI tools, libraries, batch jobs, data migrations, background workers)
 - For UI-facing specs: MUST inject the Accessibility Requirements section covering WCAG 2.1 AA, ARIA landmarks, `aria-label` on icon-only controls, `aria-live` for dynamic content, keyboard navigation, and focus management (Governing: ADR-0019, SPEC-0016 REQ "Accessibility Requirements for UI Specs")
 - MUST NOT inject the Accessibility Requirements section for non-UI specs (API-only, CLI, batch jobs, background workers, internal libraries)
+- For backend specs with error handling: MUST inject error wrapping, sentinel errors, no silent swallowing, and structured logging requirements (Governing: SPEC-0016 REQ "Go Code Quality Guidelines")
+- For backend specs with concurrency: MUST inject context propagation, worker lifecycle, race safety, and race detection CI requirements (Governing: SPEC-0016 REQ "Go Code Quality Guidelines")
+- For backend specs with database interactions: MUST inject transaction, connection lifecycle, and parameterized query requirements
+- ALL backend quality guidelines MUST be language-agnostic — use "structured logging" not "slog", "error wrapping" not "%w", "project manifest" not "go.mod", "parallel workers" not "goroutines"
+- MUST NOT inject backend quality requirements for non-backend specs (static docs, pure frontend, CSS, declarative config)
