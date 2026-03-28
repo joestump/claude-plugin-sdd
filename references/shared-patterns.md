@@ -264,6 +264,10 @@ Skills use different team structures depending on the task:
 - Workers communicate via Worker Communication Protocol (above)
 - Lead manages queue, handles bundle requests, tracks lifecycle labels
 
+### TeamCreate Required
+
+Any skill or session that spawns 2+ parallel agents MUST use `TeamCreate`, not ad-hoc `Agent` calls. `SendMessage` (required for the Worker Communication Protocol) only works within a Team. Ad-hoc background agents are isolated and cannot coordinate — they cannot see sibling agents' file claims, type creations, or conflict alerts. This applies both to skills and to sessions orchestrating multiple skills.
+
 ## Try-Then-Create Label Pattern
 
 When applying labels (e.g., `epic`, `story`, `spec`), attempt to apply the label first. If the tracker returns "label not found", create the label with a default color and retry.

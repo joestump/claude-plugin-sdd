@@ -46,3 +46,7 @@ These comments help future sessions (and `/design:check`) trace implementation b
 5. **Build**: `/design:work` — pick up issues and implement in parallel using git worktrees
 6. **Review**: `/design:review` — review and merge PRs with spec-aware code review
 7. **Validate**: `/design:check` and `/design:audit` to catch drift
+
+### Session Coordination
+
+When orchestrating multiple design plugin skills in a single session (e.g., running `/design:work` on several issues), use `TeamCreate` to coordinate agents. Do not spawn ad-hoc background agents for work that requires coordination — `SendMessage` only works within a Team, and isolated agents cannot see sibling file claims or type creations.
