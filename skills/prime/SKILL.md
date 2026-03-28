@@ -30,7 +30,7 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
    - Read the `## Decision Outcome` section to extract the key decision
    - Sort by ADR number
 
-3. **Scan for specs**: Glob for `{spec-dir}/*/spec.md` files (in aggregate mode, glob per-module). For each file:
+3. **Scan for specs**: Glob for `{spec-dir}/*/spec.md` files (in aggregate mode, glob per-module). Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation". For each file:
    - Read the YAML frontmatter to extract `status`
    - Extract the title from the first `# ` heading (e.g., `SPEC-0001: Web Dashboard`)
    - Read the `## Overview` section

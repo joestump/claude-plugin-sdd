@@ -24,19 +24,21 @@ You are breaking down an existing specification into trackable work items (epics
    **Spec resolution:** Follow the standard flow in the plugin's `references/shared-patterns.md` § "Spec Resolution" (which uses `{spec-dir}` from the Artifact Path Resolution pattern).
 
    **Flag parsing:**
-   - `--scrum`: Enable scrum ceremony mode (see Scrum Mode section below). When set, the skill runs a full team-groomed planning ceremony: spec completeness audit → issue decomposition → multi-agent grooming → organize → enrich → sprint report. Mutually exclusive with `--review`; if both are set, `--scrum` takes precedence.
-   - `--review`: Enable team review mode (see step 3). Ignored when `--scrum` is set.
-   - `--project <name>`: Use a single combined project for all issues. Mutually exclusive with `--no-projects`.
-   - `--no-projects`: Skip project creation entirely. Mutually exclusive with `--project`.
-   - `--branch-prefix <prefix>`: Custom branch prefix instead of the default `feature`/`epic` prefixes.
-   - `--no-branches`: Omit `### Branch` and `### PR Convention` sections from issue bodies.
-   - `--module <name>`: Resolve artifact paths relative to the named module (see step 0).
+   - `--scrum`: Enable scrum ceremony mode (see Scrum Mode section below). Default: off. Mutually exclusive with: `--review`.
+   - `--review`: Enable team review mode (see step 3). Default: off. Mutually exclusive with: `--scrum`.
+   - `--project <name>`: Use a single combined project for all issues. Default: per-epic. Mutually exclusive with: `--no-projects`.
+   - `--no-projects`: Skip project creation entirely. Default: off. Mutually exclusive with: `--project`.
+   - `--branch-prefix <prefix>`: Custom branch prefix instead of the default `feature`/`epic` prefixes. Default: `feature`.
+   - `--no-branches`: Omit `### Branch` and `### PR Convention` sections from issue bodies. Default: off.
+   - `--module <name>`: Resolve artifact paths relative to the named module (see step 0). Default: none.
+
+   `--scrum` and `--review` are mutually exclusive. When both are provided, `--scrum` takes precedence and `--review` is silently ignored. The scrum ceremony includes its own review process.
 
    If both `--project` and `--no-projects` are provided, warn the user and use `--no-projects`.
 
    **If `--scrum` is set, skip to the Scrum Mode section after completing step 1. Do not proceed through steps 2–8 in sequence — scrum mode orchestrates them internally.**
 
-2. **Read the spec**: Read both `{spec-dir}/{capability-name}/spec.md` and `{spec-dir}/{capability-name}/design.md` to understand the full scope of requirements, scenarios, and architecture.
+2. **Read the spec**: Read both `{spec-dir}/{capability-name}/spec.md` and `{spec-dir}/{capability-name}/design.md` to understand the full scope of requirements, scenarios, and architecture. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation". If either spec.md or design.md is missing, error and suggest `/design:spec`.
 
 3. **Choose drafting mode**: Check if `$ARGUMENTS` contains `--review`.
 
@@ -96,7 +98,7 @@ Spawn the five specialist agents and distribute all stories for parallel review.
 > High-bar reviewer. Find problems: vague requirements, hidden scope, incorrect spec/ADR references. APPROVE only with explicit one-sentence justification. Do not soften feedback.
 
 **Architect**
-> Verify governing comments, ADR references in acceptance criteria, design.md existence, and WHEN/THEN alignment with design.md. Verdict: APPROVED, REVISE, or DEFER.
+> Verify governing comments (per `references/shared-patterns.md` § "Governing Comment Format"), ADR references in acceptance criteria, design.md existence, and WHEN/THEN alignment with design.md. Verdict: APPROVED, REVISE, or DEFER.
 
 **Collecting feedback:**
 
@@ -162,7 +164,7 @@ Ordered for implementation (dependencies respected):
 
 5. **Create issues in the detected tracker**:
 
-   **5.1: Create an epic.** Create an epic (or equivalent) for the specification itself, titled "Implement {Capability Title}" with a body referencing the spec number and linking to the spec/design files. Apply the `epic` label using the **try-then-create pattern**: attempt to apply the label, and if it doesn't exist, create it with color `#6E40C9` and retry. (Governing: SPEC-0011 REQ "Auto-Create Labels")
+   **5.1: Create an epic.** Create an epic (or equivalent) for the specification itself, titled "Implement {Capability Title}" with a body referencing the spec number and linking to the spec/design files. Apply the `epic` label using the try-then-create pattern (see `references/shared-patterns.md`). (Governing: SPEC-0011 REQ "Auto-Create Labels")
 
    **5.2: Group requirements into stories.** Instead of creating one issue per requirement, group all `### Requirement:` sections into 3-4 story-sized issues by functional area. This is governed by SPEC-0010 and ADR-0011.
 
@@ -174,44 +176,9 @@ Ordered for implementation (dependencies respected):
    5. Target 3-4 stories for a spec with 10-15 requirements (3-5 requirements per story). For specs with 4 or fewer requirements, create 1-2 stories. For a single-requirement spec, create 1 story.
    6. Each story SHOULD target a PR in the 200-500 line range. This is a heuristic — functional cohesion takes priority over line-count targets. Do NOT split functionally cohesive requirements across stories solely to meet the line-count target.
 
-   **5.2a: Foundation Story Detection.** After grouping requirements into stories, analyze the grouped stories to identify shared types, packages, and helper functions needed by two or more stories. Follow the "Foundation Story Detection" pattern in the plugin's `references/shared-patterns.md`. (Governing: ADR-0017 Layer 1, SPEC-0015 REQ "Foundation Story Detection")
+   **5.2a: Foundation Story Detection.** After grouping requirements into stories, analyze the grouped stories to identify shared types, packages, and helper functions needed by two or more stories. Follow the "Foundation Story Detection" pattern in `references/shared-patterns.md`. (Governing: ADR-0017 Layer 1, SPEC-0015 REQ "Foundation Story Detection")
 
-   **Process:**
-   1. For each story, extract the types, structs, interfaces, helper functions, config fields, and packages it will need to create or modify (inferred from the spec requirements and the existing codebase).
-   2. Cross-reference across all stories: any type, package, or helper function needed by 2+ stories is a **shared dependency**.
-   3. For each cluster of shared dependencies, create a **foundation story** that extracts or defines them:
-      - Title: descriptive of the shared code (e.g., "Extract shared LLM client package", "Stub config fields and route registration for sprint N")
-      - Apply the `foundation` label using the try-then-create pattern (color: `#D4A017`)
-      - Foundation stories MUST be scheduled to merge before any dependent feature story begins work
-   4. When multiple features need to add config fields or server wiring to the same file, consolidate into a single "wiring story" that stubs all config fields and route registrations. Feature stories then only fill in handler implementations.
-   5. Update the dependency graph: each feature story that depends on shared code MUST declare a dependency on the corresponding foundation story using machine-readable `blocks:` syntax in the epic body (e.g., `- [ ] #281 (blocks: #282, #283)`).
-   6. Output the dependency graph to the user showing which feature stories depend on which foundation stories.
-
-   **5.2b: Hotspot Analysis.** Before making parallelization decisions, analyze recent git history to identify files that are frequent sources of merge conflicts. Follow the "Hotspot Analysis" pattern in the plugin's `references/shared-patterns.md`. (Governing: ADR-0017 Layer 1, SPEC-0015 REQ "Hotspot Analysis")
-
-   **Process:**
-   1. Run git log analysis on recent history:
-      ```bash
-      git log --name-only --pretty=format:"---COMMIT---" --merges -50
-      ```
-      Also consider the last 30 days if that yields more commits:
-      ```bash
-      git log --name-only --pretty=format:"---COMMIT---" --merges --since="30 days ago"
-      ```
-      Use whichever window is larger.
-   2. For each file, calculate the percentage of recent PRs (merge commits) that modified it.
-   3. Files modified by more than 50% of recent PRs are classified as **hotspot files**. The 50% threshold is the default; read the `## Design Plugin Configuration` section in CLAUDE.md for a `hotspot-threshold` override.
-   4. Report detected hotspots to the user:
-      ```
-      ### Hotspot Analysis
-      - `cmd/server/main.go` — modified by 7/10 recent PRs (70%) ⚠ HOTSPOT
-      - `internal/config/config.go` — modified by 6/10 recent PRs (60%) ⚠ HOTSPOT
-      - No other files exceed the 50% threshold.
-      ```
-   5. Stories that modify hotspot files MUST be serialized rather than parallelized:
-      - Add explicit ordering constraints in the dependency graph
-      - Mark these stories with a `### Serialization Constraint` section in their issue body explaining which hotspot file(s) caused serialization
-   6. If no hotspots are detected, report "No hotspots detected — stories will be parallelized based on dependency analysis alone."
+   **5.2b: Hotspot Analysis.** Before making parallelization decisions, analyze recent git history to identify files that are frequent sources of merge conflicts. Follow the "Hotspot Analysis" pattern in `references/shared-patterns.md`. Stories that modify hotspot files MUST be serialized rather than parallelized. (Governing: ADR-0017 Layer 1, SPEC-0015 REQ "Hotspot Analysis")
 
    **Creating story issues:**
    - Title: a descriptive name reflecting the story's functional area (e.g., "Setup & Configuration", "Core Auth Flow", "Validation & Error Handling")
@@ -339,7 +306,7 @@ Ordered for implementation (dependencies respected):
 
    **For other trackers**: Skip tracker-specific enrichment. Log skipped steps in the report.
 
-   **Auto-label creation** (cross-cutting, all trackers): When applying labels in any step (epic label, story label, spec label), use the **try-then-create pattern**: attempt to apply the label, and if the tracker returns a "label not found" error, create the label with a default color and retry. Default colors: `epic`=#6E40C9, `story`=#1D76DB, `spec`=#0E8A16, other=#CCCCCC. (Governing: SPEC-0011 REQ "Auto-Create Labels")
+   **Auto-label creation** (cross-cutting, all trackers): When applying labels in any step (epic label, story label, spec label), use the try-then-create pattern (see `references/shared-patterns.md`). (Governing: SPEC-0011 REQ "Auto-Create Labels")
 
 6. **Fallback: Generate `tasks.md`** (when no tracker is available). Governing: SPEC-0006, ADR-0007.
 
@@ -429,7 +396,7 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - MUST use `ToolSearch` for project tools at runtime
 - `--project` and `--no-projects` are mutually exclusive; if both provided, warn and use `--no-projects`
 - `--no-branches` disables both `### Branch` AND `### PR Convention` sections
-- MUST use try-then-create pattern for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
+- MUST use the try-then-create pattern (see `references/shared-patterns.md`) for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - MUST enrich projects after creation with descriptions, READMEs, views, iterations (GitHub) or milestones, columns, dependencies (Gitea) (Governing: SPEC-0011, ADR-0012)
 - Enrichment failures MUST be skipped and reported, never fail the entire operation (Governing: SPEC-0011 REQ "Graceful Degradation")
 - CLAUDE.md `Projects > Views`, `Projects > Columns`, `Projects > Iteration Weeks` are all optional with sensible defaults — do NOT overwrite existing keys when they are absent

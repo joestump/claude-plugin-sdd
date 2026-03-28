@@ -19,14 +19,15 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
 1. **Parse arguments**: Extract from `$ARGUMENTS`:
    - Spec identifier: a SPEC number (e.g., `SPEC-0007`) or capability directory name
-   - `--project <name>`: Use a single combined project with this name for all issues
-   - `--dry-run`: Preview what would be created without making changes
+   - `--project <name>`: Use a single combined project with this name for all issues. Default: per-epic.
+   - `--dry-run`: Preview what would be created without making changes. Default: off.
+   - `--module <name>`: Resolve artifact paths relative to the named module. Default: none.
 
    If no spec identifier is provided, list available specs by globbing `{spec-dir}/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to organize.
 
 2. **Resolve spec**: Follow the plugin's `references/shared-patterns.md` § "Spec Resolution" (which uses `{spec-dir}` from the Artifact Path Resolution pattern).
 
-3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` and `design.md` to understand the spec number, requirement names, and architecture.
+3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` and `design.md` to understand the spec number, requirement names, and architecture. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
 
 4. **Detect tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Also read `Projects` settings from the `### Design Plugin Configuration` section in CLAUDE.md for cached project IDs and enrichment config (Views, Columns, Iteration Weeks). If no tracker is found, error — projects require a tracker.
 
@@ -70,7 +71,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
    **(c) Complete refactor**: All tier (b) changes PLUS:
    - Re-group issues across epics (move misplaced stories)
-   - Fix/add labels using try-then-create pattern (epic=#6E40C9, story=#1D76DB, spec=#0E8A16)
+   - Fix/add labels using the try-then-create pattern (see `references/shared-patterns.md`)
    - Create native dependency links (Gitea)
    - Update issue bodies with `### Branch` and `### PR Convention` sections (if missing)
 
@@ -87,7 +88,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    - Configure board columns from CLAUDE.md `Projects > Columns` (default: Todo, In Progress, In Review, Done)
 
    **Tier (c) additional steps:**
-   - Re-label issues using try-then-create pattern
+   - Re-label issues using the try-then-create pattern (see `references/shared-patterns.md`)
    - Create Gitea native dependency links
    - Add `### Branch` / `### PR Convention` to issue bodies that lack them (same logic as `/design:enrich`)
 
@@ -118,6 +119,6 @@ This skill reads and writes the `Projects` subsection of the `### Design Plugin 
 - MUST check CLAUDE.md `Projects` for cached project IDs before creating
 - When writing config to CLAUDE.md, preserve existing keys
 - MUST link created projects to the repository for trackers that support project-repository associations (e.g., GitHub Projects V2 via `gh project link`, Gitea)
-- MUST use try-then-create pattern for all label applications in tier (c) (Governing: SPEC-0011 REQ "Auto-Create Labels")
+- MUST use the try-then-create pattern (see `references/shared-patterns.md`) for all label applications in tier (c) (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - MUST degrade gracefully when tracker features are unavailable — skip and report, never fail (Governing: SPEC-0011 REQ "Graceful Degradation")
 - No `--review` support (utility skill)

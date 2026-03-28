@@ -48,18 +48,19 @@ You are picking up tracker issues and implementing them in parallel using git wo
    Options: "Approve this batch" / "Let me pick manually" (if chosen, present full backlog and ask for issue numbers).
 
    **Flag parsing:**
-   - `--max-agents N`: Maximum concurrent worker agents (default 4). Read CLAUDE.md `Worktrees > Max Agents` as fallback default.
-   - `--draft`: Create draft PRs instead of regular PRs. Default is regular (non-draft) PRs. Read CLAUDE.md `Worktrees > PR Mode` as fallback.
-   - `--dry-run`: Preview what would happen without creating worktrees or doing any work. Report the list of issues, branch names, and agent assignments, then stop.
-   - `--no-tests`: Skip test execution in workers.
+   - `--max-agents N`: Maximum concurrent worker agents. Default: 4 (or CLAUDE.md `Worktrees > Max Agents`).
+   - `--draft`: Create draft PRs instead of regular PRs. Default: off (or CLAUDE.md `Worktrees > PR Mode`).
+   - `--dry-run`: Preview what would happen without creating worktrees or doing any work. Default: off.
+   - `--no-tests`: Skip test execution in workers. Default: off.
+   - `--module <name>`: Resolve artifact paths relative to the named module. Default: none.
 
-2. **Load architecture context** (when a spec is provided or issues reference a spec): Read the spec's `spec.md` and `design.md`. Scan for referenced ADRs (e.g., `ADR-0001`) and read those too. This context will be sent to every worker. If no spec is associated with the selected issues, skip this step — workers will rely on issue body and codebase context alone.
+2. **Load architecture context** (when a spec is provided or issues reference a spec): Read the spec's `spec.md` and `design.md`. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation". Scan for referenced ADRs (e.g., `ADR-0001`) and read those too. This context will be sent to every worker. If no spec is associated with the selected issues, skip this step — workers will rely on issue body and codebase context alone.
 
 3. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`. Fallback to `tasks.md` parsing if no tracker is found.
 
 3a. **Ensure lifecycle labels exist** (Governing: SPEC-0015 REQ "Issue Lifecycle Labels"):
 
-   Create the lifecycle labels using a **try-then-create** approach — attempt to use each label, and only create it if it doesn't exist. This avoids failures on repeated runs.
+   Create the lifecycle labels using the try-then-create pattern (see `references/shared-patterns.md`) — attempt to use each label, and only create it if it doesn't exist. This avoids failures on repeated runs.
 
    | Label | Color | Meaning |
    |-------|-------|---------|
@@ -148,8 +149,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    Determine the maximum number of concurrent agents using this precedence order (highest to lowest):
    1. `--max-agents N` CLI flag (if provided)
    2. CLAUDE.md `## Design Plugin Configuration` section, key `max-parallel-agents` (if present)
-   3. `.claude-plugin-design.json` `worktrees.max_agents` (if present)
-   4. Default: **4**
+   3. Default: **4**
 
    **Reading from CLAUDE.md:** Scan the project's `CLAUDE.md` for a `## Design Plugin Configuration` section. Look for a line matching `- **Max parallel agents**: N` or `max-parallel-agents: N`. Parse the integer value. Example:
    ```markdown
@@ -170,7 +170,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    ```
    Example: "Starting 4 of 8 ready stories (4 queued, max-parallel-agents: 4)"
 
-8. **Create team**: Use `TeamCreate` to create a coordination team. The lead (you) manages the task queue and monitors progress. Spawn up to the resolved parallelism limit (from step 7a) worker agents using `Task` with `subagent_type: "general-purpose"`.
+8. **Create team**: Use `TeamCreate` to create a coordination team following the "Worker Coordination" protocol from `references/shared-patterns.md` § "Multi-Agent Team Protocols". The lead (you) manages the task queue and monitors progress. Spawn up to the resolved parallelism limit (from step 7a) worker agents using `Task` with `subagent_type: "general-purpose"`.
 
    If `TeamCreate` fails, fall back to single-agent sequential mode: work through each issue one at a time in the main session using `git worktree add` for each.
 
@@ -216,23 +216,11 @@ You are picking up tracker issues and implementing them in parallel using git wo
     1. All file operations use the worktree absolute path (read, write, edit, glob, grep).
     2. Read the issue body and understand the acceptance criteria.
     3. Explore existing code in the worktree to understand the codebase structure.
-    3a. **Broadcast file claims.** Before modifying any file, the worker MUST broadcast to all sibling workers via `SendMessage`:
-        ```
-        FILE_CLAIM: #{issue-number} claiming {file-path}
-        ```
-        This notifies siblings that this file is being modified and they should avoid it or coordinate.
-    3b. **Broadcast type/function creation.** After creating any new type, struct, interface, or shared helper function, the worker MUST broadcast:
-        ```
-        TYPE_CREATED: #{issue-number} created {TypeName} in {file-path}
-        ```
-        Siblings receiving this MUST import from the specified location rather than creating their own version.
-    3c. **Handle incoming broadcasts.** Workers MUST listen for broadcasts from siblings:
-        - On receiving `FILE_CLAIM` for a file they also plan to modify: send `CONFLICT_ALERT: #{my-issue} also needs {file-path}` to the claiming worker and the lead, then wait for coordination instructions from the lead.
-        - On receiving `TYPE_CREATED` for a type they need: import from the specified location instead of creating a duplicate. Send `TYPE_IMPORTED: #{my-issue} will import {TypeName} from {file-path}` to acknowledge.
+    3a. **Coordinate with sibling workers.** Follow the "Worker Communication Protocol" in `references/shared-patterns.md`. Workers MUST broadcast FILE_CLAIM, TYPE_CREATED, and handle CONFLICT_ALERT per the protocol.
     4. Implement changes to satisfy the acceptance criteria.
-    5. If spec context was provided, leave governing comments in the code:
+    5. If spec context was provided, leave governing comments in the code per `references/shared-patterns.md` § "Governing Comment Format":
        ```
-       // Governing: SPEC-XXXX REQ "Requirement Name"
+       // Governing: ADR-XXXX (short description), SPEC-XXXX REQ "Requirement Name"
        ```
     6. Run tests (unless `--no-tests`). If tests fail, attempt to fix (max 2 fix attempts). If still failing after 2 attempts, report blocked with details.
     7. **Assess PR size before creating.** Run `git -C {worktree-path} diff --stat` to see the scope of changes. Use judgement about whether this warrants a standalone PR:
@@ -362,7 +350,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST skip issues without `### Branch` sections and suggest `/design:enrich`
 - MUST respect dependency ordering when queuing work
 - MUST create regular (non-draft) PRs by default — only create draft PRs with `--draft`
-- MUST leave governing comments (`// Governing: SPEC-XXXX REQ "..."`) in implemented code when spec context is available; omit when there is no spec
+- MUST leave governing comments per `references/shared-patterns.md` § "Governing Comment Format" in implemented code when spec context is available; omit when there is no spec
 - MUST report all failures with actionable details — never silently skip
 - MUST preserve worktrees for failed issues — never auto-clean failures
 - Workers MUST use worktree absolute paths for all file operations
@@ -376,15 +364,15 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - Maximum 2 test-fix attempts per worker before reporting blocked
 - When `TeamCreate` fails, MUST fall back to single-agent sequential mode — never error out
 - For Gitea trackers, MUST query native dependencies via API to determine unblocked stories (Governing: SPEC-0011 REQ "Gitea Native Dependencies")
-- MUST NOT spawn more than `max-parallel-agents` concurrent agents (default: 4); resolve from CLI flag → CLAUDE.md → `.claude-plugin-design.json` → default (Governing: SPEC-0015 REQ "Parallelism Limits", ADR-0017 Layer 1)
-- MUST read `## Design Plugin Configuration` from CLAUDE.md for `max-parallel-agents` setting before falling back to `.claude-plugin-design.json` or default
+- MUST NOT spawn more than `max-parallel-agents` concurrent agents (default: 4); resolve from CLI flag → CLAUDE.md → default (Governing: SPEC-0015 REQ "Parallelism Limits", ADR-0017 Layer 1)
+- MUST read `## Design Plugin Configuration` from CLAUDE.md for `max-parallel-agents` setting before falling back to default
 - MUST queue excess stories when more are ready than the parallelism limit allows, starting them as active agents complete
 - MUST report active agent count and queue depth to the user before starting work ("Starting N of M ready stories (Q queued, max-parallel-agents: limit)")
 - Workers MUST broadcast `FILE_CLAIM` via `SendMessage` before modifying any file
 - Workers MUST broadcast `TYPE_CREATED` via `SendMessage` after creating new types, structs, interfaces, or shared helpers
 - Workers receiving `TYPE_CREATED` MUST import the type rather than creating a duplicate
 - Workers receiving `FILE_CLAIM` for a file they also need MUST send `CONFLICT_ALERT` and wait for lead coordination
-- MUST ensure lifecycle labels (`queued`, `in-progress`, `in-review`, `merged`) exist before assigning work — use try-then-create (Governing: SPEC-0015 REQ "Issue Lifecycle Labels")
+- MUST ensure lifecycle labels (`queued`, `in-progress`, `in-review`, `merged`) exist before assigning work — using the try-then-create pattern (see `references/shared-patterns.md`) (Governing: SPEC-0015 REQ "Issue Lifecycle Labels")
 - MUST apply `queued` label to all workable issues upon discovery
 - MUST transition `queued` -> `in-progress` when an agent picks up an issue, removing the previous label first
 - MUST transition `in-progress` -> `in-review` when a PR is created, removing the previous label first

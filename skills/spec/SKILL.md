@@ -13,6 +13,8 @@ You are creating or updating an OpenSpec specification. Every spec is a **paired
 
 **When updating an existing spec, you MUST review the companion file for alignment.** If `spec.md` changes, read `design.md` and update it where the architectural decisions or rationale no longer reflect the updated requirements — and vice versa. The two files MUST remain internally consistent at all times.
 
+When creating a new spec from scratch, both files are created together — alignment is automatic. The pairing review obligation applies to subsequent updates where one file may change without the other.
+
 ## Process
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
@@ -85,49 +87,7 @@ Do NOT inject the Security Requirements section. Proceed with the standard spec 
 
 ## Security Requirements Section Template
 
-When injecting the security section into a web-facing spec, use this template placed after the functional requirements:
-
-```markdown
-## Security Requirements
-
-<!-- Governing: ADR-0018 (Security-by-Default), SPEC-0016 REQ "Mandatory Security Section in Web Specs" -->
-
-### Authentication
-
-All endpoints MUST require authentication by default. Public (unauthenticated) endpoints MUST be explicitly listed with justification.
-
-| Endpoint | Auth | Justification |
-|----------|------|---------------|
-| {endpoint} | Required | — |
-| {public endpoint} | Public | {why auth is not required} |
-
-### Rate Limiting
-
-{Declare the rate limiting strategy for this capability. Specify limits per endpoint or globally. If rate limiting is deferred, state the justification.}
-
-### Security Headers
-
-All HTTP responses MUST include the following security headers:
-
-- `Content-Security-Policy`: {policy}
-- `X-Frame-Options`: DENY (or SAMEORIGIN with justification)
-- `X-Content-Type-Options`: nosniff
-- `Referrer-Policy`: strict-origin-when-cross-origin
-
-### Request Body Size Limits
-
-All endpoints that accept request bodies MUST enforce size limits. Request bodies MUST be bounded (e.g., `http.MaxBytesReader` in Go, `express.json({ limit })` in Node.js) to prevent unbounded memory allocation.
-
-Default limit: {size, e.g., 1MB} unless a specific endpoint requires a higher limit with justification.
-
-### CSRF Protection
-
-State-changing endpoints (POST, PUT, PATCH, DELETE) MUST implement CSRF protection. Strategy: {e.g., SameSite=Lax cookies, CSRF tokens, custom header validation}.
-
-### Redirect Validation
-
-Any endpoint that performs HTTP redirects with user-supplied URLs MUST validate the redirect target against an allowlist of permitted domains or paths. Open redirects MUST NOT be permitted.
-```
+Read the Security Requirements template from `references/security-requirements-template.md` and inject it into the spec after the functional requirements. The template covers all six required topics: authentication, rate limiting, security headers, request body size limits, CSRF protection, and redirect validation.
 
 ## Auth-by-Default in Endpoint Tables
 
@@ -262,7 +222,7 @@ Example endpoint table with auth-by-default:
   - **Auth-by-default applied to all endpoint tables** (Governing: ADR-0018, SPEC-0016)
 - If converting from an ADR, reference the ADR number in the spec's Overview section
 - design.md MUST include at least one Mermaid architecture diagram. Prefer C4 context/container diagrams for system-level, sequence diagrams for flows, and ERDs for data models.
-- When implementing code governed by this spec, agents SHOULD leave governing comments referencing the spec and requirement numbers: `// Governing: SPEC-XXXX REQ "Requirement Name", ADR-XXXX`
+- When implementing code governed by this spec, agents MUST leave governing comments per `references/shared-patterns.md` § "Governing Comment Format": `// Governing: ADR-XXXX (desc), SPEC-XXXX REQ "Requirement Name"`
 - For web-facing specs: MUST inject the Security Requirements section covering authentication, rate limiting, security headers, body size limits, CSRF protection, and redirect validation (Governing: ADR-0018, SPEC-0016 REQ "Mandatory Security Section in Web Specs")
 - For web-facing specs: MUST apply auth-by-default — every endpoint defaults to "Auth: Required"; public endpoints need "Auth: Public" with explicit justification (Governing: ADR-0018, SPEC-0016 REQ "Auth-by-Default")
 - MUST NOT inject the Security Requirements section for non-web specs (CLI tools, libraries, batch jobs, data migrations, background workers)
