@@ -1,0 +1,1640 @@
+{
+  "skill_name": "design",
+  "evals": [
+    {
+      "id": 1,
+      "skill": "plan",
+      "prompt": "Plan a sprint from SPEC-0015 for the claude-plugin-design repo. Use GitHub issues. The repo is joestump/claude-plugin-design.",
+      "expected_output": "Creates an epic issue and 3-4 story issues in GitHub with requirement checklists, branch naming, PR conventions, foundation story detection, hotspot analysis, and a dependency graph.",
+      "assertions": [
+        {
+          "text": "Epic issue created with 'epic' label and title starting with 'Implement'",
+          "type": "structural"
+        },
+        {
+          "text": "3-4 story issues created, each with a ## Requirements section containing task checklists",
+          "type": "structural"
+        },
+        {
+          "text": "Each requirement checklist item references SPEC-0015 and includes WHEN/THEN scenarios derived from the spec",
+          "type": "content"
+        },
+        {
+          "text": "Each story issue body has a ### Branch section with feature/{issue-number}-{slug} pattern after issue creation (two-pass)",
+          "type": "format"
+        },
+        {
+          "text": "Each story issue body has a ### PR Convention section with 'Closes #{issue-number}' keyword",
+          "type": "format"
+        },
+        {
+          "text": "Branch slug is kebab-case derived from the story title, max 50 chars",
+          "type": "format"
+        },
+        {
+          "text": "Foundation story detection ran: shared types/packages needed by 2+ stories identified and extracted into foundation-labeled stories",
+          "type": "structural"
+        },
+        {
+          "text": "Hotspot analysis ran: recent git history analyzed and hotspot files reported with percentages",
+          "type": "structural"
+        },
+        {
+          "text": "Dependency graph output showing foundation stories, serialized stories (if hotspots), and parallelizable stories",
+          "type": "structural"
+        },
+        {
+          "text": "Every ### Requirement section from the spec appears in exactly one story's task checklist",
+          "type": "coverage"
+        },
+        {
+          "text": "GitHub Project V2 created and linked to the repository",
+          "type": "structural"
+        },
+        {
+          "text": "Report suggests /design:prime before starting implementation",
+          "type": "content"
+        }
+      ],
+      "files": [
+        "docs/openspec/specs/parallel-agent-coordination/spec.md",
+        "docs/openspec/specs/parallel-agent-coordination/design.md"
+      ]
+    },
+    {
+      "id": 2,
+      "skill": "plan",
+      "prompt": "Break down SPEC-0016 into GitHub issues for joestump/claude-plugin-design. Use --no-branches and --no-projects flags.",
+      "expected_output": "Creates epic and story issues without ### Branch, ### PR Convention sections, and without creating a GitHub Project.",
+      "assertions": [
+        {
+          "text": "Epic issue created with 'epic' label",
+          "type": "structural"
+        },
+        {
+          "text": "3-4 story issues created with ## Requirements sections",
+          "type": "structural"
+        },
+        {
+          "text": "No ### Branch section appears in any issue body",
+          "type": "format"
+        },
+        {
+          "text": "No ### PR Convention section appears in any issue body",
+          "type": "format"
+        },
+        {
+          "text": "No GitHub Project created (report says 'skipped')",
+          "type": "structural"
+        },
+        {
+          "text": "Report confirms branch naming was skipped and PR conventions were skipped",
+          "type": "content"
+        },
+        {
+          "text": "Stories that involve HTTP endpoints include a ## Security Checklist section with authentication, input validation, output encoding, rate limiting, and body size limits",
+          "type": "structural"
+        },
+        {
+          "text": "Security checklist is NOT added to stories that don't involve HTTP endpoints",
+          "type": "structural"
+        },
+        {
+          "text": "CI foundation story created with static analysis, race detection, and formatting checks (language-agnostic terms)",
+          "type": "structural"
+        },
+        {
+          "text": "CI story uses 'ci' and 'foundation' labels",
+          "type": "format"
+        }
+      ],
+      "files": [
+        "docs/openspec/specs/code-quality-standards/spec.md",
+        "docs/openspec/specs/code-quality-standards/design.md"
+      ]
+    },
+    {
+      "id": 3,
+      "skill": "plan",
+      "prompt": "Plan a sprint from SPEC-0012 with --scrum flag. Use GitHub issues for joestump/claude-plugin-design.",
+      "expected_output": "Runs full scrum ceremony: spec completeness audit, issue decomposition, 5-agent grooming team, dissent resolution, automatic organize, automatic enrich, and sprint report.",
+      "assertions": [
+        {
+          "text": "User informed that scrum ceremony is starting with expected phases",
+          "type": "content"
+        },
+        {
+          "text": "Spec completeness audit ran: checked for design.md pairing and reported pass/missing counts",
+          "type": "structural"
+        },
+        {
+          "text": "Five specialist agents spawned: Product Owner, Scrum Master, Engineer A, Engineer B (Grumpy), Architect",
+          "type": "structural"
+        },
+        {
+          "text": "Each agent reviewed every story and submitted a verdict (APPROVED, REVISE, or DEFER)",
+          "type": "structural"
+        },
+        {
+          "text": "Dissent resolution ran for any stories with non-APPROVED verdicts",
+          "type": "structural"
+        },
+        {
+          "text": "Organize step ran automatically after grooming (no user prompt required)",
+          "type": "structural"
+        },
+        {
+          "text": "Enrich step ran automatically after organize (no user prompt required)",
+          "type": "structural"
+        },
+        {
+          "text": "Sprint report output contains: Spec Completeness, Grooming Results (Accepted/Revised/Deferred), Final Sprint Backlog, and Next Steps sections",
+          "type": "format"
+        },
+        {
+          "text": "Sprint report includes story sizes (XS/S/M/L/XL) assigned by Scrum Master",
+          "type": "content"
+        },
+        {
+          "text": "Sprint report recommends /design:work and /design:prime as next steps",
+          "type": "content"
+        }
+      ],
+      "files": [
+        "docs/openspec/specs/scrum-ceremony/spec.md",
+        "docs/openspec/specs/scrum-ceremony/design.md"
+      ]
+    },
+    {
+      "id": 4,
+      "skill": "plan",
+      "prompt": "Plan a sprint from SPEC-9999 for joestump/claude-plugin-design using GitHub issues.",
+      "expected_output": "Reports that the spec cannot be found and suggests creating one with /design:spec.",
+      "assertions": [
+        {
+          "text": "Error message indicates SPEC-9999 was not found or does not exist",
+          "type": "content"
+        },
+        {
+          "text": "Suggests /design:spec to create a new specification",
+          "type": "content"
+        },
+        {
+          "text": "No issues created in the tracker",
+          "type": "structural"
+        },
+        {
+          "text": "No GitHub Project created",
+          "type": "structural"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "skill": "work",
+      "prompt": "Work on SPEC-0015 issues for joestump/claude-plugin-design. Use --max-agents 2.",
+      "expected_output": "Discovers open issues for SPEC-0015, creates worktrees, dispatches up to 2 parallel workers with sibling PR manifest, implements issues, creates PRs with lifecycle label transitions.",
+      "assertions": [
+        {
+          "text": "Parallelism limit resolved to 2 from --max-agents flag",
+          "type": "structural"
+        },
+        {
+          "text": "Report shows 'Starting N of M ready stories (Q queued, max-parallel-agents: 2)'",
+          "type": "format"
+        },
+        {
+          "text": "Lifecycle labels (queued, in-progress, in-review, merged) created or verified to exist",
+          "type": "structural"
+        },
+        {
+          "text": "All workable issues initially labeled 'queued'",
+          "type": "structural"
+        },
+        {
+          "text": "Issues transitioned from 'queued' to 'in-progress' when assigned to a worker (previous label removed first)",
+          "type": "structural"
+        },
+        {
+          "text": "Issues transitioned from 'in-progress' to 'in-review' when PR created (previous label removed first)",
+          "type": "structural"
+        },
+        {
+          "text": "Sibling PR manifest built before dispatching workers, containing file ownership and shared types sections",
+          "type": "structural"
+        },
+        {
+          "text": "Each worker received spec.md, design.md, ADR content, and sibling PR manifest in their context",
+          "type": "content"
+        },
+        {
+          "text": "Workers broadcast FILE_CLAIM via SendMessage before modifying files",
+          "type": "structural"
+        },
+        {
+          "text": "No more than 2 agents active concurrently; excess stories queued",
+          "type": "structural"
+        },
+        {
+          "text": "Queue status reported after each agent completion: 'Active: N/2, Queued: Q, Completed: C, Failed: F, Blocked: B'",
+          "type": "format"
+        },
+        {
+          "text": "Final report includes Results table with Issue, Branch, PR, and Status columns",
+          "type": "format"
+        }
+      ],
+      "files": [
+        "docs/openspec/specs/parallel-agent-coordination/spec.md",
+        "docs/openspec/specs/parallel-agent-coordination/design.md"
+      ]
+    },
+    {
+      "id": 6,
+      "skill": "work",
+      "prompt": "Run /design:work --dry-run for SPEC-0010 in joestump/claude-plugin-design.",
+      "expected_output": "Outputs a preview table of what would happen without creating worktrees, branches, or PRs.",
+      "assertions": [
+        {
+          "text": "Output contains '## Dry Run' heading",
+          "type": "format"
+        },
+        {
+          "text": "Preview table includes columns: #, Issue, Branch, Status",
+          "type": "format"
+        },
+        {
+          "text": "Blocked issues shown with dependency reason (e.g., 'Blocked (depends on #XX)')",
+          "type": "content"
+        },
+        {
+          "text": "Skipped issues listed with reasons (epic, no ### Branch section)",
+          "type": "content"
+        },
+        {
+          "text": "Output ends with 'No changes were made.'",
+          "type": "content"
+        },
+        {
+          "text": "No git worktrees created",
+          "type": "structural"
+        },
+        {
+          "text": "No branches created",
+          "type": "structural"
+        },
+        {
+          "text": "No PRs created",
+          "type": "structural"
+        },
+        {
+          "text": "No lifecycle labels applied to issues",
+          "type": "structural"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "skill": "work",
+      "prompt": "Implement issues 42 43 44 for joestump/claude-plugin-design. The CLAUDE.md has max-parallel-agents set to 3.",
+      "expected_output": "Picks up the 3 specific issues, creates worktrees, dispatches workers respecting the CLAUDE.md parallelism config, validates protected paths, and creates PRs.",
+      "assertions": [
+        {
+          "text": "CLAUDE.md read for ## Design Plugin Configuration section to resolve max-parallel-agents",
+          "type": "structural"
+        },
+        {
+          "text": "Worktrees created at .claude/worktrees/{branch-name} for each issue",
+          "type": "structural"
+        },
+        {
+          "text": "Workers validate diff against protected paths (spec-dir, adr-dir, CLAUDE.md, .claude-plugin-design.json) before staging",
+          "type": "structural"
+        },
+        {
+          "text": "If any protected file was modified, it is reverted via git checkout and recorded in ### Deferred Design Doc Updates PR body section",
+          "type": "structural"
+        },
+        {
+          "text": "Governing comments added in source code files (not subject to design doc isolation)",
+          "type": "content"
+        },
+        {
+          "text": "Each PR body includes close keywords referencing the issue number",
+          "type": "format"
+        },
+        {
+          "text": "Topological merge order computed after all PRs reach in-review, showing tier classification",
+          "type": "structural"
+        },
+        {
+          "text": "Merge order table shown to user with Order, PR, Issue, Overlapping Files, and Action columns",
+          "type": "format"
+        },
+        {
+          "text": "User asked to approve merge order before merging begins",
+          "type": "structural"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "skill": "work",
+      "prompt": "Run /design:work with no arguments for joestump/claude-plugin-design.",
+      "expected_output": "Reviews the full backlog, proposes a batch of issues biased toward unblocking work, and asks the user to approve before starting.",
+      "assertions": [
+        {
+          "text": "Backlog scanned: all open non-epic issues fetched from the tracker",
+          "type": "structural"
+        },
+        {
+          "text": "Issues without ### Branch sections skipped with suggestion to run /design:enrich",
+          "type": "content"
+        },
+        {
+          "text": "Proposed batch presented via AskUserQuestion with a table showing Issue, Project/Epic, and Rationale columns",
+          "type": "format"
+        },
+        {
+          "text": "Batch proposal biases toward issues that unblock other issues",
+          "type": "content"
+        },
+        {
+          "text": "User given options: 'Approve this batch' or 'Let me pick manually'",
+          "type": "structural"
+        },
+        {
+          "text": "No work started until user approves the batch",
+          "type": "structural"
+        },
+        {
+          "text": "Dependency ordering respected: blocked issues placed in deferred queue",
+          "type": "structural"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "skill": "review",
+      "prompt": "Review PRs for SPEC-0009 in joestump/claude-plugin-design. Use 2 reviewer-responder pairs.",
+      "expected_output": "Discovers open PRs for SPEC-0009, runs conflict-marker CI gate, creates reviewer-responder pairs, reviews against spec acceptance criteria, and merges approved PRs.",
+      "assertions": [
+        {
+          "text": "Conflict-marker CI gate ran on ALL target PR diffs before any review logic",
+          "type": "structural"
+        },
+        {
+          "text": "PR diffs scanned for <<<<<<<, =======, >>>>>>> markers",
+          "type": "structural"
+        },
+        {
+          "text": "spec.md and design.md loaded as architecture context for reviewers",
+          "type": "structural"
+        },
+        {
+          "text": "Team created with 2 reviewer agents and 2 responder agents",
+          "type": "structural"
+        },
+        {
+          "text": "PRs distributed to pairs using round-robin assignment",
+          "type": "structural"
+        },
+        {
+          "text": "Reviewers checked CI status before reviewing each PR diff",
+          "type": "structural"
+        },
+        {
+          "text": "Reviews reference specific spec acceptance criteria or ADR decisions, not just style",
+          "type": "content"
+        },
+        {
+          "text": "Approved PRs merged using squash strategy (default)",
+          "type": "structural"
+        },
+        {
+          "text": "Parent epic closure checked after each successful merge",
+          "type": "structural"
+        },
+        {
+          "text": "Final report contains Results table with PR, Title, CI, Review, Merge, and Status columns",
+          "type": "format"
+        },
+        {
+          "text": "Final report includes Worktrees section showing reused/created/cleaned counts",
+          "type": "format"
+        }
+      ],
+      "files": [
+        "docs/openspec/specs/review-merge-protocol/spec.md",
+        "docs/openspec/specs/review-merge-protocol/design.md"
+      ]
+    },
+    {
+      "id": 10,
+      "skill": "review",
+      "prompt": "Review PRs 101 102 103 for joestump/claude-plugin-design with --dry-run.",
+      "expected_output": "Outputs a preview table showing which PRs would be reviewed and by which pair, without submitting any reviews or merging.",
+      "assertions": [
+        {
+          "text": "Output contains '## Dry Run' heading",
+          "type": "format"
+        },
+        {
+          "text": "Preview table includes columns: #, PR, Title, Branch, CI, Pair",
+          "type": "format"
+        },
+        {
+          "text": "Each PR assigned to a pair via round-robin",
+          "type": "structural"
+        },
+        {
+          "text": "Output ends with 'No reviews submitted. No merges performed.'",
+          "type": "content"
+        },
+        {
+          "text": "No review comments submitted to any PR",
+          "type": "structural"
+        },
+        {
+          "text": "No PRs merged",
+          "type": "structural"
+        },
+        {
+          "text": "No team created (dry-run exits before team formation)",
+          "type": "structural"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 11,
+      "skill": "review",
+      "prompt": "Review PRs for SPEC-0015 in joestump/claude-plugin-design with --no-merge. Assume PR #201 has conflict markers in its diff.",
+      "expected_output": "PR #201 rejected immediately by the conflict-marker CI gate with REQUEST_CHANGES. Other PRs reviewed normally but not merged due to --no-merge.",
+      "assertions": [
+        {
+          "text": "Conflict-marker gate ran before any review logic for all PRs",
+          "type": "structural"
+        },
+        {
+          "text": "PR #201 received REQUEST_CHANGES review with '## Conflict Markers Detected' heading",
+          "type": "format"
+        },
+        {
+          "text": "Rejection message for #201 includes a table of offending file paths and line numbers",
+          "type": "format"
+        },
+        {
+          "text": "PR #201 skipped entirely for architecture context loading and spec compliance review",
+          "type": "structural"
+        },
+        {
+          "text": "PR #201 reported as 'Rejected: conflict markers' in the final summary",
+          "type": "content"
+        },
+        {
+          "text": "Other PRs reviewed normally against spec acceptance criteria",
+          "type": "structural"
+        },
+        {
+          "text": "No PRs merged (--no-merge flag respected)",
+          "type": "structural"
+        },
+        {
+          "text": "Approved PRs reported as 'approved, pending manual merge'",
+          "type": "content"
+        }
+      ],
+      "files": [
+        "docs/openspec/specs/parallel-agent-coordination/spec.md",
+        "docs/openspec/specs/parallel-agent-coordination/design.md"
+      ]
+    },
+    {
+      "id": 12,
+      "skill": "audit",
+      "prompt": "Run a full project audit on joestump/claude-plugin-design with no scope filter.",
+      "expected_output": "Comprehensive audit across all six drift categories with structured report, severity assignments, and recommended actions.",
+      "assertions": [
+        {
+          "text": "All six drift categories analyzed: Code vs. Spec, Code vs. ADR, ADR vs. Spec, Coverage Gaps, Stale Artifacts, Policy Violations",
+          "type": "structural"
+        },
+        {
+          "text": "Report header shows scope as 'Full project' with counts of ADRs, specs, and source files analyzed",
+          "type": "format"
+        },
+        {
+          "text": "Spec pairing validation ran: each spec directory checked for both spec.md and design.md",
+          "type": "structural"
+        },
+        {
+          "text": "Unpaired spec artifacts reported as [WARNING] under Stale Artifacts",
+          "type": "structural"
+        },
+        {
+          "text": "MUST/SHALL violations assigned [CRITICAL] severity",
+          "type": "format"
+        },
+        {
+          "text": "SHOULD/RECOMMENDED violations assigned [WARNING] severity",
+          "type": "format"
+        },
+        {
+          "text": "Coverage gaps assigned [INFO] severity",
+          "type": "format"
+        },
+        {
+          "text": "Summary matrix table includes all six categories with Critical, Warning, Info, and Total columns",
+          "type": "format"
+        },
+        {
+          "text": "Recommended Actions list ordered by severity: critical first, then warning, then info",
+          "type": "format"
+        },
+        {
+          "text": "Findings within each category ordered by severity (critical first)",
+          "type": "format"
+        },
+        {
+          "text": "Full artifact identifiers used (ADR-XXXX, SPEC-XXXX), not abbreviated",
+          "type": "format"
+        },
+        {
+          "text": "File paths include line numbers where possible (e.g., src/path/file.ts:45)",
+          "type": "format"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 13,
+      "skill": "audit",
+      "prompt": "Audit the architecture of joestump/claude-plugin-design with --scrum flag. Focus on the security topic.",
+      "expected_output": "Runs standard audit analysis scoped to security, then enters scrum triage ceremony with 5-agent team for prioritization and dispute resolution.",
+      "assertions": [
+        {
+          "text": "Standard audit analysis completed first (steps 4-6) before triage ceremony begins",
+          "type": "structural"
+        },
+        {
+          "text": "Audit scoped to security-related artifacts and code",
+          "type": "structural"
+        },
+        {
+          "text": "Five triage agents spawned: Product Owner, Scrum Master, Engineer A, Engineer B (Grumpy), Architect",
+          "type": "structural"
+        },
+        {
+          "text": "Findings grouped by functional theme, not by drift category",
+          "type": "structural"
+        },
+        {
+          "text": "Engineer B provides substantive challenges to findings, not generic approvals",
+          "type": "content"
+        },
+        {
+          "text": "ADRs (accepted) and specs (approved/implemented) treated as source of truth",
+          "type": "structural"
+        },
+        {
+          "text": "Triage report produced with remediation priorities",
+          "type": "structural"
+        },
+        {
+          "text": "--review mode NOT activated (--scrum takes precedence)",
+          "type": "structural"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 14,
+      "skill": "audit",
+      "prompt": "Run /design:audit on an empty project directory that has no docs/adrs/ or docs/openspec/specs/ directories.",
+      "expected_output": "Reports that no design artifacts were found and suggests creating ADRs or specs.",
+      "assertions": [
+        {
+          "text": "Message indicates docs/adrs/ directory does not exist, suggests /design:adr",
+          "type": "content"
+        },
+        {
+          "text": "Message indicates docs/openspec/specs/ directory does not exist, suggests /design:spec",
+          "type": "content"
+        },
+        {
+          "text": "Reports 'No design artifacts found' when neither ADRs nor specs exist",
+          "type": "content"
+        },
+        {
+          "text": "No audit report table produced (nothing to analyze)",
+          "type": "structural"
+        },
+        {
+          "text": "Does not error or crash on missing directories",
+          "type": "structural"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 15,
+      "skill": "review",
+      "prompt": "Review PRs for SPEC-0003 in joestump/claude-plugin-design. No open PRs exist for this spec.",
+      "expected_output": "Informs the user that no open PRs were found and suggests running /design:work to create them.",
+      "assertions": [
+        {
+          "text": "Message indicates no open PRs were found matching SPEC-0003",
+          "type": "content"
+        },
+        {
+          "text": "Suggests running /design:work to create PRs from planned issues",
+          "type": "content"
+        },
+        {
+          "text": "No team created (nothing to review)",
+          "type": "structural"
+        },
+        {
+          "text": "No reviews submitted",
+          "type": "structural"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 100,
+      "skill": "spec",
+      "prompt": "Create a spec for our new webhook-delivery service. It will expose REST endpoints for registering webhook URLs, listing subscriptions, and triggering test deliveries. The service reads events from a Kafka topic and fans out HTTP POST requests to registered endpoints with retries. We're building this in Go with a PostgreSQL database for subscription storage.",
+      "expected_output": "Creates paired spec.md and design.md under docs/openspec/specs/webhook-delivery/. The spec includes a Security Requirements section (web-facing: REST endpoints over HTTP), auth-by-default endpoint table with all endpoints defaulting to Auth: Required, and backend quality guidelines for error handling (service boundaries, external HTTP calls), concurrency (fan-out workers, Kafka consumer), and database operations (PostgreSQL). No Accessibility Requirements section (API-only, no UI).",
+      "assertions": [
+        {
+          "text": "spec.md created at docs/openspec/specs/webhook-delivery/spec.md",
+          "type": "structural"
+        },
+        {
+          "text": "design.md created at docs/openspec/specs/webhook-delivery/design.md (paired artifact)",
+          "type": "structural"
+        },
+        {
+          "text": "spec.md contains a '## Security Requirements' section with all six subsections (Authentication, Rate Limiting, Security Headers, Request Body Size Limits, CSRF Protection, Redirect Validation)",
+          "type": "content"
+        },
+        {
+          "text": "Endpoint table uses auth-by-default: all endpoints show 'Auth: Required' unless explicitly marked 'Auth: Public' with justification",
+          "type": "content"
+        },
+        {
+          "text": "spec.md contains '### Requirement: Error Handling Standards' with error wrapping, sentinel errors, no silent swallowing, and structured logging",
+          "type": "content"
+        },
+        {
+          "text": "spec.md contains '### Requirement: Concurrency Safety' with context propagation, worker lifecycle, race safety, and race detection CI",
+          "type": "content"
+        },
+        {
+          "text": "spec.md contains '### Requirement: Database Operation Standards' with transactions, connection lifecycle, and parameterized queries",
+          "type": "content"
+        },
+        {
+          "text": "spec.md does NOT contain an '## Accessibility Requirements' section (API-only, no UI)",
+          "type": "content"
+        },
+        {
+          "text": "spec.md uses RFC 2119 keywords (MUST, SHALL, SHOULD, MAY, etc.) for all normative requirements",
+          "type": "content"
+        },
+        {
+          "text": "spec.md uses SPEC-XXXX numbering (not RFC-XXXX)",
+          "type": "content"
+        },
+        {
+          "text": "design.md contains at least one Mermaid diagram",
+          "type": "content"
+        },
+        {
+          "text": "Backend quality guidelines use language-agnostic terms (not Go-specific like 'goroutines' or 'slog')",
+          "type": "content"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 101,
+      "skill": "spec",
+      "prompt": "We need a spec for an admin dashboard. It's a web UI built with Go html/template and HTMX that lets ops staff manage feature flags, view system health, and browse audit logs. It has server-rendered pages with modals for creating/editing flags, a real-time status panel that auto-refreshes, and REST endpoints backing the UI. The backend uses PostgreSQL.",
+      "expected_output": "Creates paired spec.md and design.md. The spec is both web-facing (REST endpoints, HTTP server) AND UI-facing (html/template, HTMX, modals, dashboard). It includes BOTH Security Requirements and Accessibility Requirements sections, plus auth-by-default endpoint tables and backend quality guidelines for error handling and database operations.",
+      "assertions": [
+        {
+          "text": "spec.md created at docs/openspec/specs/admin-dashboard/spec.md",
+          "type": "structural"
+        },
+        {
+          "text": "design.md created at docs/openspec/specs/admin-dashboard/design.md (paired artifact)",
+          "type": "structural"
+        },
+        {
+          "text": "spec.md contains a '## Security Requirements' section (web-facing: REST endpoints)",
+          "type": "content"
+        },
+        {
+          "text": "spec.md contains an '## Accessibility Requirements' section (UI-facing: html/template, HTMX, modals)",
+          "type": "content"
+        },
+        {
+          "text": "Accessibility section includes WCAG 2.1 AA, ARIA landmarks, aria-label for icon-only controls, aria-live for dynamic content (auto-refresh panel), keyboard navigation, and focus management (modals)",
+          "type": "content"
+        },
+        {
+          "text": "Endpoint table uses auth-by-default: all endpoints default to 'Auth: Required'",
+          "type": "content"
+        },
+        {
+          "text": "spec.md contains backend quality requirements for error handling and database operations",
+          "type": "content"
+        },
+        {
+          "text": "spec.md uses RFC 2119 keywords for all normative requirements",
+          "type": "content"
+        },
+        {
+          "text": "Scenarios use exactly #### heading level (not ### or bullets)",
+          "type": "content"
+        },
+        {
+          "text": "Every requirement has at least one scenario with WHEN/THEN format",
+          "type": "content"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 102,
+      "skill": "spec",
+      "prompt": "Create a spec for a CLI tool called db-migrate that runs database schema migrations. It reads migration files from a directory, connects to PostgreSQL, applies them in order inside transactions, and logs results. It's a command-line tool only -- no web server, no UI, no HTTP endpoints. It does handle concurrent migration locking to prevent two instances from running at once.",
+      "expected_output": "Creates paired spec.md and design.md. This is a CLI tool with NO web or UI component. It MUST NOT include Security Requirements or Accessibility Requirements sections. It SHOULD include backend quality guidelines for error handling (database operations, file I/O), concurrency (migration locking), and database operations (transactions, connections, parameterized queries).",
+      "assertions": [
+        {
+          "text": "spec.md created at docs/openspec/specs/db-migrate/spec.md",
+          "type": "structural"
+        },
+        {
+          "text": "design.md created at docs/openspec/specs/db-migrate/design.md (paired artifact)",
+          "type": "structural"
+        },
+        {
+          "text": "spec.md does NOT contain a '## Security Requirements' section (CLI tool, not web-facing)",
+          "type": "content"
+        },
+        {
+          "text": "spec.md does NOT contain an '## Accessibility Requirements' section (CLI tool, not UI-facing)",
+          "type": "content"
+        },
+        {
+          "text": "spec.md contains '### Requirement: Error Handling Standards' (database operations, file I/O can fail)",
+          "type": "content"
+        },
+        {
+          "text": "spec.md contains '### Requirement: Concurrency Safety' (concurrent migration locking)",
+          "type": "content"
+        },
+        {
+          "text": "spec.md contains '### Requirement: Database Operation Standards' (transactions, connections, parameterized queries)",
+          "type": "content"
+        },
+        {
+          "text": "spec.md uses SPEC-XXXX numbering (not RFC-XXXX)",
+          "type": "content"
+        },
+        {
+          "text": "design.md contains at least one Mermaid diagram",
+          "type": "content"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 103,
+      "skill": "check",
+      "prompt": "Check src/api/ for drift against our ADRs and specs",
+      "expected_output": "Performs a drift check on the src/api/ directory. Scans for security lint patterns (unbounded body read, template safety bypass, user-controlled redirect, missing auth middleware, DOM injection, CDN without SRI) in source files. Produces a findings table with Severity, Category, Finding, Source, and Location columns. Security lint findings use category 'Security Lint' and severity [WARNING].",
+      "assertions": [
+        {
+          "text": "Output contains '## Drift Check: src/api/' heading",
+          "type": "structural"
+        },
+        {
+          "text": "Output contains a findings table with columns: Severity, Category, Finding, Source, Location",
+          "type": "structural"
+        },
+        {
+          "text": "Security lint findings (if any) use category 'Security Lint' and severity '[WARNING]'",
+          "type": "content"
+        },
+        {
+          "text": "Security lint scan checks for all 6 patterns: unbounded body read, template safety bypass, user-controlled redirect, missing auth middleware, DOM injection, CDN without SRI",
+          "type": "behavioral"
+        },
+        {
+          "text": "Each security lint finding includes file path with line number in Location column",
+          "type": "content"
+        },
+        {
+          "text": "Each security lint finding includes a remediation suggestion",
+          "type": "content"
+        },
+        {
+          "text": "Output ends with a Summary section showing Critical/Warning/Info counts",
+          "type": "structural"
+        },
+        {
+          "text": "Output includes suggested actions based on findings",
+          "type": "structural"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 104,
+      "skill": "check",
+      "prompt": "Run a drift check on our templates/ directory",
+      "expected_output": "Performs a drift check on the templates/ directory. Scans for template quality patterns: duplicate inline script blocks, duplicate form structures, duplicate navigation/sidebar markup, dev-only CDN URLs, and multiple JS interaction frameworks. Template quality findings use category 'Template Quality' with individually defined severities ([WARNING] for duplicate scripts/nav/dev CDN, [INFO] for duplicate forms/framework sprawl).",
+      "assertions": [
+        {
+          "text": "Output contains '## Drift Check: templates/' heading",
+          "type": "structural"
+        },
+        {
+          "text": "Template quality scan checks for all 5 patterns: duplicate inline scripts, duplicate form structure, duplicate navigation/sidebar, dev-only CDN URLs, multiple JS frameworks",
+          "type": "behavioral"
+        },
+        {
+          "text": "Template quality findings use category 'Template Quality'",
+          "type": "content"
+        },
+        {
+          "text": "Duplicate inline script findings use severity '[WARNING]'",
+          "type": "content"
+        },
+        {
+          "text": "Duplicate form structure findings use severity '[INFO]'",
+          "type": "content"
+        },
+        {
+          "text": "Dev-only CDN findings use severity '[WARNING]'",
+          "type": "content"
+        },
+        {
+          "text": "Multiple JS framework findings use severity '[INFO]'",
+          "type": "content"
+        },
+        {
+          "text": "Each template quality finding includes affected file paths in Location column",
+          "type": "content"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 105,
+      "skill": "check",
+      "prompt": "Check this project for drift. There are no ADRs or specs yet.",
+      "expected_output": "Reports that no design artifacts were found and suggests creating them. Does NOT proceed with analysis. Suggests using /design:adr or /design:spec to create first artifacts.",
+      "assertions": [
+        {
+          "text": "Output reports 'No design artifacts found' (or equivalent message when neither ADR nor spec directories exist)",
+          "type": "content"
+        },
+        {
+          "text": "Output suggests '/design:adr' to create first ADR",
+          "type": "content"
+        },
+        {
+          "text": "Output suggests '/design:spec' to create first spec",
+          "type": "content"
+        },
+        {
+          "text": "Does NOT produce a findings table (no artifacts to check against)",
+          "type": "structural"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 106,
+      "skill": "discover",
+      "prompt": "Discover what implicit architecture decisions exist in this codebase. We haven't documented anything yet.",
+      "expected_output": "Produces a discovery report analyzing the entire project. Spawns 4 parallel agents for: dependency/framework analysis, architectural pattern analysis, project structure/boundary analysis, and configuration/infrastructure analysis. Report includes suggested ADRs (implicit decisions) and suggested specs (subsystem boundaries), each with confidence levels and copy-paste-ready commands. Does NOT create any files.",
+      "assertions": [
+        {
+          "text": "Output contains '## Discovery Report' heading",
+          "type": "structural"
+        },
+        {
+          "text": "Output contains a '### Suggested ADRs' section with a table including Confidence, Decision, Evidence, and Command columns",
+          "type": "structural"
+        },
+        {
+          "text": "Output contains a '### Suggested Specs' section with a table including Confidence, Subsystem, Boundary, and Command columns",
+          "type": "structural"
+        },
+        {
+          "text": "Every suggestion includes a confidence level (High, Medium, or Low)",
+          "type": "content"
+        },
+        {
+          "text": "Every ADR suggestion includes a copy-paste-ready '/design:adr' command in the Command column",
+          "type": "content"
+        },
+        {
+          "text": "Every spec suggestion includes a copy-paste-ready '/design:spec' command in the Command column",
+          "type": "content"
+        },
+        {
+          "text": "Suggestions are sorted by confidence (High first, then Medium, then Low) within each section",
+          "type": "content"
+        },
+        {
+          "text": "Every suggestion cites specific evidence from the codebase (file paths, dependency declarations, config entries)",
+          "type": "content"
+        },
+        {
+          "text": "Output contains a '### Next Steps' section",
+          "type": "structural"
+        },
+        {
+          "text": "No files are created or modified (read-only skill)",
+          "type": "behavioral"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 107,
+      "skill": "discover",
+      "prompt": "Discover architecture in the src/payments/ directory",
+      "expected_output": "If src/payments/ does not exist, reports the error and stops without falling back to full-project analysis. If it does exist, scopes the discovery to that directory only.",
+      "assertions": [
+        {
+          "text": "If scope path does not exist, output contains 'Scope not found: src/payments/' error message",
+          "type": "content"
+        },
+        {
+          "text": "If scope path does not exist, does NOT fall back to full-project analysis",
+          "type": "behavioral"
+        },
+        {
+          "text": "If scope path exists, output contains '## Discovery Report' scoped to src/payments/",
+          "type": "structural"
+        },
+        {
+          "text": "No files are created or modified (read-only skill)",
+          "type": "behavioral"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 108,
+      "skill": "docs",
+      "prompt": "Generate a documentation site for our project. We have ADRs in docs/adrs/ and specs in docs/openspec/specs/.",
+      "expected_output": "Runs pre-flight checks (Node.js, ADR/spec existence), detects no existing Docusaurus site, proceeds with scaffold mode. Creates docs-site/ directory from templates/docusaurus/, customizes package.json and docusaurus.config.ts, runs npm install, creates .design-docs.json manifest with tracked files and SHA-256 checksums, and updates .claudeignore.",
+      "assertions": [
+        {
+          "text": "Pre-flight check verifies Node.js is installed",
+          "type": "behavioral"
+        },
+        {
+          "text": "Pre-flight check verifies ADR and/or spec directories have content",
+          "type": "behavioral"
+        },
+        {
+          "text": "docs-site/ directory created from templates/docusaurus/ via cp -r",
+          "type": "structural"
+        },
+        {
+          "text": "docs-site/package.json customized with project name",
+          "type": "content"
+        },
+        {
+          "text": "docs-site/docusaurus.config.ts customized with project title and URLs",
+          "type": "content"
+        },
+        {
+          "text": "npm install run in docs-site/ directory",
+          "type": "behavioral"
+        },
+        {
+          "text": ".design-docs.json manifest created at project root with version, mode ('scaffold'), siteDir, createdAt, updatedAt, and files object",
+          "type": "structural"
+        },
+        {
+          "text": "Manifest files object contains SHA-256 checksums in 'sha256:<hex-digest>' format",
+          "type": "content"
+        },
+        {
+          "text": ".claudeignore updated with docs-site/node_modules/, docs-site/build/, docs-site/.docusaurus/ entries",
+          "type": "content"
+        },
+        {
+          "text": "Offers to start the dev server after completion",
+          "type": "behavioral"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 109,
+      "skill": "docs",
+      "prompt": "Generate docs for our project. We just initialized it yesterday -- no ADRs or specs yet.",
+      "expected_output": "Pre-flight check detects no ADR or spec content. Reports that no artifacts were found and suggests creating some with /design:adr or /design:spec. Does NOT proceed with site generation.",
+      "assertions": [
+        {
+          "text": "Output reports no ADRs or specs found",
+          "type": "content"
+        },
+        {
+          "text": "Output suggests '/design:adr' or '/design:spec' to create first artifacts",
+          "type": "content"
+        },
+        {
+          "text": "Does NOT create a docs-site/ directory",
+          "type": "structural"
+        },
+        {
+          "text": "Does NOT create .design-docs.json",
+          "type": "structural"
+        },
+        {
+          "text": "Does NOT run npm install",
+          "type": "behavioral"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 200,
+      "skill": "adr",
+      "prompt": "We need an ADR for choosing PostgreSQL over MongoDB for our user data store",
+      "expected_output": "Creates a new ADR file in docs/adrs/ using MADR format with PostgreSQL vs MongoDB as considered options",
+      "assertions": [
+        {
+          "text": "ADR file created at docs/adrs/ADR-XXXX-*.md with correct sequential numbering",
+          "type": "structural"
+        },
+        {
+          "text": "YAML frontmatter contains status: proposed",
+          "type": "format"
+        },
+        {
+          "text": "At least 2 considered options listed (PostgreSQL and MongoDB minimum)",
+          "type": "content"
+        },
+        {
+          "text": "Pros and cons section exists for each considered option",
+          "type": "content"
+        },
+        {
+          "text": "Decision Outcome section present with chosen option and justification",
+          "type": "structural"
+        },
+        {
+          "text": "Mermaid diagram included in Architecture Diagram section",
+          "type": "content"
+        },
+        {
+          "text": "Suggests next step: /design:spec",
+          "type": "behavioral"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 201,
+      "skill": "adr",
+      "prompt": "Create an ADR about using gRPC for inter-service communication --module api",
+      "expected_output": "Creates ADR scoped to the api module's docs/adrs/ directory using artifact path resolution",
+      "assertions": [
+        {
+          "text": "Artifact path resolution invoked with --module api",
+          "type": "behavioral"
+        },
+        {
+          "text": "ADR file created under the api module's ADR directory, not the project root",
+          "type": "structural"
+        },
+        {
+          "text": "YAML frontmatter contains status: proposed and date field",
+          "type": "format"
+        },
+        {
+          "text": "Considered Options section includes gRPC and at least one alternative (e.g., REST, GraphQL)",
+          "type": "content"
+        },
+        {
+          "text": "ADR number is sequential within the module's ADR directory",
+          "type": "format"
+        },
+        {
+          "text": "CLAUDE.md integration check targets the module root, not project root",
+          "type": "behavioral"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 202,
+      "skill": "init",
+      "prompt": "/design:init",
+      "expected_output": "Creates CLAUDE.md with architecture context, detects .gitmodules for workspace setup, offers permission auto-configuration",
+      "assertions": [
+        {
+          "text": "Checks for .claude-plugin-design.json migration before main init flow",
+          "type": "behavioral"
+        },
+        {
+          "text": "CLAUDE.md created or updated with ## Architecture Context section",
+          "type": "structural"
+        },
+        {
+          "text": "CLAUDE.md contains references to docs/adrs/ and docs/openspec/specs/",
+          "type": "content"
+        },
+        {
+          "text": "Offers to configure .claude/settings.json with permission allowlists via AskUserQuestion",
+          "type": "behavioral"
+        },
+        {
+          "text": "Checks for .gitmodules and offers workspace setup if submodules found",
+          "type": "behavioral"
+        },
+        {
+          "text": "Detects backend project manifests (go.mod, package.json, etc.) and suggests structured logging ADR if none exists",
+          "type": "behavioral"
+        },
+        {
+          "text": "Outputs next steps mentioning /design:adr, /design:spec, and /design:prime",
+          "type": "content"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 203,
+      "skill": "init",
+      "prompt": "/design:init",
+      "expected_output": "Detects already-configured CLAUDE.md and reports no changes needed (idempotent re-run)",
+      "assertions": [
+        {
+          "text": "Reads existing CLAUDE.md and finds both docs/adrs/ and docs/openspec/specs/ references",
+          "type": "behavioral"
+        },
+        {
+          "text": "Reports 'already configured' without modifying the file",
+          "type": "behavioral"
+        },
+        {
+          "text": "Does NOT append a duplicate ## Architecture Context section",
+          "type": "structural"
+        },
+        {
+          "text": "Output includes current ADR path and spec path",
+          "type": "content"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\nThis project uses the [design plugin](https://github.com/joestump/claude-plugin-design) for architecture governance.\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        }
+      ]
+    },
+    {
+      "id": 204,
+      "skill": "prime",
+      "prompt": "/design:prime authentication",
+      "expected_output": "Loads architecture context filtered by 'authentication' topic, showing only semantically relevant ADRs and specs",
+      "assertions": [
+        {
+          "text": "Checks CLAUDE.md for design plugin references before scanning",
+          "type": "behavioral"
+        },
+        {
+          "text": "Scans ADR and spec directories for artifacts",
+          "type": "behavioral"
+        },
+        {
+          "text": "Applies semantic topic filter \u2014 matches ADRs/specs related to auth, sessions, tokens, access control",
+          "type": "behavioral"
+        },
+        {
+          "text": "Output includes 'Matching ADRs' and 'Matching Specs' tables with Relevance column",
+          "type": "format"
+        },
+        {
+          "text": "Output includes 'Skipped' section listing non-matching artifacts",
+          "type": "format"
+        },
+        {
+          "text": "Output includes 'Summaries' section with 2-3 sentence summaries of matching artifacts",
+          "type": "format"
+        },
+        {
+          "text": "No files are modified (read-only skill)",
+          "type": "behavioral"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        },
+        {
+          "path": "docs/adrs/ADR-0001-jwt-authentication.md",
+          "content": "---\nstatus: accepted\ndate: 2025-06-15\n---\n\n# ADR-0001: Use JWT for API Authentication\n\n## Context and Problem Statement\n\nWe need a stateless authentication mechanism for our API.\n\n## Decision Outcome\n\nChosen option: JWT tokens, because they enable stateless auth.\n"
+        },
+        {
+          "path": "docs/adrs/ADR-0002-postgresql.md",
+          "content": "---\nstatus: accepted\ndate: 2025-07-01\n---\n\n# ADR-0002: Use PostgreSQL for Primary Database\n\n## Context and Problem Statement\n\nWe need a relational database for user data.\n\n## Decision Outcome\n\nChosen option: PostgreSQL, because of its reliability.\n"
+        }
+      ]
+    },
+    {
+      "id": 205,
+      "skill": "prime",
+      "prompt": "/design:prime",
+      "expected_output": "Detects missing design plugin references in CLAUDE.md and instructs user to run /design:init first",
+      "assertions": [
+        {
+          "text": "Reads CLAUDE.md (or detects it doesn't exist)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Output tells user to run /design:init first",
+          "type": "content"
+        },
+        {
+          "text": "Does NOT attempt to scan for ADRs or specs",
+          "type": "behavioral"
+        },
+        {
+          "text": "No files are modified (read-only skill)",
+          "type": "behavioral"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "# My Project\n\nThis is a web application.\n"
+        }
+      ]
+    },
+    {
+      "id": 206,
+      "skill": "list",
+      "prompt": "/design:list spec",
+      "expected_output": "Lists only specs (not ADRs) with status, date, and title in a formatted table",
+      "assertions": [
+        {
+          "text": "Parses 'spec' filter argument \u2014 only shows specs, not ADRs",
+          "type": "behavioral"
+        },
+        {
+          "text": "Output contains a Specifications table with ID, Title, Status, Date columns",
+          "type": "format"
+        },
+        {
+          "text": "Does NOT include an Architecture Decisions table",
+          "type": "format"
+        },
+        {
+          "text": "Specs are sorted by SPEC number",
+          "type": "format"
+        },
+        {
+          "text": "No files are modified (read-only skill)",
+          "type": "behavioral"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        },
+        {
+          "path": "docs/openspec/specs/web-dashboard/spec.md",
+          "content": "---\nstatus: approved\ndate: 2025-08-01\n---\n\n# SPEC-0001: Web Dashboard\n"
+        },
+        {
+          "path": "docs/openspec/specs/api-gateway/spec.md",
+          "content": "---\nstatus: draft\ndate: 2025-09-15\n---\n\n# SPEC-0002: API Gateway\n"
+        }
+      ]
+    },
+    {
+      "id": 207,
+      "skill": "list",
+      "prompt": "/design:list",
+      "expected_output": "Reports no ADRs or specs found and suggests creating them",
+      "assertions": [
+        {
+          "text": "Scans docs/adrs/ and docs/openspec/specs/ directories (or detects they don't exist)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Output states no ADRs found and suggests /design:adr",
+          "type": "content"
+        },
+        {
+          "text": "Output states no specs found and suggests /design:spec",
+          "type": "content"
+        },
+        {
+          "text": "Does NOT output empty tables",
+          "type": "format"
+        },
+        {
+          "text": "No files are modified (read-only skill)",
+          "type": "behavioral"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        }
+      ]
+    },
+    {
+      "id": 208,
+      "skill": "status",
+      "prompt": "/design:status ADR-0003 accepted",
+      "expected_output": "Updates ADR-0003 YAML frontmatter status from proposed to accepted",
+      "assertions": [
+        {
+          "text": "Locates the ADR-0003 file by globbing docs/adrs/ADR-0003-*.md",
+          "type": "behavioral"
+        },
+        {
+          "text": "Edits only the status field in the YAML frontmatter",
+          "type": "structural"
+        },
+        {
+          "text": "Status changed from 'proposed' to 'accepted'",
+          "type": "content"
+        },
+        {
+          "text": "No content outside YAML frontmatter is modified",
+          "type": "structural"
+        },
+        {
+          "text": "Reports the change: 'proposed -> accepted'",
+          "type": "content"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        },
+        {
+          "path": "docs/adrs/ADR-0003-event-driven-arch.md",
+          "content": "---\nstatus: proposed\ndate: 2025-10-01\ndecision-makers: [team-lead]\n---\n\n# ADR-0003: Use Event-Driven Architecture\n\n## Context and Problem Statement\n\nWe need to decouple services for scalability.\n\n## Decision Outcome\n\nChosen option: Event-driven with message queues.\n"
+        }
+      ]
+    },
+    {
+      "id": 209,
+      "skill": "status",
+      "prompt": "/design:status",
+      "expected_output": "Lists available ADRs and specs with current statuses, then prompts user to choose which to update",
+      "assertions": [
+        {
+          "text": "Detects missing identifier argument",
+          "type": "behavioral"
+        },
+        {
+          "text": "Scans for available ADRs and specs and presents them with current statuses",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses AskUserQuestion to prompt user for which artifact to update",
+          "type": "behavioral"
+        },
+        {
+          "text": "Shows valid status options (proposed/accepted/deprecated/superseded for ADRs, draft/review/approved/implemented/deprecated for specs)",
+          "type": "content"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        },
+        {
+          "path": "docs/adrs/ADR-0001-choose-framework.md",
+          "content": "---\nstatus: proposed\ndate: 2025-06-01\n---\n\n# ADR-0001: Choose Frontend Framework\n"
+        },
+        {
+          "path": "docs/openspec/specs/dashboard/spec.md",
+          "content": "---\nstatus: draft\ndate: 2025-07-01\n---\n\n# SPEC-0001: Web Dashboard\n"
+        }
+      ]
+    },
+    {
+      "id": 210,
+      "skill": "organize",
+      "prompt": "Organize the issues for SPEC-0005 into a GitHub project --dry-run",
+      "expected_output": "Previews project creation and issue grouping without making any changes",
+      "assertions": [
+        {
+          "text": "Resolves SPEC-0005 by reading spec.md from the spec directory",
+          "type": "behavioral"
+        },
+        {
+          "text": "Validates spec pairing (checks both spec.md and design.md exist)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Detects tracker via Config Resolution pattern from CLAUDE.md",
+          "type": "behavioral"
+        },
+        {
+          "text": "Searches tracker for issues referencing SPEC-0005",
+          "type": "behavioral"
+        },
+        {
+          "text": "Presents three-tier intervention choice (leave as-is / restructure workspace / complete refactor)",
+          "type": "behavioral"
+        },
+        {
+          "text": "In --dry-run mode: reports what WOULD be done at each tier without modifying anything",
+          "type": "behavioral"
+        },
+        {
+          "text": "No tracker issues or projects are created or modified",
+          "type": "structural"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### Design Plugin Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n\n#### Projects\n- **Default Mode**: per-epic\n- **Views**: All Work, Board, Roadmap\n- **Columns**: Todo, In Progress, In Review, Done\n- **Iteration Weeks**: 2\n"
+        },
+        {
+          "path": "docs/openspec/specs/notification-service/spec.md",
+          "content": "---\nstatus: approved\ndate: 2025-09-01\n---\n\n# SPEC-0005: Notification Service\n\n## Overview\n\nReal-time notification delivery system.\n\n### Requirement: Email Notifications\n\nThe system MUST support email delivery.\n\n### Requirement: Push Notifications\n\nThe system SHOULD support push notifications.\n"
+        },
+        {
+          "path": "docs/openspec/specs/notification-service/design.md",
+          "content": "# SPEC-0005: Notification Service \u2014 Design\n\n## Architecture\n\nEvent-driven notification pipeline.\n"
+        }
+      ]
+    },
+    {
+      "id": 211,
+      "skill": "organize",
+      "prompt": "Organize issues for SPEC-0003 --module worker",
+      "expected_output": "Resolves spec within the worker module's artifact paths and organizes issues scoped to that module",
+      "assertions": [
+        {
+          "text": "Artifact path resolution invoked with --module worker",
+          "type": "behavioral"
+        },
+        {
+          "text": "Spec resolved from worker module's spec directory, not project root",
+          "type": "behavioral"
+        },
+        {
+          "text": "Validates spec pairing (spec.md + design.md) within the module",
+          "type": "behavioral"
+        },
+        {
+          "text": "Reads tracker config from CLAUDE.md via Config Resolution pattern",
+          "type": "behavioral"
+        },
+        {
+          "text": "Presents three-tier intervention choice via AskUserQuestion",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses ToolSearch to discover tracker project tools at runtime",
+          "type": "behavioral"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": 212,
+      "skill": "enrich",
+      "prompt": "Add branch names and PR conventions to all SPEC-0005 issues",
+      "expected_output": "Enriches existing tracker issues for SPEC-0005 with ### Branch and ### PR Convention sections",
+      "assertions": [
+        {
+          "text": "Resolves SPEC-0005 by reading spec.md from the spec directory",
+          "type": "behavioral"
+        },
+        {
+          "text": "Validates spec pairing (checks both spec.md and design.md exist)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Reads Branch Conventions and PR Conventions from CLAUDE.md ### Design Plugin Configuration",
+          "type": "behavioral"
+        },
+        {
+          "text": "Detects tracker via Config Resolution pattern",
+          "type": "behavioral"
+        },
+        {
+          "text": "For each issue: checks if ### Branch section already exists before adding (idempotent)",
+          "type": "behavioral"
+        },
+        {
+          "text": "For each issue: checks if ### PR Convention section already exists before adding (idempotent)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Branch slug derived from issue title in kebab-case, max 50 chars",
+          "type": "format"
+        },
+        {
+          "text": "Epic issues get epic/ prefix, task issues get feature/ prefix",
+          "type": "format"
+        },
+        {
+          "text": "Reports summary: issues enriched, skipped, and any failures",
+          "type": "content"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### Design Plugin Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n\n#### Branch Conventions\n- **Enabled**: true\n- **Prefix**: feature\n- **Epic Prefix**: epic\n- **Slug Max Length**: 50\n\n#### PR Conventions\n- **Enabled**: true\n- **Close Keyword**: Closes\n- **Ref Keyword**: Part of\n- **Include Spec Reference**: true\n"
+        },
+        {
+          "path": "docs/openspec/specs/notification-service/spec.md",
+          "content": "---\nstatus: approved\ndate: 2025-09-01\n---\n\n# SPEC-0005: Notification Service\n\n## Overview\n\nReal-time notification delivery system.\n"
+        },
+        {
+          "path": "docs/openspec/specs/notification-service/design.md",
+          "content": "# SPEC-0005: Notification Service \u2014 Design\n\n## Architecture\n\nEvent-driven notification pipeline.\n"
+        }
+      ]
+    },
+    {
+      "id": 213,
+      "skill": "enrich",
+      "prompt": "Enrich issues for SPEC-0002 --branch-prefix hotfix --dry-run",
+      "expected_output": "Previews enrichment with custom 'hotfix' branch prefix without modifying any issues",
+      "assertions": [
+        {
+          "text": "Parses --branch-prefix hotfix and --dry-run flags from arguments",
+          "type": "behavioral"
+        },
+        {
+          "text": "Resolves SPEC-0002 and validates spec pairing (spec.md + design.md)",
+          "type": "behavioral"
+        },
+        {
+          "text": "Uses 'hotfix' as the branch prefix instead of default 'feature'",
+          "type": "content"
+        },
+        {
+          "text": "For each issue: shows what ### Branch and ### PR Convention sections WOULD be added",
+          "type": "format"
+        },
+        {
+          "text": "Shows exact content that would be appended to each issue body",
+          "type": "content"
+        },
+        {
+          "text": "Indicates which issues would be skipped (already have sections)",
+          "type": "content"
+        },
+        {
+          "text": "No tracker issues are modified in --dry-run mode",
+          "type": "structural"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### Design Plugin Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n"
+        },
+        {
+          "path": "docs/openspec/specs/api-gateway/spec.md",
+          "content": "---\nstatus: approved\ndate: 2025-08-15\n---\n\n# SPEC-0002: API Gateway\n\n## Overview\n\nCentralized API gateway for routing and rate limiting.\n"
+        },
+        {
+          "path": "docs/openspec/specs/api-gateway/design.md",
+          "content": "# SPEC-0002: API Gateway \u2014 Design\n\n## Architecture\n\nReverse proxy with middleware pipeline.\n"
+        }
+      ]
+    }
+  ]
+}

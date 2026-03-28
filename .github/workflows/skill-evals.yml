@@ -1,0 +1,307 @@
+name: Skill Evaluations
+
+on:
+  pull_request:
+    paths:
+      - 'skills/**'
+      - 'references/**'
+      - 'evals/**'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Eval mode'
+        required: true
+        default: 'quick'
+        type: choice
+        options:
+          - quick
+          - full
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  determine-mode:
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+      changed-skills: ${{ steps.changes.outputs.skills }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine eval mode
+        id: mode
+        run: |
+          MODE="quick"
+          # Full mode if workflow_dispatch with full
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.mode }}" == "full" ]]; then
+            MODE="full"
+          fi
+          # Full mode if PR has 'full-eval' label
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            LABELS='${{ toJSON(github.event.pull_request.labels.*.name) }}'
+            if echo "$LABELS" | grep -q "full-eval"; then
+              MODE="full"
+            fi
+            # Full mode if targeting a release branch
+            if [[ "${{ github.base_ref }}" == release/* ]]; then
+              MODE="full"
+            fi
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "Eval mode: $MODE"
+
+      - name: Detect changed skills
+        id: changes
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+            CHANGED_FILES=$(git diff --name-only "$BASE" "$HEAD")
+          else
+            CHANGED_FILES=""
+          fi
+
+          # Extract skill names from changed paths (skills/{name}/**)
+          SKILLS=$(echo "$CHANGED_FILES" | grep '^skills/' | sed 's|^skills/\([^/]*\)/.*|\1|' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          # If evals or references changed, include all skills
+          if echo "$CHANGED_FILES" | grep -qE '^(evals/|references/)'; then
+            SKILLS='["all"]'
+          fi
+
+          # Default to empty array
+          if [[ -z "$SKILLS" || "$SKILLS" == "[]" ]]; then
+            SKILLS='[]'
+          fi
+
+          echo "skills=$SKILLS" >> "$GITHUB_OUTPUT"
+          echo "Changed skills: $SKILLS"
+
+  eval-tier3:
+    needs: determine-mode
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Tier 3 evals
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Run eval prompts from evals/tier3.json for Tier 3 skills (adr, init, prime, list, status, organize, enrich).
+
+            For each eval entry:
+            1. Read the eval prompt and assertions
+            2. Invoke the skill with the test prompt
+            3. Verify each assertion against the output
+            4. Record pass/fail for each assertion
+
+            Output results as JSON to eval-results/tier3.json with this structure:
+            {
+              "tier": 3,
+              "timestamp": "<ISO 8601>",
+              "results": [
+                {
+                  "eval_id": <number>,
+                  "skill": "<name>",
+                  "passed": <boolean>,
+                  "assertions": [
+                    { "text": "<assertion>", "passed": <boolean>, "reason": "<why>" }
+                  ]
+                }
+              ],
+              "summary": { "total": <n>, "passed": <n>, "failed": <n>, "pass_rate": <float> }
+            }
+
+      - name: Upload Tier 3 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-tier3
+          path: eval-results/tier3.json
+          if-no-files-found: warn
+
+  eval-changed:
+    needs: determine-mode
+    if: needs.determine-mode.outputs.changed-skills != '[]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run evals for changed skills
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Run eval prompts from evals/evals.json for these changed skills: ${{ needs.determine-mode.outputs.changed-skills }}.
+
+            If the list is ["all"], run evals for all skills in evals/evals.json.
+            Otherwise, filter to only the listed skill names.
+
+            For each eval entry:
+            1. Read the eval prompt and assertions
+            2. Invoke the skill with the test prompt
+            3. Verify each assertion against the output
+            4. Record pass/fail for each assertion
+
+            Output results as JSON to eval-results/changed.json with this structure:
+            {
+              "tier": "changed",
+              "timestamp": "<ISO 8601>",
+              "skills_evaluated": [<list of skill names>],
+              "results": [
+                {
+                  "eval_id": <number>,
+                  "skill": "<name>",
+                  "passed": <boolean>,
+                  "assertions": [
+                    { "text": "<assertion>", "passed": <boolean>, "reason": "<why>" }
+                  ]
+                }
+              ],
+              "summary": { "total": <n>, "passed": <n>, "failed": <n>, "pass_rate": <float> }
+            }
+
+      - name: Upload changed skill results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-changed
+          path: eval-results/changed.json
+          if-no-files-found: warn
+
+  eval-full:
+    needs: determine-mode
+    if: needs.determine-mode.outputs.mode == 'full'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run full eval suite
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Run ALL eval prompts from evals/evals.json across all 15 skills.
+
+            For each eval entry:
+            1. Read the eval prompt and assertions
+            2. Invoke the skill with the test prompt
+            3. Verify each assertion against the output
+            4. Record pass/fail for each assertion
+
+            Output results as JSON to eval-results/full.json with this structure:
+            {
+              "tier": "full",
+              "timestamp": "<ISO 8601>",
+              "results": [
+                {
+                  "eval_id": <number>,
+                  "skill": "<name>",
+                  "tier": <1|2|3>,
+                  "passed": <boolean>,
+                  "assertions": [
+                    { "text": "<assertion>", "passed": <boolean>, "reason": "<why>" }
+                  ]
+                }
+              ],
+              "summary": {
+                "total": <n>, "passed": <n>, "failed": <n>, "pass_rate": <float>,
+                "by_tier": {
+                  "1": { "total": <n>, "passed": <n>, "pass_rate": <float> },
+                  "2": { "total": <n>, "passed": <n>, "pass_rate": <float> },
+                  "3": { "total": <n>, "passed": <n>, "pass_rate": <float> }
+                }
+              }
+            }
+
+      - name: Upload full eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-full
+          path: eval-results/full.json
+          if-no-files-found: warn
+
+  report:
+    needs: [eval-tier3, eval-changed, eval-full]
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download all eval results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: eval-results-*
+          path: eval-results
+          merge-multiple: true
+
+      - name: Aggregate results and post PR comment
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Aggregate eval results from eval-results/*.json and post a summary PR comment.
+
+            1. Read all JSON files in eval-results/
+            2. Build a benchmark summary table with columns: Skill | Tier | Evals | Passed | Rate
+            3. Calculate overall pass rate and per-tier pass rates
+            4. Format as a GitHub PR comment with:
+               - Header: "## Skill Eval Results"
+               - Mode badge: quick or full
+               - Summary table
+               - Per-tier breakdown
+               - Threshold check: Tier 1 must be >80% pass rate
+               - If Tier 1 < 80%, add a prominent warning
+            5. Post the comment on PR #${{ github.event.pull_request.number }} using:
+               gh pr comment ${{ github.event.pull_request.number }} --body "<comment>"
+            6. Write the aggregated results to eval-results/summary.json
+
+            If Tier 1 pass rate is below 80%, exit with code 1 to fail the check.
+
+      - name: Upload summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-summary
+          path: eval-results/summary.json
+          if-no-files-found: warn
+
+      - name: Check Tier 1 threshold
+        if: always()
+        run: |
+          if [ -f eval-results/summary.json ]; then
+            TIER1_RATE=$(python3 -c "
+          import json
+          with open('eval-results/summary.json') as f:
+              data = json.load(f)
+          tier1 = data.get('by_tier', {}).get('1', {})
+          print(tier1.get('pass_rate', 0))
+          " 2>/dev/null || echo "0")
+            echo "Tier 1 pass rate: $TIER1_RATE"
+            if python3 -c "exit(0 if float('$TIER1_RATE') >= 0.8 else 1)" 2>/dev/null; then
+              echo "Tier 1 threshold met (>= 80%)"
+            else
+              echo "::error::Tier 1 pass rate ($TIER1_RATE) is below 80% threshold"
+              exit 1
+            fi
+          else
+            echo "::warning::No summary.json found, skipping threshold check"
+          fi
