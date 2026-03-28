@@ -3,7 +3,7 @@ name: docs
 description: Generate a documentation site from your ADRs and specs. Use when the user says "generate docs", "create a docs site", or wants to publish their architecture decisions.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion
 argument-hint: [project name or options] [--module <name>]
-context: fork
+context: fork  # Runs in a forked context to avoid polluting the main session with docs-site npm operations
 ---
 
 # Generate Docusaurus Documentation Site
@@ -35,7 +35,7 @@ Follow the **Artifact Path Resolution** pattern from `references/shared-patterns
 
 - Check if Node.js is installed. If not, tell the user: "Node.js is required to run the docs site. Please install it from https://nodejs.org/ and re-run this command." and stop.
 - Check if `{adr-dir}` has any ADR `.md` files
-- Check if `{spec-dir}` has any spec directories (containing `spec.md`)
+- Check if `{spec-dir}` has any spec directories (containing `spec.md`). Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
 - If NEITHER has content, tell the user: "No ADRs or specs found. Create some first with `/design:adr` or `/design:spec`, then re-run `/design:docs`." and stop.
 - If only one has content, proceed but note which is empty (e.g., "No specs found yet -- the docs site will only include ADRs for now.")
 

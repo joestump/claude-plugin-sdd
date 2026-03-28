@@ -25,14 +25,14 @@ Explore an existing codebase to discover implicit architectural decisions and sp
 
 3. **Load existing design artifacts**:
    - Glob `{adr-dir}/ADR-*.md` and read each file's title, context, and decision outcome
-   - Glob `{spec-dir}/*/spec.md` and read each file's title and overview
+   - Glob `{spec-dir}/*/spec.md` and read each file's title and overview. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
    - Build an exclusion list of already-documented decisions and subsystems
    - If neither directory exists, note that no existing artifacts were found (this is expected for first-time discovery)
 
 4. **Analyze the codebase** across four categories. Use the Task tool to spawn parallel Explore agents for each category. Each agent should return a list of findings with evidence.
 
    **Agent 1 -- Dependency & Framework Analysis**:
-   - Scan for package manifests: `package.json`, `requirements.txt`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile`, `pom.xml`, `build.gradle`, `composer.json`, etc.
+   - Scan for project manifests (e.g., `package.json`, `requirements.txt`, `pyproject.toml`, `Cargo.toml`, `Gemfile`, `pom.xml`, `build.gradle`, `composer.json`, and other ecosystem-specific files).
    - Read dependency lists and identify major framework/library choices
    - Look for lock files to confirm actively used dependencies
    - Identify technology choices that represent architectural decisions (e.g., "chose Next.js over Remix", "chose PostgreSQL over MongoDB", "chose REST over GraphQL")

@@ -19,14 +19,15 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
 
 1. **Parse arguments**: Extract from `$ARGUMENTS`:
    - Spec identifier: a SPEC number (e.g., `SPEC-0007`) or capability directory name
-   - `--branch-prefix <prefix>`: Custom branch prefix instead of the default `feature`/`epic` prefixes
-   - `--dry-run`: Preview what would be added without modifying any issues
+   - `--branch-prefix <prefix>`: Custom branch prefix instead of the default prefixes. Default: `feature`.
+   - `--dry-run`: Preview what would be added without modifying any issues. Default: off.
+   - `--module <name>`: Resolve artifact paths relative to the named module. Default: none.
 
    If no spec identifier is provided, list available specs by globbing `{spec-dir}/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to enrich.
 
 2. **Resolve spec**: Follow the plugin's `references/shared-patterns.md` § "Spec Resolution" (which uses `{spec-dir}` from the Artifact Path Resolution pattern).
 
-3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` to get the spec number and understand the requirements.
+3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` to get the spec number and understand the requirements. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
 
 4. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`. If no tracker is found, error — enrichment requires a tracker.
 
@@ -97,7 +98,7 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
       ```
       Tracker-specific close keywords: see the plugin's `references/shared-patterns.md` § "PR Close Keywords".
 
-   h. **Auto-create labels** (Governing: SPEC-0011 REQ "Auto-Create Labels"): When applying labels like `epic` or `story` during enrichment, use the **try-then-create pattern**: attempt to apply the label, and if the tracker returns a "label not found" error, create the label with a default color (epic=#6E40C9, story=#1D76DB, spec=#0E8A16, other=#CCCCCC) and retry.
+   h. **Auto-create labels** (Governing: SPEC-0011 REQ "Auto-Create Labels"): When applying labels like `epic` or `story` during enrichment, use the try-then-create pattern (see `references/shared-patterns.md` § "Try-Then-Create Label Pattern").
 
    i. Update the issue body with the appended sections using the tracker API or CLI.
 
@@ -124,5 +125,5 @@ This skill reads the `Branch Conventions` and `PR Conventions` subsections of th
 - MUST use `ToolSearch` for tracker tools at runtime
 - Failures on individual issues MUST be reported but MUST NOT stop processing remaining issues
 - MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
-- MUST use try-then-create pattern for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
+- MUST use the try-then-create pattern (see `references/shared-patterns.md`) for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - No `--review` support (utility skill)

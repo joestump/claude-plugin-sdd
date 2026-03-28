@@ -40,7 +40,7 @@ List all ADRs and specs in the project with their status, date, and title.
 
    | ID | Title | Status | Date |
    |----|-------|--------|------|
-   | ADR-0001 | Use React for frontend | accepted | 2025-01-15 |
+   | ADR-0001 | Choose frontend framework | accepted | 2025-01-15 |
    | ADR-0002 | Choose PostgreSQL | proposed | 2025-02-01 |
 
    ## Specifications

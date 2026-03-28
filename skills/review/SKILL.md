@@ -25,9 +25,10 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
    - If `$ARGUMENTS` is empty (ignoring flags), list available specs by globbing `{spec-dir}/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec's PRs to review.
 
    **Flag parsing:**
-   - `--pairs N`: Number of reviewer-responder pairs (default 2). Read CLAUDE.md `Review > Max Pairs` as fallback default.
-   - `--no-merge`: Approve PRs but do not merge them. Leave for manual merge.
-   - `--dry-run`: Preview which PRs would be reviewed without taking any action.
+   - `--pairs N`: Number of reviewer-responder pairs. Default: 2 (or CLAUDE.md `Review > Max Pairs`).
+   - `--no-merge`: Approve PRs but do not merge them. Default: off.
+   - `--dry-run`: Preview which PRs would be reviewed without taking any action. Default: off.
+   - `--module <name>`: Resolve artifact paths relative to the named module. Default: none.
 
 2. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`, but only GitHub, GitLab, and Gitea are supported (PR/MR capability required). If the saved tracker is Beads, Jira, or Linear, inform the user that `/design:review` requires a tracker with PR support.
 
@@ -39,7 +40,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
    If no open PRs are found, inform the user and suggest running `/design:work` to create PRs from planned issues.
 
 4. **Load architecture context** (Governing: SPEC-0009 REQ "Architecture Context Loading"):
-   - If a spec identifier is provided or can be inferred from PR metadata (e.g., PR body contains "SPEC-XXXX"), read `spec.md`, `design.md`, and any referenced ADRs from the resolved spec directory.
+   - If a spec identifier is provided or can be inferred from PR metadata (e.g., PR body contains "SPEC-XXXX"), read `spec.md`, `design.md`, and any referenced ADRs from the resolved spec directory. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
    - If no governing spec can be inferred (e.g., PRs specified by number with no spec reference), proceed with general code review only and note in the report that spec compliance could not be verified.
    - This context will be sent to all reviewer agents.
 
@@ -69,7 +70,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
    - N **reviewer** agents (`general-purpose`) — one per pair
    - N **responder** agents (`general-purpose`) — one per pair
 
-   If `TeamCreate` fails, fall back to single-agent sequential mode: review each PR, address feedback, and optionally merge, all in the main session.
+   If `TeamCreate` fails, fall back to single-agent sequential mode: for each PR, review the diff against acceptance criteria, then address any issues directly (acting as both reviewer and responder). This mode skips the response round — if issues are found, leave review comments for human follow-up instead of auto-fixing.
 
 8. **Distribute PRs** (Governing: SPEC-0009 REQ "PR Distribution"):
 
@@ -135,10 +136,10 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
        - The tracker's native close-on-merge behavior will automatically close the linked story issue.
     6. **Close parent epic if all stories are done**: After a successful merge, check whether the closed story's parent epic should also be closed:
        a. Parse the PR body for an epic reference (e.g., `Part of #XX` or the configured `Ref Keyword` from CLAUDE.md `PR Conventions`). If no epic reference is found, skip this step.
-       b. Fetch the epic issue and extract its child story references. Identify child stories by:
-          - **GitHub**: Search for open issues that reference the epic number in their body (`Part of #{epic-number}`), or list issues in the same project/milestone.
-          - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to list issues referencing the epic, or query the epic's milestone for open issues.
-          - **GitLab**: Use MCP tools or `glab` CLI to find open issues referencing the epic.
+       b. Fetch the epic issue and extract its child story references. Read the `PR Conventions > Ref Keyword` from CLAUDE.md config (default: "Part of") and use it to find child issues:
+          - **GitHub**: Search for open issues that reference the epic number in their body using the configured ref keyword (e.g., `{Ref Keyword} #{epic-number}`), or list issues in the same project/milestone.
+          - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to list issues referencing the epic with the configured ref keyword, or query the epic's milestone for open issues.
+          - **GitLab**: Use MCP tools or `glab` CLI to find open issues referencing the epic with the configured ref keyword.
        c. If **all** child story issues are now closed (no open stories remain), close the epic issue:
           - **GitHub**: `gh issue close {epic-number}`
           - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to close the issue.
