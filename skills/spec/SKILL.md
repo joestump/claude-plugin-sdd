@@ -55,6 +55,97 @@ You are creating or updating an OpenSpec specification. Every spec is a **paired
 
 Follow the standard team handoff protocol from the plugin's `references/shared-patterns.md`. The drafter is the spec-writer; the reviewer is the architect who checks both spec.md and design.md against the Rules checklist below.
 
+## Web-Facing Detection and Security Injection
+
+<!-- Governing: ADR-0018 (Security-by-Default), SPEC-0016 REQ "Mandatory Security Section in Web Specs" -->
+
+Before writing the spec, determine whether the capability is **web-facing**. A spec is web-facing if ANY of the following are true:
+
+- It defines or modifies HTTP endpoints (REST API, GraphQL, gRPC-web, etc.)
+- It involves web server routes or middleware
+- It includes browser-rendered UI (HTML templates, HTMX, SPAs)
+- It describes an API consumed over HTTP/HTTPS
+- The capability name or description references: API, dashboard, webhook, web, HTTP, endpoint, route, server, frontend, UI, portal, gateway
+
+A spec is **NOT web-facing** if it exclusively involves: CLI tools, internal libraries, batch/cron jobs, data migrations, background workers, message queue consumers, or purely offline processing.
+
+### When the spec IS web-facing
+
+You MUST inject a **## Security Requirements** section into spec.md, placed after the functional `## Requirements` section. This section MUST cover all six topics below. Use the template in the "Security Requirements Section Template" below.
+
+You MUST also apply **auth-by-default**: when generating endpoint tables or lists, every endpoint MUST default to "Auth: Required". Any endpoint the spec author wants to be public MUST be listed as "Auth: Public" with an explicit justification (e.g., "Health check — required for load balancer probes"). Do NOT leave any endpoint without an auth designation.
+
+### When the spec is NOT web-facing
+
+Do NOT inject the Security Requirements section. Proceed with the standard spec template only.
+
+## Security Requirements Section Template
+
+When injecting the security section into a web-facing spec, use this template placed after the functional requirements:
+
+```markdown
+## Security Requirements
+
+<!-- Governing: ADR-0018 (Security-by-Default), SPEC-0016 REQ "Mandatory Security Section in Web Specs" -->
+
+### Authentication
+
+All endpoints MUST require authentication by default. Public (unauthenticated) endpoints MUST be explicitly listed with justification.
+
+| Endpoint | Auth | Justification |
+|----------|------|---------------|
+| {endpoint} | Required | — |
+| {public endpoint} | Public | {why auth is not required} |
+
+### Rate Limiting
+
+{Declare the rate limiting strategy for this capability. Specify limits per endpoint or globally. If rate limiting is deferred, state the justification.}
+
+### Security Headers
+
+All HTTP responses MUST include the following security headers:
+
+- `Content-Security-Policy`: {policy}
+- `X-Frame-Options`: DENY (or SAMEORIGIN with justification)
+- `X-Content-Type-Options`: nosniff
+- `Referrer-Policy`: strict-origin-when-cross-origin
+
+### Request Body Size Limits
+
+All endpoints that accept request bodies MUST enforce size limits. Request bodies MUST be bounded (e.g., `http.MaxBytesReader` in Go, `express.json({ limit })` in Node.js) to prevent unbounded memory allocation.
+
+Default limit: {size, e.g., 1MB} unless a specific endpoint requires a higher limit with justification.
+
+### CSRF Protection
+
+State-changing endpoints (POST, PUT, PATCH, DELETE) MUST implement CSRF protection. Strategy: {e.g., SameSite=Lax cookies, CSRF tokens, custom header validation}.
+
+### Redirect Validation
+
+Any endpoint that performs HTTP redirects with user-supplied URLs MUST validate the redirect target against an allowlist of permitted domains or paths. Open redirects MUST NOT be permitted.
+```
+
+## Auth-by-Default in Endpoint Tables
+
+<!-- Governing: ADR-0018 (Security-by-Default), SPEC-0016 REQ "Auth-by-Default" -->
+
+When a web-facing spec includes an endpoint table or endpoint list, you MUST apply auth-by-default:
+
+1. Every endpoint defaults to **"Auth: Required"**
+2. If the spec author identifies endpoints that should be public, mark them as **"Auth: Public"** and require a justification
+3. Justifications MUST be specific (e.g., "Health check — load balancer requires unauthenticated access"), not generic (e.g., "public endpoint")
+
+Example endpoint table with auth-by-default:
+
+```markdown
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/items | Required | List items |
+| POST | /api/items | Required | Create item |
+| GET | /health | Public | Health check — required for load balancer probes |
+| GET | /login | Public | Login page — must be accessible to unauthenticated users |
+```
+
 ## spec.md Template
 
 ```markdown
@@ -89,6 +180,8 @@ Follow the standard team handoff protocol from the plugin's `references/shared-p
 - **WHEN** {precondition or trigger}
 - **THEN** {expected outcome}
 ```
+
+**Note:** For web-facing specs, append the Security Requirements section (from the template above) after the functional requirements.
 
 ## design.md Template
 
@@ -161,6 +254,11 @@ Follow the standard team handoff protocol from the plugin's `references/shared-p
   - Scenario format correctness (exactly `####` level headings with WHEN/THEN)
   - Completeness of both documents
   - Alignment between spec requirements and design decisions
+  - **Security section present for web-facing specs** (Governing: ADR-0018, SPEC-0016)
+  - **Auth-by-default applied to all endpoint tables** (Governing: ADR-0018, SPEC-0016)
 - If converting from an ADR, reference the ADR number in the spec's Overview section
 - design.md MUST include at least one Mermaid architecture diagram. Prefer C4 context/container diagrams for system-level, sequence diagrams for flows, and ERDs for data models.
 - When implementing code governed by this spec, agents SHOULD leave governing comments referencing the spec and requirement numbers: `// Governing: SPEC-XXXX REQ "Requirement Name", ADR-XXXX`
+- For web-facing specs: MUST inject the Security Requirements section covering authentication, rate limiting, security headers, body size limits, CSRF protection, and redirect validation (Governing: ADR-0018, SPEC-0016 REQ "Mandatory Security Section in Web Specs")
+- For web-facing specs: MUST apply auth-by-default — every endpoint defaults to "Auth: Required"; public endpoints need "Auth: Public" with explicit justification (Governing: ADR-0018, SPEC-0016 REQ "Auth-by-Default")
+- MUST NOT inject the Security Requirements section for non-web specs (CLI tools, libraries, batch jobs, data migrations, background workers)

@@ -177,6 +177,32 @@ Ordered for implementation (dependencies respected):
      - The slug MUST be derived from the story title using kebab-case, max 50 chars (or `.claude-plugin-design.json` `branches.slug_max_length`)
      - This requires a two-pass approach: create the issue first to get the number, then update the body
 
+   **5.2.1: Detect HTTP endpoint stories for security checklist injection.**
+
+   <!-- Governing: ADR-0018 (Security-by-Default), SPEC-0016 REQ "Security Checklist in Issues" -->
+
+   After grouping requirements into stories, determine which stories involve HTTP endpoints. A story involves HTTP endpoints if ANY of the following are true:
+
+   - The story implements, modifies, or tests HTTP endpoint handlers or route registrations
+   - The grouped requirements reference endpoints, routes, middleware, request/response handling, or API paths
+   - The spec's Security Requirements section (if present) applies to the story's functional area
+   - The story title or description references: API, endpoint, route, handler, middleware, controller, HTTP, REST, webhook
+
+   A story does NOT involve HTTP endpoints if it exclusively involves: database migrations, background jobs, CLI commands, library refactoring, configuration setup, CI/CD pipelines, or documentation.
+
+   For each story that involves HTTP endpoints, you MUST append a **## Security Checklist** section to the issue body, placed after the `## Acceptance Criteria` section and before any `### Branch` or `### PR Convention` sections. Use this template:
+
+   ```markdown
+   ## Security Checklist
+   - [ ] Authentication middleware applied
+   - [ ] Input validation for all request parameters and body fields
+   - [ ] Output encoding for user-supplied data in responses
+   - [ ] Rate limiting configured
+   - [ ] Request body size limits enforced
+   ```
+
+   Do NOT add the security checklist to stories that do not involve HTTP endpoints.
+
    **5.3: Write task checklists.** Each story issue body MUST include a `## Requirements` section with a task checklist. The format varies by tracker:
 
    **For GitHub, Gitea, GitLab, Jira, and Linear** — use markdown task checklists:
@@ -340,6 +366,9 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - `.claude-plugin-design.json` `projects.views`, `projects.columns`, `projects.iteration_weeks` are all optional with sensible defaults — do NOT overwrite existing keys when they are absent
 - Story issues MUST be consumable by `/design:work` and `/design:review` — they use the same `### Branch` and `### PR Convention` structural sections (Governing: SPEC-0010 REQ "Downstream Compatibility")
 - When `--scrum` is set, organize and enrich MUST run automatically after grooming — NEVER require the user to run `/design:organize` or `/design:enrich` separately (Governing: SPEC-0012 REQ "Automatic Organize and Enrich")
+- Stories that involve HTTP endpoints MUST include a `## Security Checklist` section with authentication, input validation, output encoding, rate limiting, and body size limit items (Governing: ADR-0018, SPEC-0016 REQ "Security Checklist in Issues")
+- The security checklist MUST NOT be added to stories that do not involve HTTP endpoints (DB migrations, background jobs, CLI commands, library refactoring, etc.) (Governing: SPEC-0016 REQ "Security Checklist in Issues")
+- The security checklist MUST be placed after `## Acceptance Criteria` and before `### Branch` / `### PR Convention` sections
 - Engineer B MUST provide a substantive objection for any story that has a weak requirement, vague scope, or missing spec reference — generic approval without review is not acceptable (Governing: SPEC-0012 REQ "Scrum Team Composition")
 - The sprint report MUST be emitted at the end of every `--scrum` run, even if all stories were deferred (Governing: SPEC-0012 REQ "Sprint Report")
 - `--scrum` and `--review` are mutually exclusive; if both are provided, `--scrum` takes precedence and `--review` is silently ignored
