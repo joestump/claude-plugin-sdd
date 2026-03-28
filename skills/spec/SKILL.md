@@ -119,7 +119,7 @@ Before writing the spec, determine whether the capability involves **backend log
 - It defines server-side processing, business logic, or data transformations
 - It involves background workers, scheduled tasks, or queue consumers
 - It defines database interactions, ORM models, or data access layers
-- It involves concurrency (parallel workers, async tasks, goroutines, threads, coroutines)
+- It involves concurrency (parallel workers, async tasks, threads, coroutines, background jobs)
 - The project has a backend manifest (e.g., `go.mod`, `package.json` with server dependencies, `requirements.txt`, `Cargo.toml`, `pom.xml`, `build.gradle`, `Gemfile`, `mix.exs`)
 
 A spec does **NOT** involve backend logic if it exclusively involves: static sites, pure frontend SPAs with no server component, documentation, or design assets.
