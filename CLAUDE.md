@@ -27,6 +27,30 @@ This project uses the [design plugin](https://github.com/joestump/claude-plugin-
 
 Run `/design:prime [topic]` at the start of a session to load relevant ADRs and specs into context.
 
+### Governing Comments
+
+When implementing code governed by ADRs or specs, leave comments referencing the governing artifacts:
+
+```
+// Governing: ADR-0001 (chose JWT over sessions), SPEC-0003 REQ "Token Validation"
+```
+
+These comments help future sessions (and `/design:check`) trace implementation back to decisions.
+
+### Workflow
+
+1. **Decide**: `/design:adr` — record the architectural decision
+2. **Specify**: `/design:spec` — formalize requirements with RFC 2119 language
+3. **Plan**: `/design:plan` — break the spec into trackable issues in your tracker
+4. **Enrich**: `/design:organize` and `/design:enrich` — add projects and branch conventions
+5. **Build**: `/design:work` — pick up issues and implement in parallel using git worktrees
+6. **Review**: `/design:review` — review and merge PRs with spec-aware code review
+7. **Validate**: `/design:check` and `/design:audit` to catch drift
+
+### Session Coordination
+
+When orchestrating multiple design plugin skills in a single session (e.g., running `/design:work` on several issues), use `TeamCreate` to coordinate agents. Do not spawn ad-hoc background agents for work that requires coordination — `SendMessage` only works within a Team, and isolated agents cannot see sibling file claims or type creations.
+
 ### Release Process
 
 When releasing a new version:

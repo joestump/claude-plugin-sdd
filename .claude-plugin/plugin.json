@@ -1,6 +1,6 @@
 {
   "name": "design",
-  "version": "2.0.2",
+  "version": "3.0.0",
   "description": "Architecture governance: ADRs, specifications, sprint planning, parallel implementation, code review, and documentation generation.",
   "author": {
     "name": "Joe Stump",
