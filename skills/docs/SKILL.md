@@ -31,6 +31,28 @@ Supports two modes:
 
 Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
+
+**Cross-module aggregation**: When in aggregate mode (no `--module`, workspace detected), include all modules' artifacts in the docs site. Organize the sidebar navigation by module:
+
+```
+Architecture/
+├── api/
+│   ├── ADRs/
+│   │   ├── ADR-0001: Choose REST over GraphQL
+│   │   └── ADR-0002: Choose PostgreSQL
+│   └── Specs/
+│       └── SPEC-0001: Web Dashboard
+├── worker/
+│   ├── ADRs/
+│   │   └── ADR-0001: Choose Redis for queues
+│   └── Specs/
+│       └── SPEC-0001: Job Processing
+└── Overview (cross-module index page)
+```
+
+Each module's artifacts are transformed independently and placed under a module-named directory in the docs output. The index page lists all modules with artifact counts. When `--module` is provided, generate docs for that single module only (flat structure, no module subdirectory). When in single-module mode (no workspace), operate normally with the existing flat structure.
+
 ### Step 1: Pre-flight Checks
 
 - Check if Node.js is installed. If not, tell the user: "Node.js is required to run the docs site. Please install it from https://nodejs.org/ and re-run this command." and stop.
@@ -187,3 +209,7 @@ Used by both modes. In scaffold mode, they live at `docs-site/src/components/`. 
 - The manifest `files` object uses project-root-relative paths as keys
 - Checksum format is always `sha256:<hex-digest>` (lowercase hex)
 - When creating a manifest from an existing site (Step 2.3 "Create manifest from current state"), set all files to `managed: true` and use their current checksums as the baseline
+- In workspace aggregate mode, MUST organize docs navigation by module with per-module subdirectories (Governing: ADR-0016, SPEC-0014 REQ "Cross-Module Aggregation")
+- In workspace aggregate mode, MUST generate a cross-module index page listing all modules with artifact counts
+- In workspace aggregate mode, transform scripts run per-module with output directed to module-named subdirectories
+- When `--module` is provided, generate docs for that single module only using flat structure

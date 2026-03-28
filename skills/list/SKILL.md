@@ -16,6 +16,10 @@ List all ADRs and specs in the project with their status, date, and title.
 
 0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
+   <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
+
+   **Cross-module aggregation**: When in aggregate mode (no `--module`, workspace detected), list artifacts from all modules. Add a `Module` column to the output tables with module names in square brackets (e.g., `[api]`). Sort by module name first, then by artifact number. When `--module` is provided, scope to that single module — no module column needed. When in single-module mode (no workspace), operate normally.
+
 1. **Parse filter**: Check `$ARGUMENTS` for a filter keyword:
    - `adr` -- only show ADRs
    - `spec` -- only show specs
@@ -35,6 +39,8 @@ List all ADRs and specs in the project with their status, date, and title.
 
 4. **Present results** as a formatted table:
 
+   **Single-module or `--module` mode:**
+
    ```
    ## Architecture Decisions
 
@@ -48,6 +54,25 @@ List all ADRs and specs in the project with their status, date, and title.
    | ID | Title | Status | Date |
    |----|-------|--------|------|
    | SPEC-0001 | Web Dashboard | approved | 2025-01-20 |
+   ```
+
+   **Workspace aggregate mode:**
+
+   ```
+   ## Architecture Decisions ({N} across {K} modules)
+
+   | Module | ID | Title | Status | Date |
+   |--------|----|-------|--------|------|
+   | [api] | ADR-0001 | Choose REST over GraphQL | accepted | 2025-01-15 |
+   | [api] | ADR-0002 | Choose PostgreSQL | proposed | 2025-02-01 |
+   | [worker] | ADR-0001 | Choose Redis for queues | accepted | 2025-01-20 |
+
+   ## Specifications ({M} across {K} modules)
+
+   | Module | ID | Title | Status | Date |
+   |--------|----|-------|--------|------|
+   | [api] | SPEC-0001 | Web Dashboard | approved | 2025-01-20 |
+   | [worker] | SPEC-0001 | Job Processing | draft | 2025-02-01 |
    ```
 
 5. **Handle empty results**: If no ADRs or specs exist, tell the user:

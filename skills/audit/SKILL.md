@@ -15,6 +15,10 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
 
 0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
+   <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
+
+   **Cross-module aggregation**: When in aggregate mode (no `--module`, workspace detected), iterate over all discovered modules and run the full audit analysis (steps 4–6) per module. Label every finding with its source module in the output tables (add a `Module` column). After per-module analysis, include a **Cross-Module Summary** section that aggregates finding counts per module and highlights any cross-module inconsistencies (e.g., one module's ADR contradicting another module's spec). When `--module` is provided, scope to that single module — no module labels needed. When in single-module mode (no workspace), operate normally.
+
 1. **Parse arguments**: Extract the scope and flags from `$ARGUMENTS`.
    - Scope can be a topic keyword (`security`, `api`, `database`), a directory path (`src/`), or omitted for a full project audit.
    - `--review`: Enable team review mode. Default: off. Mutually exclusive with: `--scrum`.
@@ -148,6 +152,28 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
    3. [INFO] {action}
    ```
 
+   **Workspace aggregate mode** adds these sections to the report:
+
+   - A `Module` column in every findings table (e.g., `| [api] | [CRITICAL] | ... |`)
+   - A **Cross-Module Summary** section after the per-category summary:
+
+   ```
+   ### Cross-Module Summary
+
+   | Module | Critical | Warning | Info | Total |
+   |--------|----------|---------|------|-------|
+   | [api] | N | N | N | N |
+   | [worker] | N | N | N | N |
+   | **Total** | **N** | **N** | **N** | **N** |
+
+   ### Cross-Module Inconsistencies
+   | Severity | Finding | Module A | Module B |
+   |----------|---------|----------|----------|
+   | [CRITICAL] | {description of cross-module contradiction} | [api] ADR-XXXX | [worker] SPEC-XXXX |
+   ```
+
+   If no cross-module inconsistencies are found, omit the "Cross-Module Inconsistencies" table and note: "No cross-module inconsistencies detected."
+
 7. **Add recommended actions** at the end, ordered by severity:
    - For stale artifact findings, suggest `/design:status` to update
    - For coverage gaps suggesting missing ADRs, suggest `/design:adr`
@@ -209,6 +235,8 @@ See the plugin's `references/shared-patterns.md` § "Severity Assignment Rules" 
 - When `--scrum` is set, MUST run the full standard audit analysis first, then the triage ceremony — never skip the standard analysis (Governing: SPEC-0013 REQ "Scrum Flag and Mode Activation")
 - `--scrum` and `--review` are mutually exclusive; `--scrum` takes precedence if both are provided
 - ADRs (`accepted`) and specs (`approved`/`implemented`) are the source of truth — code deviation is presumed wrong unless the Architect explicitly reclassifies a finding as an artifact update (Governing: SPEC-0013 REQ "Source of Truth Principle")
+- In workspace aggregate mode, MUST label every finding with its source module and include a Cross-Module Summary section (Governing: ADR-0016, SPEC-0014 REQ "Cross-Module Aggregation")
+- In workspace aggregate mode, MUST check for cross-module inconsistencies (e.g., conflicting ADR decisions across modules)
 - Themes MUST be grouped by functional area, not by drift category (Governing: SPEC-0013 REQ "Functional Theme Grouping")
 - Engineer B MUST challenge findings with substantive arguments — "this looks intentional" is not acceptable justification; an architecturally-sound reason is required (Governing: SPEC-0013 REQ "Triage Team Composition")
 - MUST/SHALL violations the PO proposes to defer MUST be documented with Engineer B's objection and the PO's written justification in the accepted-for-now list (Governing: SPEC-0013 REQ "Triage Team Composition")

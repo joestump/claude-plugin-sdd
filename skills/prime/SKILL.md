@@ -15,6 +15,10 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
 
 0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
+   <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
+
+   **Cross-module aggregation**: When in aggregate mode (no `--module`, workspace detected), iterate over all discovered modules. For each module, resolve its artifact paths independently. Prefix every artifact reference in the output with the module name in square brackets: `[api] ADR-0001`, `[worker] SPEC-0003`. When `--module` is provided, scope to that single module — no prefix needed. When in single-module mode (no workspace), operate normally without prefixes.
+
 1. **Check if init has been run**: Read `CLAUDE.md` at the project root (or module root if `--module` is set) and check if it contains references to an ADR or spec directory. If CLAUDE.md does not exist or lacks design plugin references, output:
 
    ```
@@ -84,6 +88,34 @@ Primed session with {N} ADRs and {M} specs.
 - List all artifacts: `/design:list`
 ```
 
+### Workspace aggregate mode (`/design:prime` in a multi-module project):
+
+```
+## Architecture Context Loaded
+
+Primed session with {N} ADRs and {M} specs across {K} modules.
+
+### Architecture Decision Records
+
+| Module | ID | Title | Status | Key Decision |
+|--------|----|-------|--------|--------------|
+| [api] | ADR-0001 | {title} | {status} | {one-sentence summary} |
+| [worker] | ADR-0001 | {title} | {status} | {one-sentence summary} |
+
+### Specifications
+
+| Module | ID | Title | Status | Requirements |
+|--------|----|-------|--------|--------------|
+| [api] | SPEC-0001 | {title} | {status} | {N} requirements, {M} scenarios |
+| [worker] | SPEC-0001 | {title} | {status} | {N} requirements, {M} scenarios |
+
+### Quick Reference
+- Check for drift: `/design:check [target]`
+- Check single module: `/design:check --module api [target]`
+- Full audit: `/design:audit [scope]`
+- List all artifacts: `/design:list`
+```
+
 ### With topic filter (`/design:prime {topic}`):
 
 ```
@@ -126,3 +158,7 @@ Primed session with {N} ADRs and {M} specs matching "{topic}".
 - If a section (ADRs or specs) is empty, omit that section's table rather than showing an empty table
 - Sort ADRs by number, sort specs by number
 - The "Key Decision" column should be a single sentence summarizing the decision outcome, not the full text
+- In workspace aggregate mode, MUST prefix each artifact with its module name in square brackets (e.g., `[api] ADR-0001`)
+- In workspace aggregate mode, MUST include the Module column in output tables
+- In workspace aggregate mode, sort by module name first, then by artifact number within each module
+- When `--module` is provided, do NOT prefix artifacts — behave as single-module

@@ -15,6 +15,10 @@ You are performing a fast, focused drift check on a specific target. This skill 
 
 0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
+   <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
+
+   **Cross-module aggregation**: When in aggregate mode (no `--module`, workspace detected), check all modules and group findings by module in the output. Add a `Module` column to the findings table and organize findings under per-module subheadings. When `--module` is provided, check only that module — no module labels needed. When in single-module mode (no workspace), operate normally.
+
 1. **Parse the target**: Extract the target from `$ARGUMENTS`.
    - A file path: `src/auth/login.ts`
    - A directory path: `src/auth/`
@@ -159,6 +163,35 @@ You are performing a fast, focused drift check on a specific target. This skill 
    All implementation in {target} aligns with governing ADRs and specs.
    ```
 
+12. **Workspace aggregate output**: When in aggregate mode, use per-module grouping:
+
+   ```
+   ## Drift Check: {target}
+
+   Checked {N} ADRs and {M} specs across {K} modules against {target}. Found {X} findings.
+
+   ### [api] Findings
+
+   | Severity | Category | Finding | Source | Location |
+   |----------|----------|---------|--------|----------|
+   | [CRITICAL] | Code vs. Spec | {description} | SPEC-XXXX | services/api/src/file.ts:NN |
+
+   ### [worker] Findings
+
+   | Severity | Category | Finding | Source | Location |
+   |----------|----------|---------|--------|----------|
+   | [WARNING] | Code vs. ADR | {description} | ADR-XXXX | services/worker/src/file.ts:NN |
+
+   ### Summary
+   | Module | Critical | Warning | Info | Total |
+   |--------|----------|---------|------|-------|
+   | [api] | N | N | N | N |
+   | [worker] | N | N | N | N |
+   | **Total** | **N** | **N** | **N** | **N** |
+   ```
+
+   If a module has no findings, omit its section and show "No drift detected" in the summary row.
+
 ## Severity Assignment Rules
 
 - A finding that contradicts a MUST, SHALL, or MUST NOT requirement is always `[CRITICAL]`
@@ -178,3 +211,6 @@ You are performing a fast, focused drift check on a specific target. This skill 
 - Include file paths with line numbers in the Location column when possible (e.g., `src/auth/login.ts:45`).
 - Use `##` for the top-level heading (report title) and `###` for sections within the report.
 - When the target is a single file, the Category column may be omitted from the findings table if all findings are in the same category.
+- In workspace aggregate mode, MUST group findings by module under per-module subheadings (Governing: ADR-0016, SPEC-0014 REQ "Cross-Module Aggregation")
+- In workspace aggregate mode, MUST include a per-module summary table
+- When `--module` is provided, check only that module — do not scan other modules
