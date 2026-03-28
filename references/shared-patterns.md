@@ -4,13 +4,81 @@
 
 Patterns used across multiple design plugin skills. Skills reference specific sections by heading instead of duplicating the content.
 
+## Artifact Path Resolution
+
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+Canonical algorithm for resolving the paths to ADR and spec directories. All skills that access ADRs or specs MUST use this pattern instead of hardcoding `docs/adrs/` or `docs/openspec/specs/`.
+
+### Step 1: Determine the Module Root
+
+- If a `--module <name>` flag is provided, locate the module root. Read the project-root `CLAUDE.md` for a `### Modules` section listing module names and their root directories. If the module name is not found, error: "Unknown module `{name}`. Available modules: {list of names from CLAUDE.md}."
+- If `--module` is NOT provided and the project has a `### Modules` section in the root `CLAUDE.md`, the skill is operating in **aggregate mode** — it should iterate over all modules (and the project root, if it has its own artifacts).
+- If no `### Modules` section exists, the project is a **single-module project** — the module root is the project root.
+
+### Step 2: Read Artifact Location Declarations
+
+Read the module's `CLAUDE.md` (or the root `CLAUDE.md` for single-module projects) and look for artifact location declarations in the `## Architecture Context` section:
+
+- `- Architecture Decision Records are in {path}` → use `{path}` as the ADR directory
+- `- Specifications are in {path}` → use `{path}` as the spec directory
+
+Paths are relative to the module root (or project root for single-module projects).
+
+### Step 3: Apply Defaults
+
+If the `CLAUDE.md` does not declare a path for ADRs or specs, fall back to these defaults:
+
+- **ADR directory**: `docs/adrs/`
+- **Spec directory**: `docs/openspec/specs/`
+
+### Step 4: Resolve Absolute Paths
+
+Resolve the artifact paths relative to the module root:
+
+- Single-module or `--module` provided: `{module-root}/{artifact-path}`
+- Aggregate mode (no `--module`, workspace with modules): resolve paths per-module and combine results
+
+### CLAUDE.md Modules Section Format
+
+Projects that use workspace mode declare modules in the root `CLAUDE.md`:
+
+```markdown
+### Modules
+
+| Module | Root | Description |
+|--------|------|-------------|
+| api | services/api | REST API service |
+| web | services/web | Web frontend |
+| shared | packages/shared | Shared library |
+```
+
+Each module MAY have its own `CLAUDE.md` at its root with an `## Architecture Context` section declaring module-specific artifact paths. Module-level paths override root-level defaults.
+
+### Examples
+
+**Single-module project** (no `### Modules` section):
+- ADR path: `docs/adrs/` (from CLAUDE.md or default)
+- Spec path: `docs/openspec/specs/` (from CLAUDE.md or default)
+
+**Workspace with `--module api`**:
+- Module root: `services/api/` (from `### Modules` table)
+- Read `services/api/CLAUDE.md` for declarations
+- ADR path: `services/api/docs/adrs/` (or module-declared path)
+- Spec path: `services/api/docs/openspec/specs/` (or module-declared path)
+
+**Workspace aggregate mode** (no `--module`):
+- Iterate each module from `### Modules` table
+- Resolve paths per-module
+- Combine all ADRs and specs across modules, prefixing output with module name for disambiguation
+
 ## Spec Resolution
 
-Resolve a spec identifier to a file path:
+Resolve a spec identifier to a file path. Use the resolved spec directory from the **Artifact Path Resolution** pattern above (referred to as `{spec-dir}` below).
 
-- If a SPEC number is provided (e.g., `SPEC-0003`), find the matching spec directory by scanning `docs/openspec/specs/*/spec.md` for the SPEC number in the title.
-- If a capability directory name is provided (e.g., `web-dashboard`), look for `docs/openspec/specs/{name}/spec.md`.
-- If no spec identifier is provided (ignoring flags), list available specs by globbing `docs/openspec/specs/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to use.
+- If a SPEC number is provided (e.g., `SPEC-0003`), find the matching spec directory by scanning `{spec-dir}/*/spec.md` for the SPEC number in the title.
+- If a capability directory name is provided (e.g., `web-dashboard`), look for `{spec-dir}/{name}/spec.md`.
+- If no spec identifier is provided (ignoring flags), list available specs by globbing `{spec-dir}/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to use.
 - If the spec doesn't exist, tell the user and suggest `/design:spec` to create one.
 
 ## Config Resolution

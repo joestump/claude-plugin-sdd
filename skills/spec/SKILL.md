@@ -2,7 +2,7 @@
 name: spec
 description: Create a specification with requirements, scenarios, and design rationale. Use when the user wants to write a spec, formalize requirements, convert an ADR to a specification, or says "create a spec".
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion
-argument-hint: [capability name or ADR reference] [--review]
+argument-hint: [capability name or ADR reference] [--review] [--module <name>]
 ---
 
 # Create an OpenSpec Specification
@@ -15,11 +15,15 @@ You are creating or updating an OpenSpec specification. Every spec is a **paired
 
 ## Process
 
-1. **Determine the capability name**: Use kebab-case (e.g., `web-dashboard`, `webhook-trigger`). If converting from an ADR, derive from the ADR title. If `$ARGUMENTS` is empty (ignoring flags like `--review`), use `AskUserQuestion` to ask the user what capability they want to specify.
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-2. **Check for existing directory**: If `docs/openspec/specs/{capability-name}/` already exists, use `AskUserQuestion` to ask whether to update the existing spec or choose a different name. If updating: read both the existing `spec.md` and `design.md` before making changes, then update both files maintaining alignment between them.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is referred to as `{spec-dir}` below.
 
-3. **Determine the next SPEC number**: Scan `docs/openspec/specs/` for existing spec.md files, find the highest SPEC number used, and increment. SPEC numbers are formatted as `SPEC-XXXX` (e.g., SPEC-0001). Start at SPEC-0001 if none exist. **IMPORTANT**: The prefix is `SPEC-`, NOT `RFC-`. Do not confuse spec numbering with RFC 2119 (which is a language standard for requirements keywords).
+1. **Determine the capability name**: Use kebab-case (e.g., `web-dashboard`, `webhook-trigger`). If converting from an ADR, derive from the ADR title. If `$ARGUMENTS` is empty (ignoring flags like `--review` and `--module`), use `AskUserQuestion` to ask the user what capability they want to specify.
+
+2. **Check for existing directory**: If `{spec-dir}/{capability-name}/` already exists, use `AskUserQuestion` to ask whether to update the existing spec or choose a different name. If updating: read both the existing `spec.md` and `design.md` before making changes, then update both files maintaining alignment between them.
+
+3. **Determine the next SPEC number**: Scan `{spec-dir}` for existing spec.md files, find the highest SPEC number used, and increment. SPEC numbers are formatted as `SPEC-XXXX` (e.g., SPEC-0001). Start at SPEC-0001 if none exist. **IMPORTANT**: The prefix is `SPEC-`, NOT `RFC-`. Do not confuse spec numbering with RFC 2119 (which is a language standard for requirements keywords).
 
 4. **Choose drafting mode**: Check if `$ARGUMENTS` contains `--review`.
 
@@ -35,8 +39,8 @@ You are creating or updating an OpenSpec specification. Every spec is a **paired
      - If `TeamCreate` fails, fall back to single-agent mode: draft both files directly, then self-review against the architect's checklist in the Rules section before writing.
 
 5. **Write both files**:
-   - `docs/openspec/specs/{capability-name}/spec.md`
-   - `docs/openspec/specs/{capability-name}/design.md`
+   - `{spec-dir}/{capability-name}/spec.md`
+   - `{spec-dir}/{capability-name}/design.md`
 
 6. **Clean up** the team when done (if `--review` was used).
 
@@ -44,11 +48,11 @@ You are creating or updating an OpenSpec specification. Every spec is a **paired
 
 8. **Suggest sprint planning**: After the spec is written, suggest: "To break this spec into trackable issues, run `/design:plan SPEC-XXXX`."
 
-9. **CLAUDE.md integration**: Check if this is the first spec (i.e., `docs/openspec/specs/` was just created or contains only this new directory). If so:
-   - Check if a `CLAUDE.md` exists in the project root
-   - If it exists, check if it already references `docs/openspec/specs/`
+9. **CLAUDE.md integration**: Check if this is the first spec (i.e., `{spec-dir}` was just created or contains only this new directory). If so:
+   - Check if a `CLAUDE.md` exists at the module root (or project root for single-module projects)
+   - If it exists, check if it already references the spec directory
    - If no reference exists, ask the user: "I can add an Architecture Context section to your CLAUDE.md so future sessions know about your specs. Shall I?"
-   - If the user says yes, append an `## Architecture Context` section with `- Specifications are in docs/openspec/specs/`
+   - If the user says yes, append an `## Architecture Context` section with `- Specifications are in {spec-dir}`
    - If `CLAUDE.md` doesn't exist, suggest creating one
 
 ### Team Handoff Protocol (only for `--review` mode)

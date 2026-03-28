@@ -2,13 +2,13 @@
 name: docs
 description: Generate a documentation site from your ADRs and specs. Use when the user says "generate docs", "create a docs site", or wants to publish their architecture decisions.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion
-argument-hint: [project name or options]
+argument-hint: [project name or options] [--module <name>]
 context: fork
 ---
 
 # Generate Docusaurus Documentation Site
 
-Transform ADRs from `docs/adrs/` and OpenSpec specs from `docs/openspec/specs/` into a polished documentation website with:
+Transform ADRs and OpenSpec specs (located via the **Artifact Path Resolution** pattern from `references/shared-patterns.md`) into a polished documentation website with:
 
 - RFC 2119 keyword highlighting (MUST, SHALL, MAY, etc.)
 - ADR cross-reference linking (ADR-0001 becomes a clickable link)
@@ -25,11 +25,17 @@ Supports two modes:
 
 ## Process
 
+### Step 0: Resolve Artifact Paths
+
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+
 ### Step 1: Pre-flight Checks
 
 - Check if Node.js is installed. If not, tell the user: "Node.js is required to run the docs site. Please install it from https://nodejs.org/ and re-run this command." and stop.
-- Check if `docs/adrs/` has any ADR `.md` files
-- Check if `docs/openspec/specs/` has any spec directories (containing `spec.md`)
+- Check if `{adr-dir}` has any ADR `.md` files
+- Check if `{spec-dir}` has any spec directories (containing `spec.md`)
 - If NEITHER has content, tell the user: "No ADRs or specs found. Create some first with `/design:adr` or `/design:spec`, then re-run `/design:docs`." and stop.
 - If only one has content, proceed but note which is empty (e.g., "No specs found yet -- the docs site will only include ADRs for now.")
 

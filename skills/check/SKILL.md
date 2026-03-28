@@ -2,7 +2,7 @@
 name: check
 description: Quick-check code against ADRs and specs for drift. Use when the user says "check for drift", "does this match the spec", or wants a fast alignment check on a specific file or directory.
 allowed-tools: Read, Glob, Grep
-argument-hint: [target]
+argument-hint: [target] [--module <name>]
 ---
 
 # Quick Drift Check
@@ -10,6 +10,10 @@ argument-hint: [target]
 You are performing a fast, focused drift check on a specific target. This skill detects whether code aligns with its governing ADRs and specs.
 
 ## Process
+
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
 1. **Parse the target**: Extract the target from `$ARGUMENTS`.
    - A file path: `src/auth/login.ts`
@@ -20,12 +24,12 @@ You are performing a fast, focused drift check on a specific target. This skill 
 
 2. **Validate the target exists**:
    - For file/directory targets: verify the path exists. If not, report: "Target not found: `{target}`. Provide a valid file path, directory, ADR reference (ADR-XXXX), or SPEC reference (SPEC-XXXX)."
-   - For ADR references: glob `docs/adrs/ADR-{number}-*.md`. If not found, report: "ADR-{XXXX} not found in docs/adrs/. Run `/design:list adr` to see available ADRs."
-   - For SPEC references: glob `docs/openspec/specs/*/spec.md` and search for the matching SPEC number. If not found, report: "SPEC-{XXXX} not found in docs/openspec/specs/. Run `/design:list spec` to see available specs."
+   - For ADR references: glob `{adr-dir}/ADR-{number}-*.md`. If not found, report: "ADR-{XXXX} not found in `{adr-dir}`. Run `/design:list adr` to see available ADRs."
+   - For SPEC references: glob `{spec-dir}/*/spec.md` and search for the matching SPEC number. If not found, report: "SPEC-{XXXX} not found in `{spec-dir}`. Run `/design:list spec` to see available specs."
 
 3. **Locate design artifacts**:
-   - Scan `docs/adrs/` for ADR files. If the directory does not exist, report: "The docs/adrs/ directory does not exist. Run `/design:adr [description]` to create your first ADR."
-   - Scan `docs/openspec/specs/` for spec files. If the directory does not exist, report: "The docs/openspec/specs/ directory does not exist. Run `/design:spec [capability]` to create your first spec."
+   - Scan `{adr-dir}` for ADR files. If the directory does not exist, report: "The `{adr-dir}` directory does not exist. Run `/design:adr [description]` to create your first ADR."
+   - Scan `{spec-dir}` for spec files. If the directory does not exist, report: "The `{spec-dir}` directory does not exist. Run `/design:spec [capability]` to create your first spec."
    - If neither ADRs nor specs exist, report: "No design artifacts found. Create an ADR with `/design:adr` or a spec with `/design:spec` first."
    - It is valid for only ADRs or only specs to exist -- proceed with whatever is available.
 
@@ -34,7 +38,7 @@ You are performing a fast, focused drift check on a specific target. This skill 
    - If the target is an ADR: read the ADR, find related specs and code files that should implement the decision.
    - If the target is a SPEC: read the spec, find related ADRs and code files that should implement the requirements.
 
-5. **Validate spec artifact pairing**: For each spec directory found under `docs/openspec/specs/`, check that both `spec.md` and `design.md` exist. If a `spec.md` exists without a corresponding `design.md` (or vice versa), report as `[WARNING]` under "Code vs. Spec" with finding: "Unpaired spec artifact: {path} exists but {missing-file} is missing. Per ADR-0003, spec.md and design.md are a paired unit." (Governing: ADR-0003, SPEC-0003)
+5. **Validate spec artifact pairing**: For each spec directory found under `{spec-dir}`, check that both `spec.md` and `design.md` exist. If a `spec.md` exists without a corresponding `design.md` (or vice versa), report as `[WARNING]` under "Code vs. Spec" with finding: "Unpaired spec artifact: {path} exists but {missing-file} is missing. Per ADR-0003, spec.md and design.md are a paired unit." (Governing: ADR-0003, SPEC-0003)
 
 6. **Analyze for drift** across three categories:
 

@@ -2,7 +2,7 @@
 name: enrich
 description: Retroactively add branch naming and PR convention sections to existing issue bodies. Use when the user says "add branch names to issues", "enrich issues", or wants to add developer workflow conventions to existing issues.
 allowed-tools: Read, Glob, Grep, Bash, Write, Edit, ToolSearch, AskUserQuestion
-argument-hint: [SPEC-XXXX or spec-name] [--branch-prefix <prefix>] [--dry-run]
+argument-hint: [SPEC-XXXX or spec-name] [--branch-prefix <prefix>] [--dry-run] [--module <name>]
 ---
 
 <!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
@@ -13,16 +13,20 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
 
 ## Process
 
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
+
 1. **Parse arguments**: Extract from `$ARGUMENTS`:
    - Spec identifier: a SPEC number (e.g., `SPEC-0007`) or capability directory name
    - `--branch-prefix <prefix>`: Custom branch prefix instead of the default `feature`/`epic` prefixes
    - `--dry-run`: Preview what would be added without modifying any issues
 
-   If no spec identifier is provided, list available specs by globbing `docs/openspec/specs/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to enrich.
+   If no spec identifier is provided, list available specs by globbing `{spec-dir}/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to enrich.
 
-2. **Resolve spec**: Follow the plugin's `references/shared-patterns.md` § "Spec Resolution".
+2. **Resolve spec**: Follow the plugin's `references/shared-patterns.md` § "Spec Resolution" (which uses `{spec-dir}` from the Artifact Path Resolution pattern).
 
-3. **Read spec**: Read `docs/openspec/specs/{capability-name}/spec.md` to get the spec number and understand the requirements.
+3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` to get the spec number and understand the requirements.
 
 4. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`. If no tracker is found, error — enrichment requires a tracker.
 

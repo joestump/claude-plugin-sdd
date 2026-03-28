@@ -4,7 +4,7 @@
 name: plan
 description: Break an existing spec into trackable issues in your issue tracker. Use when the user says "plan a sprint", "create issues from spec", "break down the spec", or wants to turn requirements into tasks.
 allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Task, AskUserQuestion, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, ToolSearch
-argument-hint: [spec-name or SPEC-XXXX] [--review] [--scrum] [--project <name>] [--no-projects] [--branch-prefix <prefix>] [--no-branches]
+argument-hint: [spec-name or SPEC-XXXX] [--review] [--scrum] [--project <name>] [--no-projects] [--branch-prefix <prefix>] [--no-branches] [--module <name>]
 ---
 
 <!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
@@ -15,9 +15,13 @@ You are breaking down an existing specification into trackable work items (epics
 
 ## Process
 
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+
 1. **Identify the target spec and parse flags**: Parse `$ARGUMENTS`.
 
-   **Spec resolution:** Follow the standard flow in the plugin's `references/shared-patterns.md` § "Spec Resolution".
+   **Spec resolution:** Follow the standard flow in the plugin's `references/shared-patterns.md` § "Spec Resolution" (which uses `{spec-dir}` from the Artifact Path Resolution pattern).
 
    **Flag parsing:**
    - `--scrum`: Enable scrum ceremony mode (see Scrum Mode section below). When set, the skill runs a full team-groomed planning ceremony: spec completeness audit → issue decomposition → multi-agent grooming → organize → enrich → sprint report. Mutually exclusive with `--review`; if both are set, `--scrum` takes precedence.
@@ -26,12 +30,13 @@ You are breaking down an existing specification into trackable work items (epics
    - `--no-projects`: Skip project creation entirely. Mutually exclusive with `--project`.
    - `--branch-prefix <prefix>`: Custom branch prefix instead of the default `feature`/`epic` prefixes.
    - `--no-branches`: Omit `### Branch` and `### PR Convention` sections from issue bodies.
+   - `--module <name>`: Resolve artifact paths relative to the named module (see step 0).
 
    If both `--project` and `--no-projects` are provided, warn the user and use `--no-projects`.
 
    **If `--scrum` is set, skip to the Scrum Mode section after completing step 1. Do not proceed through steps 2–8 in sequence — scrum mode orchestrates them internally.**
 
-2. **Read the spec**: Read both `docs/openspec/specs/{capability-name}/spec.md` and `docs/openspec/specs/{capability-name}/design.md` to understand the full scope of requirements, scenarios, and architecture.
+2. **Read the spec**: Read both `{spec-dir}/{capability-name}/spec.md` and `{spec-dir}/{capability-name}/design.md` to understand the full scope of requirements, scenarios, and architecture.
 
 3. **Choose drafting mode**: Check if `$ARGUMENTS` contains `--review`.
 
@@ -63,9 +68,9 @@ Tell the user: "Starting scrum ceremony. This will audit spec completeness, deco
 
 Before spawning the grooming team, audit every spec referenced by any in-scope issue:
 
-1. For each referenced spec, check if `docs/openspec/specs/{name}/design.md` exists alongside `spec.md`.
+1. For each referenced spec, check if `{spec-dir}/{name}/design.md` exists alongside `spec.md`.
 2. If `design.md` is **missing**, generate a draft `design.md` co-located with `spec.md`. Use the design.md template from `/design:spec`. Set frontmatter `status: draft`. Log: "Generated draft design.md for {spec-name}."
-3. If a tracker issue has **no backing spec**, generate both `docs/openspec/specs/{issue-slug}/spec.md` and `design.md` as drafts (status: draft), deriving the capability name from the issue title. Log: "Generated draft spec proposal for issue #{n}: {title}."
+3. If a tracker issue has **no backing spec**, generate both `{spec-dir}/{issue-slug}/spec.md` and `design.md` as drafts (status: draft), deriving the capability name from the issue title. Log: "Generated draft spec proposal for issue #{n}: {title}."
 4. After all drafts are generated, report the audit results: pass count, missing design.md count, unspec'd issue count, and file paths of generated drafts.
 
 ### Phase 3: Issue Decomposition
@@ -311,8 +316,8 @@ Ordered for implementation (dependencies respected):
       ```markdown
       # {Capability Title}
       ## Spec
-      - [spec.md](docs/openspec/specs/{name}/spec.md)
-      - [design.md](docs/openspec/specs/{name}/design.md)
+      - [spec.md]({spec-dir}/{name}/spec.md)
+      - [design.md]({spec-dir}/{name}/design.md)
       ## Governing ADRs
       - ADR-XXXX: {title}
       ## Key Files
@@ -338,7 +343,7 @@ Ordered for implementation (dependencies respected):
 
 6. **Fallback: Generate `tasks.md`** (when no tracker is available). Governing: SPEC-0006, ADR-0007.
 
-   Write `docs/openspec/specs/{capability-name}/tasks.md` co-located with spec.md and design.md. MUST NOT generate `tasks.md` when a tracker is available — tasks live in the tracker OR in `tasks.md`, never both.
+   Write `{spec-dir}/{capability-name}/tasks.md` co-located with spec.md and design.md. MUST NOT generate `tasks.md` when a tracker is available — tasks live in the tracker OR in `tasks.md`, never both.
 
    **Template format:**
    ```markdown

@@ -2,7 +2,7 @@
 name: review
 description: Review and merge PRs produced by /design:work using reviewer-responder agent pairs. Use when the user says "review PRs", "review the spec PRs", or wants automated spec-aware code review.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion, ToolSearch
-argument-hint: [SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run]
+argument-hint: [SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run] [--module <name>]
 ---
 
 <!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
@@ -13,12 +13,16 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
 
 ## Process
 
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
+
 1. **Parse arguments**: Parse `$ARGUMENTS`.
 
    **Target resolution:**
    - If a SPEC number is provided (e.g., `SPEC-0003`), find all open PRs whose branch names match the spec's issue branch patterns or whose bodies reference the spec number.
    - If PR numbers are provided (e.g., `101 102 105`), fetch exactly those PRs.
-   - If `$ARGUMENTS` is empty (ignoring flags), list available specs by globbing `docs/openspec/specs/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec's PRs to review.
+   - If `$ARGUMENTS` is empty (ignoring flags), list available specs by globbing `{spec-dir}/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec's PRs to review.
 
    **Flag parsing:**
    - `--pairs N`: Number of reviewer-responder pairs (default 2). Read CLAUDE.md `Review > Max Pairs` as fallback default.

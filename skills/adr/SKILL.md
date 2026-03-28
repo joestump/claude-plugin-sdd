@@ -2,7 +2,7 @@
 name: adr
 description: Create a new Architecture Decision Record (ADR) using MADR format. Use when the user wants to document an architectural decision, says "create an ADR", "we need an ADR for", or discusses a decision that should be recorded.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion
-argument-hint: [short description of the decision] [--review]
+argument-hint: [short description of the decision] [--review] [--module <name>]
 ---
 
 # Create an Architecture Decision Record (ADR)
@@ -11,7 +11,11 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
 ## Process
 
-1. **Determine the next ADR number**: Scan `docs/adrs/` for existing `ADR-XXXX-*.md` files and increment to the next number. Start at ADR-0001 if none exist. Create `docs/adrs/` if it does not exist. If `$ARGUMENTS` is empty (ignoring flags like `--review`), use `AskUserQuestion` to ask the user what decision they want to document.
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved ADR directory is referred to as `{adr-dir}` below.
+
+1. **Determine the next ADR number**: Scan `{adr-dir}` for existing `ADR-XXXX-*.md` files and increment to the next number. Start at ADR-0001 if none exist. Create `{adr-dir}` if it does not exist. If `$ARGUMENTS` is empty (ignoring flags like `--review` and `--module`), use `AskUserQuestion` to ask the user what decision they want to document.
 
 2. **Choose drafting mode**: Check if `$ARGUMENTS` contains `--review`.
 
@@ -26,7 +30,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
      - The drafter should research the codebase (read relevant files, understand the current architecture) before writing
      - If `TeamCreate` fails, fall back to single-agent mode: draft the ADR directly, then self-review against the architect's checklist in the Rules section before writing.
 
-3. **Write the ADR** to `docs/adrs/ADR-XXXX-short-title.md`
+3. **Write the ADR** to `{adr-dir}/ADR-XXXX-short-title.md`
 
 4. **Clean up** the team when done (if `--review` was used).
 
@@ -36,11 +40,11 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
    - "To formalize requirements from this decision, run: `/design:spec {suggested capability name}`"
    - "The spec skill can also break requirements into trackable issues (Beads, GitHub, or Gitea) for sprint planning."
 
-7. **CLAUDE.md integration**: Check if this is the first ADR (i.e., `docs/adrs/` was just created or contains only this new file). If so:
-   - Check if a `CLAUDE.md` exists in the project root
-   - If it exists, check if it already references `docs/adrs/`
+7. **CLAUDE.md integration**: Check if this is the first ADR (i.e., `{adr-dir}` was just created or contains only this new file). If so:
+   - Check if a `CLAUDE.md` exists at the module root (or project root for single-module projects)
+   - If it exists, check if it already references the ADR directory
    - If no reference exists, ask the user: "I can add an Architecture Context section to your CLAUDE.md so future sessions know about your decisions. Shall I?"
-   - If the user says yes, append an `## Architecture Context` section with `- Architecture Decision Records are in docs/adrs/`
+   - If the user says yes, append an `## Architecture Context` section with `- Architecture Decision Records are in {adr-dir}`
    - If `CLAUDE.md` doesn't exist, suggest creating one
 
 ### Team Handoff Protocol (only for `--review` mode)

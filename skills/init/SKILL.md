@@ -2,7 +2,7 @@
 name: init
 description: Set up CLAUDE.md with design plugin references for architecture-aware sessions. Use when the user installs the plugin, says "initialize design", or wants to configure CLAUDE.md for the design plugin.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
-argument-hint:
+argument-hint: [--module <name>]
 ---
 
 <!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Migration from JSON to CLAUDE.md" -->
@@ -12,6 +12,10 @@ argument-hint:
 Set up the project's `CLAUDE.md` with architecture context so Claude sessions are design-aware.
 
 ## Process
+
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+**Module support**: If `$ARGUMENTS` contains `--module <name>`, resolve the module root by reading the `### Modules` section from the project-root `CLAUDE.md`. All CLAUDE.md reads and writes in the steps below target the module's `CLAUDE.md` at the module root instead of the project root. If the project has no `### Modules` section and `--module` is provided, error: "No modules defined in CLAUDE.md. Run `/design:init` without `--module` first, then add a `### Modules` section."
 
 0. **Check for `.claude-plugin-design.json` migration** (Governing: SPEC-0014 REQ "Migration from JSON to CLAUDE.md"):
 

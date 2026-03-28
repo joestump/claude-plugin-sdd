@@ -2,7 +2,7 @@
 name: audit
 description: Comprehensive audit of design artifact alignment across the project. Use when the user says "audit the architecture", "full drift report", or wants a thorough review of spec compliance and ADR adherence.
 allowed-tools: Read, Glob, Grep, Task, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion
-argument-hint: [scope] [--review] [--scrum]
+argument-hint: [scope] [--review] [--scrum] [--module <name>]
 ---
 
 # Comprehensive Design Audit
@@ -11,14 +11,18 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
 
 ## Process
 
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+
 1. **Parse arguments**: Extract the scope and flags from `$ARGUMENTS`.
    - Scope can be a topic keyword (`security`, `api`, `database`), a directory path (`src/`), or omitted for a full project audit.
    - Check for the `--review` flag.
    - If scope matches nothing, report: "No design artifacts or source files matched the scope \"{scope}\". Try a broader scope, or run `/design:audit` without a scope for a full project audit."
 
 2. **Locate design artifacts**:
-   - Scan `docs/adrs/` for ADR files. If the directory does not exist, report: "The docs/adrs/ directory does not exist. Run `/design:adr [description]` to create your first ADR."
-   - Scan `docs/openspec/specs/` for spec files. If the directory does not exist, report: "The docs/openspec/specs/ directory does not exist. Run `/design:spec [capability]` to create your first spec."
+   - Scan `{adr-dir}` for ADR files. If the directory does not exist, report: "The `{adr-dir}` directory does not exist. Run `/design:adr [description]` to create your first ADR."
+   - Scan `{spec-dir}` for spec files. If the directory does not exist, report: "The `{spec-dir}` directory does not exist. Run `/design:spec [capability]` to create your first spec."
    - If neither ADRs nor specs exist, report: "No design artifacts found. Create an ADR with `/design:adr` or a spec with `/design:spec` first."
    - It is valid for only ADRs or only specs to exist -- proceed with whatever is available and note which categories cannot be checked.
 
@@ -38,7 +42,7 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
 
    **With `--scrum`**: Scrum triage mode — see the **Scrum Triage Ceremony** section below. When `--scrum` is set, complete the standard audit analysis (steps 4–6) first, then enter the ceremony. Do NOT run `--review` mode when `--scrum` is set.
 
-4. **Validate spec artifact pairing**: For each spec directory found under `docs/openspec/specs/`, check that both `spec.md` and `design.md` exist. If a `spec.md` exists without a corresponding `design.md` (or vice versa), report as `[WARNING]` under "Stale Artifacts" with finding: "Unpaired spec artifact: {path} exists but {missing-file} is missing. Per ADR-0003, spec.md and design.md are a paired unit." (Governing: ADR-0003, SPEC-0003)
+4. **Validate spec artifact pairing**: For each spec directory found under `{spec-dir}`, check that both `spec.md` and `design.md` exist. If a `spec.md` exists without a corresponding `design.md` (or vice versa), report as `[WARNING]` under "Stale Artifacts" with finding: "Unpaired spec artifact: {path} exists but {missing-file} is missing. Per ADR-0003, spec.md and design.md are a paired unit." (Governing: ADR-0003, SPEC-0003)
 
 5. **Analyze across all six categories**:
 
@@ -120,7 +124,7 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
 
    | Severity | Finding | Source | Location |
    |----------|---------|--------|----------|
-   | [INFO] | {description} | SPEC-XXXX | docs/openspec/specs/path/spec.md |
+   | [INFO] | {description} | SPEC-XXXX | {spec-dir}/path/spec.md |
 
    ---
 

@@ -2,7 +2,7 @@
 name: prime
 description: Load ADR and spec context into the session for architecture-aware responses. Use when the user says "prime context", "load architecture", starts a new session, or wants Claude to know about existing decisions.
 allowed-tools: Read, Glob, Grep
-argument-hint: [topic]
+argument-hint: [topic] [--module <name>]
 ---
 
 # Prime Architecture Context
@@ -11,7 +11,11 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
 
 ## Process
 
-1. **Check if init has been run**: Read `CLAUDE.md` at the project root and check if it contains references to `docs/adrs/` or `docs/openspec/specs/`. If CLAUDE.md does not exist or lacks design plugin references, output:
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+
+1. **Check if init has been run**: Read `CLAUDE.md` at the project root (or module root if `--module` is set) and check if it contains references to an ADR or spec directory. If CLAUDE.md does not exist or lacks design plugin references, output:
 
    ```
    CLAUDE.md does not have design plugin references. Run `/design:init` first to set up your project, then re-run `/design:prime`.
@@ -19,14 +23,14 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
 
    Then stop. Do NOT proceed with scanning.
 
-2. **Scan for ADRs**: Glob for `docs/adrs/ADR-*.md` files. For each file:
+2. **Scan for ADRs**: Glob for `{adr-dir}/ADR-*.md` files (in aggregate mode, glob per-module). For each file:
    - Read the YAML frontmatter to extract `status` and `date`
    - Extract the title from the first `# ` heading
    - Read the `## Context and Problem Statement` section
    - Read the `## Decision Outcome` section to extract the key decision
    - Sort by ADR number
 
-3. **Scan for specs**: Glob for `docs/openspec/specs/*/spec.md` files. For each file:
+3. **Scan for specs**: Glob for `{spec-dir}/*/spec.md` files (in aggregate mode, glob per-module). For each file:
    - Read the YAML frontmatter to extract `status`
    - Extract the title from the first `# ` heading (e.g., `SPEC-0001: Web Dashboard`)
    - Read the `## Overview` section
@@ -46,8 +50,8 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
      ```
 
 5. **Handle edge cases**:
-   - If `docs/adrs/` does not exist: "The docs/adrs/ directory does not exist. Run `/design:adr [description]` to create your first ADR."
-   - If `docs/openspec/specs/` does not exist: "The docs/openspec/specs/ directory does not exist. Run `/design:spec [capability]` to create your first spec."
+   - If `{adr-dir}` does not exist: "The `{adr-dir}` directory does not exist. Run `/design:adr [description]` to create your first ADR."
+   - If `{spec-dir}` does not exist: "The `{spec-dir}` directory does not exist. Run `/design:spec [capability]` to create your first spec."
    - If neither directory has any artifacts: "No design artifacts found. Create an ADR with `/design:adr` or a spec with `/design:spec` first."
    - If ADRs exist but no specs (or vice versa), present whichever exists and note the other is empty
 

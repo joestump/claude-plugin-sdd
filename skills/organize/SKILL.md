@@ -2,7 +2,7 @@
 name: organize
 description: Retroactively group existing issues into tracker-native projects. Use when the user says "organize issues", "group issues into projects", or wants to create project boards for existing sprint issues.
 allowed-tools: Read, Glob, Grep, Bash, Write, Edit, ToolSearch, AskUserQuestion
-argument-hint: [SPEC-XXXX or spec-name] [--project <name>] [--dry-run]
+argument-hint: [SPEC-XXXX or spec-name] [--project <name>] [--dry-run] [--module <name>]
 ---
 
 <!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
@@ -13,16 +13,20 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
 ## Process
 
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
+
 1. **Parse arguments**: Extract from `$ARGUMENTS`:
    - Spec identifier: a SPEC number (e.g., `SPEC-0007`) or capability directory name
    - `--project <name>`: Use a single combined project with this name for all issues
    - `--dry-run`: Preview what would be created without making changes
 
-   If no spec identifier is provided, list available specs by globbing `docs/openspec/specs/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to organize.
+   If no spec identifier is provided, list available specs by globbing `{spec-dir}/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to organize.
 
-2. **Resolve spec**: Follow the plugin's `references/shared-patterns.md` § "Spec Resolution".
+2. **Resolve spec**: Follow the plugin's `references/shared-patterns.md` § "Spec Resolution" (which uses `{spec-dir}` from the Artifact Path Resolution pattern).
 
-3. **Read spec**: Read `docs/openspec/specs/{capability-name}/spec.md` and `design.md` to understand the spec number, requirement names, and architecture.
+3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` and `design.md` to understand the spec number, requirement names, and architecture.
 
 4. **Detect tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Also read `Projects` settings from the `### Design Plugin Configuration` section in CLAUDE.md for cached project IDs and enrichment config (Views, Columns, Iteration Weeks). If no tracker is found, error — projects require a tracker.
 

@@ -2,7 +2,7 @@
 name: discover
 description: Discover implicit architectural decisions and spec-worthy subsystems in an existing codebase. Use when the user says "discover architecture", "what decisions exist in this code", "bootstrap ADRs", or wants to reverse-engineer design artifacts from code.
 allowed-tools: Read, Glob, Grep, Task, AskUserQuestion
-argument-hint: [scope]
+argument-hint: [scope] [--module <name>]
 ---
 
 # Discover Implicit Architecture
@@ -11,17 +11,21 @@ Explore an existing codebase to discover implicit architectural decisions and sp
 
 ## Process
 
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
+
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+
 1. **Parse the scope**: Extract the optional scope from `$ARGUMENTS`.
    - A directory path: `src/auth/` -- limit analysis to that subtree
    - A domain keyword: `auth`, `api`, `data` -- limit by semantic relevance
-   - If `$ARGUMENTS` is empty, analyze the entire project
+   - If `$ARGUMENTS` is empty, analyze the entire project (or module if `--module` is set)
 
 2. **Validate the scope** (if provided):
    - For directory paths: verify the path exists. If not, report: "Scope not found: `{scope}`. Provide a valid directory path or omit the scope to analyze the entire project."
 
 3. **Load existing design artifacts**:
-   - Glob `docs/adrs/ADR-*.md` and read each file's title, context, and decision outcome
-   - Glob `docs/openspec/specs/*/spec.md` and read each file's title and overview
+   - Glob `{adr-dir}/ADR-*.md` and read each file's title, context, and decision outcome
+   - Glob `{spec-dir}/*/spec.md` and read each file's title and overview
    - Build an exclusion list of already-documented decisions and subsystems
    - If neither directory exists, note that no existing artifacts were found (this is expected for first-time discovery)
 
