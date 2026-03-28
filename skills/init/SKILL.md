@@ -9,7 +9,7 @@ argument-hint: [--module <name>]
 
 # Initialize Design Plugin
 
-Set up the project's `CLAUDE.md` with architecture context so Claude sessions are design-aware.
+Set up the project's `CLAUDE.md` with architecture context so Claude sessions are design-aware. This skill uses **componentized convergence** — each component independently checks its own state and converges. No single gate blocks other components. Running init N times produces the same result as running it once.
 
 ## Process
 
@@ -17,184 +17,168 @@ Set up the project's `CLAUDE.md` with architecture context so Claude sessions ar
 
 **Module support**: If `$ARGUMENTS` contains `--module <name>`, resolve the module root using the Workspace Detection pattern from `references/shared-patterns.md`. All CLAUDE.md reads and writes in the steps below target the module's `CLAUDE.md` at the module root instead of the project root. If workspace detection finds no modules and `--module` is provided, error: "No modules detected. Run `/design:init` without `--module` first to set up workspace."
 
-0. **Check for `.claude-plugin-design.json` migration** (Governing: SPEC-0014 REQ "Migration from JSON to CLAUDE.md"):
+### Step 0: Component Status Scan
 
-   Before the main init flow, check for a `.claude-plugin-design.json` file in the project root.
+Before making any changes, read the current state and build a component checklist. This step is purely diagnostic — no mutations.
 
-   **If `.claude-plugin-design.json` exists:**
+**Checks to perform:**
 
-   a. Read the JSON file and parse its contents.
+| Component | Check | Status Values |
+|-----------|-------|---------------|
+| JSON Config | Does `.claude-plugin-design.json` exist in the project root? | `needs-migration` / `absent` |
+| CLAUDE.md | Does `CLAUDE.md` exist at the project root? | `exists` / `missing` |
+| Architecture Context | Does CLAUDE.md contain `## Architecture Context`? | `present` / `missing` |
+| Path References | Does CLAUDE.md contain both `docs/adrs/` and `docs/openspec/specs/`? | `both-present` / `partial` / `missing` |
+| Skills Table | Does the skills table contain ALL skills from the canonical template (`references/claude-md-template.md`)? Compare skill names (the `/design:*` values in the first column). | `up-to-date` / `outdated` / `missing` |
+| Workflow Section | Does the Workflow section contain the same steps as the canonical template? | `up-to-date` / `outdated` / `missing` |
+| Session Coordination | Does CLAUDE.md contain `### Session Coordination`? | `present` / `missing` |
+| Design Plugin Config | Does CLAUDE.md contain `### Design Plugin Configuration`? | `present` / `missing` |
+| Permissions | Does `.claude/settings.local.json` contain broad wildcard patterns for `git` and the detected tracker? (e.g., `Bash(git *)`, `Bash(gh *)`, `mcp__gitea__*`) | `configured` / `needs-update` |
+| Workspace Modules | Does `### Workspace Modules` exist? (only check if `.gitmodules` exists) | `present` / `missing` / `n/a` |
 
-   b. Translate each JSON key-value pair into the equivalent CLAUDE.md markdown format. The translation maps the JSON structure to the `### Design Plugin Configuration` section format defined in `references/shared-patterns.md` § "Config Resolution > CLAUDE.md Configuration Format":
+Display the scan results before proceeding so the user can see what will change.
 
-      - `"tracker"` and `"tracker_config"` → `#### Tracker` subsection with bold-key list items (e.g., `- **Type**: github`, `- **Owner**: myorg`, `- **Repo**: myproject`)
-      - `"branches"` → `#### Branch Conventions` subsection (e.g., `- **Enabled**: true`, `- **Prefix**: feature`, `- **Epic Prefix**: epic`, `- **Slug Max Length**: 50`)
-      - `"pr_conventions"` → `#### PR Conventions` subsection (e.g., `- **Enabled**: true`, `- **Close Keyword**: Closes`, `- **Ref Keyword**: Part of`, `- **Include Spec Reference**: true`)
-      - `"review"` → `#### Review` subsection (e.g., `- **Max Pairs**: 2`, `- **Merge Strategy**: squash`, `- **Auto Cleanup**: false`)
-      - `"worktrees"` → `#### Worktrees` subsection (e.g., `- **Base Dir**: .claude/worktrees/`, `- **Max Agents**: 3`, `- **Auto Cleanup**: false`, `- **PR Mode**: ready`)
-      - `"projects"` → `#### Projects` subsection (e.g., `- **Default Mode**: per-epic`, `- **Views**: All Work, Board, Roadmap`, `- **Columns**: Todo, In Progress, In Review, Done`, `- **Iteration Weeks**: 2`)
-      - Omit keys with `null` values (they will use defaults).
-      - Only generate subsections for JSON keys that are actually present.
+### Step 1: JSON Config Migration
 
-   c. Show the user the generated markdown and ask via `AskUserQuestion`:
-      - "Found existing configuration in `.claude-plugin-design.json`. I've translated it to CLAUDE.md format. Write this configuration to CLAUDE.md?"
-      - Options: "Yes, migrate to CLAUDE.md" / "No, skip migration"
+**Precondition**: JSON Config status is `needs-migration`.
 
-   d. If the user approves:
-      - If CLAUDE.md already has a `### Design Plugin Configuration` section, merge the new values into existing subsections (CLAUDE.md values take precedence on conflicts — do not overwrite existing keys).
-      - If CLAUDE.md does not have the section, it will be added during the main init flow (step 3 below) or appended after existing content.
-      - Write the `### Design Plugin Configuration` section to CLAUDE.md.
+If `.claude-plugin-design.json` does not exist, skip this step entirely.
 
-   e. After successful migration, ask via `AskUserQuestion`:
-      - "Migration complete. Delete `.claude-plugin-design.json`? (The configuration now lives in CLAUDE.md.)"
-      - Options: "Yes, delete the JSON file" / "No, keep it"
-      - If the user approves deletion, delete `.claude-plugin-design.json` using `Bash` (`rm`).
-      - If the user declines, emit a warning: "Warning: Dual config sources exist (`.claude-plugin-design.json` and CLAUDE.md). Skills will read from CLAUDE.md only. Consider removing the JSON file to avoid confusion."
+If `.claude-plugin-design.json` exists:
 
-   **If `.claude-plugin-design.json` does not exist**, skip this step and proceed to step 1.
+1. Read the JSON file and parse its contents.
 
-1. **Check for existing CLAUDE.md**: Look for `CLAUDE.md` in the project root.
+2. Translate each JSON key-value pair into the equivalent CLAUDE.md markdown format. The translation maps the JSON structure to the `### Design Plugin Configuration` section:
 
-2. **If CLAUDE.md exists**:
-   - Read it and check whether it already contains references to `docs/adrs/` AND `docs/openspec/specs/`
-   - If BOTH references are present, report that the plugin is already configured and stop (see Output: Already Configured)
-   - **Check for path mismatches**: If the file contains an `## Architecture Context` section (or similar like `## Architecture`, `## Design Context`) but references different paths than `docs/adrs/` or `docs/openspec/specs/`, use `AskUserQuestion` to ask:
-     - "Your CLAUDE.md has architecture references with different paths. Should I update them to the design plugin's standard paths (`docs/adrs/` for ADRs, `docs/openspec/specs/` for specs)?"
-     - Options: "Yes, update paths" / "No, keep existing paths and add plugin section separately"
-     - If the user says yes, update the existing paths in-place to match the plugin conventions
-     - If the user says no, append the plugin's Architecture Context section below the existing one
-   - If no architecture section exists at all, add the `## Architecture Context` section (see Content section below)
-   - Do NOT duplicate content -- if the section exists but is incomplete, update it rather than appending a second copy
+   - `"tracker"` and `"tracker_config"` → `#### Tracker` subsection with bold-key list items (e.g., `- **Type**: github`, `- **Owner**: myorg`, `- **Repo**: myproject`)
+   - `"branches"` → `#### Branch Conventions` subsection (e.g., `- **Enabled**: true`, `- **Prefix**: feature`, `- **Epic Prefix**: epic`, `- **Slug Max Length**: 50`)
+   - `"pr_conventions"` → `#### PR Conventions` subsection (e.g., `- **Enabled**: true`, `- **Close Keyword**: Closes`, `- **Ref Keyword**: Part of`, `- **Include Spec Reference**: true`)
+   - `"review"` → `#### Review` subsection (e.g., `- **Max Pairs**: 2`, `- **Merge Strategy**: squash`, `- **Auto Cleanup**: false`)
+   - `"worktrees"` → `#### Worktrees` subsection (e.g., `- **Base Dir**: .claude/worktrees/`, `- **Max Agents**: 3`, `- **Auto Cleanup**: false`, `- **PR Mode**: ready`)
+   - `"projects"` → `#### Projects` subsection (e.g., `- **Default Mode**: per-epic`, `- **Views**: All Work, Board, Roadmap`, `- **Columns**: Todo, In Progress, In Review, Done`, `- **Iteration Weeks**: 2`)
+   - Omit keys with `null` values (they will use defaults).
+   - Only generate subsections for JSON keys that are actually present.
 
-3. **If CLAUDE.md does not exist**:
-   - Create a new `CLAUDE.md` at the project root with the `## Architecture Context` section
-   - This is the expected first-run case -- do not treat it as an error
+3. If CLAUDE.md already has a `### Design Plugin Configuration` section, merge the new values into existing subsections (CLAUDE.md values take precedence on conflicts — do not overwrite existing keys). Otherwise, hold the generated markdown to be appended during Step 2.
 
-4. **Permission Auto-Configuration** (Governing: ADR-0015, SPEC-0014):
+4. Write the `### Design Plugin Configuration` section to CLAUDE.md (append at end of `## Architecture Context` section).
 
-   After writing the CLAUDE.md configuration section (including tracker detection), offer to configure `.claude/settings.json` with permission allowlists.
+5. Delete `.claude-plugin-design.json` using `Bash` (`rm`).
 
-   a. **Determine the tracker type** from the CLAUDE.md config section just written (or from the tracker detection that happened during init). If no tracker was detected, only include the base `git` permissions.
+**No AskUserQuestion** — migration is deterministic and lossless. The JSON values are preserved exactly in the markdown format.
 
-   b. **Build the permission allowlist** based on detected tracker:
+### Step 2: CLAUDE.md Template Convergence
 
-      | Tracker | Permissions to Add |
-      |---------|-------------------|
-      | All projects | `Bash(git *)` |
-      | GitHub (gh CLI) | `Bash(gh *)` |
-      | Gitea (MCP) | `mcp__gitea__*` |
-      | GitLab (MCP) | `mcp__gitlab__*` |
-      | GitLab (glab CLI) | `Bash(glab *)` |
-      | GitHub (MCP) | `mcp__github__*` |
+**Precondition**: Always runs. Each sub-check acts independently.
 
-   c. **Show the user** the exact permissions being added via `AskUserQuestion`:
-      > "Configure `.claude/settings.json` with these permission allowlists so that git, tracker, and PR operations don't require manual approval?"
+**If CLAUDE.md does not exist**: Read the canonical template from `references/claude-md-template.md` and create CLAUDE.md with its contents plus any config section generated in Step 1. Done — skip to Step 3.
 
-      Display the permissions as a table. Options: "Yes, configure permissions" / "No, skip"
+**If CLAUDE.md exists**, perform section-level convergence. Each sub-check below runs independently:
 
-   d. **If approved**: Read existing `.claude/settings.json` if it exists. Merge the new permissions into the existing `permissions.allow` array (don't overwrite existing entries). Write the updated file.
+a. **Path references**: If `docs/adrs/` or `docs/openspec/specs/` are missing from the `## Architecture Context` section, add them. If a DIFFERENT path exists (e.g., `docs/decisions/`), use `AskUserQuestion` to resolve — this is a genuine ambiguity that requires user input.
 
-   e. **If declined**: Skip and note in the output that permissions were not configured.
+b. **Skills table**: Read the canonical template's skills table from `references/claude-md-template.md`. For each skill row in the template that is NOT present in the current CLAUDE.md's skills table (match by skill name in the first column, e.g., `/design:review`), insert it at the end of the table. Do NOT remove existing rows — the user may have added custom entries.
 
-5. **Workspace Detection and Setup** (Governing: ADR-0016, SPEC-0014 REQ "Init Workspace Setup"):
+c. **Workflow section**: Compare the current Workflow steps against the canonical template. If steps are missing (e.g., a "Review" step), insert them at the correct position and renumber subsequent steps. Preserve existing step content.
 
-   <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Workspace Detection", SPEC-0014 REQ "Init Workspace Setup" -->
+d. **Session Coordination section**: If `### Session Coordination` heading is missing, append the section from the canonical template after the Workflow section.
 
-   After permissions configuration, detect and set up workspace modules.
+e. **Design Plugin Configuration section**: If Step 1 produced config markdown and no `### Design Plugin Configuration` section exists yet, append it at the end of the `## Architecture Context` section. If the section already exists, Step 1 already handled the merge.
 
-   a. **Check for `.gitmodules`** in the project root.
+**Duplicate prevention**: Before inserting any section, check for the section heading. Before inserting a skills table row, check for the skill name. This makes the step idempotent.
 
-   b. **If `.gitmodules` exists:**
+### Step 3: Permission Auto-Configuration
 
-      - Parse it to extract submodule names and paths (using the algorithm in `references/shared-patterns.md` § "Workspace Detection > Step 1").
-      - Display the discovered submodules to the user:
-        ```
-        Discovered workspace modules from .gitmodules:
-        - service-api (services/api)
-        - service-web (services/web)
-        - shared-lib (packages/shared)
-        ```
+**Precondition**: Permissions status is `needs-update`.
 
-      - For each submodule, check if a `CLAUDE.md` exists at the submodule root:
-        - **If `CLAUDE.md` exists**: Report "Already configured" and skip (unless the user explicitly requests update).
-        - **If `CLAUDE.md` does not exist**: Offer to create it with a minimal `## Architecture Context` section:
-          ```markdown
-          ## Architecture Context
+If `.claude/settings.local.json` already contains broad wildcard patterns for git and the detected tracker, skip this step.
 
-          This module uses the [design plugin](https://github.com/joestump/claude-plugin-design) for architecture governance.
+1. **Determine the tracker type** from the `### Design Plugin Configuration` section in CLAUDE.md (or from the JSON config parsed in Step 1 before migration). If no tracker was detected, only include the base `git` permissions.
 
-          - Architecture Decision Records are in `docs/adrs/`
-          - Specifications are in `docs/openspec/specs/`
-          ```
+2. **Detect available MCP tools** using `ToolSearch` to probe for tools matching `gitea`, `github`, `gitlab`.
 
-      - Ask via `AskUserQuestion`:
-        - "Create CLAUDE.md for {N} unconfigured submodule(s)? ({list of names})"
-        - Options: "Yes, create for all" / "Let me pick" / "No, skip workspace setup"
-        - If "Let me pick": present each submodule individually for yes/no
+3. **Build the canonical permission allowlist**:
 
-      - **Write `### Workspace Modules` table** in the root `CLAUDE.md` (inside the `## Architecture Context` section, after the existing content). List all discovered submodules:
-        ```markdown
-        ### Workspace Modules
+   | Condition | Permission to Add |
+   |-----------|-------------------|
+   | All projects | `Bash(git *)` |
+   | GitHub tracker or `gh` CLI available | `Bash(gh *)` |
+   | Gitea MCP tools detected | `mcp__gitea__*` |
+   | GitLab MCP tools detected | `mcp__gitlab__*` |
+   | GitLab `glab` CLI available | `Bash(glab *)` |
+   | GitHub MCP tools detected | `mcp__github__*` |
 
-        | Module | Root | Description |
-        |--------|------|-------------|
-        | service-api | services/api | |
-        | service-web | services/web | |
-        | shared-lib | packages/shared | |
-        ```
-        If a `### Workspace Modules` table already exists, update it with any newly discovered modules (preserve existing entries and their descriptions, add missing modules).
+4. **Read** existing `.claude/settings.local.json` if it exists. If it doesn't exist, start with `{"permissions": {"allow": []}}`.
 
-   c. **If `.gitmodules` does not exist:**
+5. **Merge** the canonical permissions into the existing `permissions.allow` array. Add any patterns from the canonical list that are not already present. Do NOT remove existing entries — the user may have added project-specific permissions.
 
-      - Check if the root `CLAUDE.md` already has a `### Workspace Modules` section.
-      - If it does: report "Workspace modules already configured (manual)" and skip.
-      - If it does not: skip workspace setup silently (single-module project is the default).
+6. **Write** the updated `.claude/settings.local.json`.
 
-   d. **Order of operations when both `.gitmodules` and `.claude-plugin-design.json` exist**: Migration (step 0) runs first, then workspace setup (this step). This ensures the migrated configuration is in CLAUDE.md before workspace modules are appended.
+**No AskUserQuestion** — these are standard tool permissions for the detected tracker.
 
-5a. **Backend project detection and suggestions** (Governing: ADR-0020, SPEC-0016 REQ "Go Code Quality Guidelines"):
+### Step 4: Workspace Detection and Setup
 
-   After workspace setup, detect the project type from manifests in the project root (or module roots for workspaces):
+<!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Workspace Detection", SPEC-0014 REQ "Init Workspace Setup" -->
 
-   | Manifest | Project Type |
-   |----------|-------------|
-   | `go.mod` | Backend (compiled) |
-   | `package.json` | Backend or Frontend (check for server frameworks) |
-   | `requirements.txt` / `pyproject.toml` / `setup.py` | Backend (interpreted) |
-   | `Cargo.toml` | Backend (compiled) |
-   | `pom.xml` / `build.gradle` | Backend (JVM) |
-   | `Gemfile` | Backend (interpreted) |
-   | `mix.exs` | Backend (compiled) |
-   | `Package.swift` | Backend (compiled) |
-   | `composer.json` | Backend (interpreted) |
+**Precondition**: `.gitmodules` exists in the project root.
 
-   For `package.json`, check `dependencies` for server frameworks (e.g., `express`, `fastify`, `hapi`, `koa`, `nest`, `next` with API routes) to distinguish backend from pure frontend.
+If `.gitmodules` does not exist, skip this step silently (single-module project is the default).
 
-   **For detected backend projects:**
+If `.gitmodules` exists:
 
-   Scan the existing ADRs (if any) for a structured logging decision. If no ADR covers structured logging, suggest:
-   > "This looks like a backend project. Consider creating an ADR for structured logging to establish consistent observability patterns: `/design:adr structured logging approach`"
+a. Parse it to extract submodule names and paths (using the algorithm in `references/shared-patterns.md` § "Workspace Detection > Step 1").
 
-   This suggestion is informational only — do not block init or require user action.
+b. Display the discovered submodules to the user.
 
-6. **Report what happened** using the appropriate output format below.
+c. For each submodule, check if a `CLAUDE.md` exists at the submodule root:
+   - **If `CLAUDE.md` exists**: Report "Already configured" and skip.
+   - **If `CLAUDE.md` does not exist**: Offer to create it with a minimal `## Architecture Context` section via `AskUserQuestion`.
 
-## Content to Add
+d. **Write `### Workspace Modules` table** in the root `CLAUDE.md` (inside the `## Architecture Context` section). If the table already exists, update it with any newly discovered modules (preserve existing entries).
 
-Read the plugin's `references/claude-md-template.md` and add its contents to CLAUDE.md. If CLAUDE.md already has other content, append the template at the end.
+### Step 5: Report
 
-## Idempotency Rules
+Output a component-level status table showing what was done.
 
-- Before adding content, ALWAYS check if `CLAUDE.md` already contains the string `docs/adrs/` AND `docs/openspec/specs/`
-- If both strings are present, do NOT modify the file -- report "already configured"
-- If the `## Architecture Context` heading exists but is missing one of the references, add the missing reference to the existing section rather than creating a new section
-- If the file contains architecture references with DIFFERENT paths (e.g., `docs/decisions/` instead of `docs/adrs/`, or `openspec/specs/` instead of `docs/openspec/specs/`), ask the user before modifying -- do NOT silently add conflicting paths
-- NEVER append a duplicate `## Architecture Context` section
-- NEVER generate ad-hoc warnings or suggestions about path mismatches -- use `AskUserQuestion` to let the user decide
+**When changes were made:**
 
-## Output
+```
+## Design Plugin Init Report
 
-### When CLAUDE.md is created (first run):
+| Component | Status | Action Taken |
+|-----------|--------|-------------|
+| JSON Config Migration | Migrated | Moved tracker, projects, branches, pr_conventions to CLAUDE.md; deleted .claude-plugin-design.json |
+| Architecture Context | Up to date | No changes |
+| Skills Table | Updated | Added /design:review |
+| Workflow | Updated | Added Review step (step 6), renumbered Validate to step 7 |
+| Session Coordination | Added | New section appended |
+| Design Plugin Configuration | Added | Migrated from .claude-plugin-design.json |
+| Permissions | Updated | Added Bash(git *), Bash(gh *), mcp__gitea__* to .claude/settings.local.json |
+| Workspace | Skipped | No .gitmodules found |
+
+### Next steps:
+- Prime a session with context: `/design:prime [topic]`
+- Review your architecture: `/design:check`
+```
+
+**When everything is already up-to-date:**
+
+```
+## Design Plugin Already Up to Date
+
+All components are current. No changes made.
+
+| Component | Status |
+|-----------|--------|
+| Architecture Context | Up to date |
+| Skills Table | Up to date ({N} skills) |
+| Workflow | Up to date ({N} steps) |
+| Session Coordination | Present |
+| Design Plugin Configuration | Present |
+| Permissions | Configured |
+```
+
+**When CLAUDE.md is created (first run):**
 
 ```
 ## Design Plugin Initialized
@@ -205,7 +189,7 @@ Created CLAUDE.md with architecture context.
 - New CLAUDE.md at project root
 - Reference to `docs/adrs/` (Architecture Decision Records)
 - Reference to `docs/openspec/specs/` (OpenSpec Specifications)
-- Design plugin usage hints
+- Design plugin skills table and workflow guide
 
 ### Next steps:
 - Create your first ADR: `/design:adr [description]`
@@ -213,53 +197,43 @@ Created CLAUDE.md with architecture context.
 - Prime a session with context: `/design:prime [topic]`
 ```
 
-### When CLAUDE.md is updated (exists but missing references):
+## Content Reference
 
-```
-## Design Plugin Initialized
+When creating a new CLAUDE.md or checking for template drift, read the canonical template from the plugin's `references/claude-md-template.md` file. This is the single source of truth for what the `## Architecture Context` section should contain.
 
-CLAUDE.md updated with architecture context.
+## Idempotency Rules
 
-### What was added:
-- Reference to `docs/adrs/` (Architecture Decision Records)
-- Reference to `docs/openspec/specs/` (OpenSpec Specifications)
-- Design plugin usage hints
+Each component is independently idempotent:
 
-### Next steps:
-- Create your first ADR: `/design:adr [description]`
-- Create your first spec: `/design:spec [capability]`
-- Prime a session with context: `/design:prime [topic]`
-```
-
-### When already configured (idempotent re-run):
-
-```
-## Design Plugin Already Configured
-
-CLAUDE.md already contains architecture context references. No changes made.
-
-- ADR path: docs/adrs/
-- Spec path: docs/openspec/specs/
-```
+- **JSON Migration**: Skip if `.claude-plugin-design.json` is absent. If present, migrate and delete. Re-running after migration: file is gone, skip.
+- **Skills table**: Skip rows already present (match by skill name in first column). Never remove existing rows.
+- **Workflow**: Skip steps already present (match by step name). Never remove existing steps.
+- **Named sections**: Skip if heading already exists (`### Session Coordination`, `### Design Plugin Configuration`).
+- **Permissions**: Skip patterns already in the allow array. Never remove existing entries.
+- **Workspace**: Skip submodules that already have CLAUDE.md. Skip if `### Workspace Modules` already exists and is current.
+- Running init N times produces the same result as running it once.
+- Init NEVER removes content from CLAUDE.md (additive only, except merging during migration where CLAUDE.md values take precedence on conflicts).
+- NEVER append a duplicate `## Architecture Context` section.
+- NEVER generate ad-hoc warnings or suggestions about path mismatches — use `AskUserQuestion` to let the user decide.
 
 ## Rules
 
-- MUST be idempotent -- running twice produces no duplicate content
+- MUST use componentized convergence — each component checks its own precondition, no single gate blocks other components
+- MUST be idempotent — running twice produces no duplicate content
 - MUST NOT remove or modify any existing content in CLAUDE.md (except merging config during migration)
 - MUST append the Architecture Context section after existing content, not prepend
-- If CLAUDE.md does not exist, create it -- this is the normal first-run case, not an error
-- Do NOT create `docs/adrs/` or `docs/openspec/specs/` directories -- those are created by `/design:adr` and `/design:spec` when needed
-- MUST detect `.claude-plugin-design.json` before the main init flow and offer migration (Governing: SPEC-0014 REQ "Migration from JSON to CLAUDE.md")
-- MUST preserve all configuration values exactly during migration -- no lossy translation
-- MUST NOT delete `.claude-plugin-design.json` without explicit user consent via `AskUserQuestion`
+- If CLAUDE.md does not exist, create it — this is the normal first-run case, not an error
+- Do NOT create `docs/adrs/` or `docs/openspec/specs/` directories — those are created by `/design:adr` and `/design:spec` when needed
+- MUST detect `.claude-plugin-design.json` before the main flow and migrate automatically (Governing: SPEC-0014 REQ "Migration from JSON to CLAUDE.md")
+- MUST preserve all configuration values exactly during migration — no lossy translation
+- MUST delete `.claude-plugin-design.json` after successful migration — no AskUserQuestion needed
 - When merging migrated config into an existing `### Design Plugin Configuration` section, CLAUDE.md values take precedence on conflicts
-- Migration MUST translate JSON key names to the canonical CLAUDE.md format defined in `references/shared-patterns.md` § "Config Resolution > CLAUDE.md Configuration Format"
-- MUST offer to configure `.claude/settings.json` with tracker-appropriate permission allowlists during init (Governing: ADR-0015, SPEC-0014)
+- MUST auto-configure `.claude/settings.local.json` with tracker-appropriate permission allowlists — no AskUserQuestion needed
 - MUST detect `.gitmodules` and offer workspace setup when submodules are found (Governing: ADR-0016, SPEC-0014 REQ "Init Workspace Setup")
 - MUST NOT create submodule CLAUDE.md files without user consent via `AskUserQuestion`
 - MUST write `### Workspace Modules` table in root CLAUDE.md when workspace is detected
 - MUST skip submodules that already have CLAUDE.md (unless user explicitly requests update)
-- When `.gitmodules` and `.claude-plugin-design.json` both exist, migration (step 0) runs before workspace setup (step 5)
-- MUST detect backend projects from manifests (`go.mod`, `requirements.txt`, `Cargo.toml`, `pom.xml`, `Gemfile`, etc.) and suggest structured logging ADR when none exists (Governing: SPEC-0016)
-- Backend project detection MUST be language-agnostic — reference "project manifest" not specific filenames in suggestions
-- Structured logging suggestion is informational only — MUST NOT block init or require action
+- When `.gitmodules` and `.claude-plugin-design.json` both exist, migration (Step 1) runs before workspace setup (Step 4)
+- MUST read canonical template from `references/claude-md-template.md` for section-level diffing — never hardcode template content in this skill
+- MUST display component status scan before making changes
+- MUST report all changes in the final component status table
