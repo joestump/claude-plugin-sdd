@@ -1,3 +1,5 @@
+<!-- Governing: ADR-0017, SPEC-0015 REQ "Conflict-Marker CI Gate" -->
+
 ---
 name: review
 description: Review and merge PRs produced by /design:work using reviewer-responder agent pairs. Use when the user says "review PRs", "review the spec PRs", or wants automated spec-aware code review.
@@ -38,6 +40,41 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
    - **GitLab**: Use MCP tools or `glab mr list --search "SPEC-XXXX"`.
 
    If no open PRs are found, inform the user and suggest running `/design:work` to create PRs from planned issues.
+
+3a. **Conflict-marker CI gate** (Governing: ADR-0017, SPEC-0015 REQ "Conflict-Marker CI Gate"):
+
+   Before any review logic runs, scan ALL files in every target PR diff for unresolved merge conflict markers. This is a zero-tolerance gate — any file type, any conflict marker means instant rejection.
+
+   **For each target PR:**
+
+   1. Fetch the full diff:
+      - **GitHub**: `gh pr diff {number}`
+      - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to fetch the PR diff.
+      - **GitLab**: Use MCP tools or `glab mr diff`.
+
+   2. Scan every line of the diff for conflict markers: `<<<<<<<`, `=======`, `>>>>>>>`.
+
+   3. **If ANY conflict markers are found:**
+      - Collect all offending file paths and line numbers.
+      - Submit a `REQUEST_CHANGES` review immediately:
+        - **GitHub**: `gh api repos/{owner}/{repo}/pulls/{number}/reviews -f event=REQUEST_CHANGES -f body="..."` with the rejection message below.
+        - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to submit a review.
+        - **GitLab**: Use MCP tools or `glab` CLI.
+      - Rejection message:
+        ```
+        ## Conflict Markers Detected
+
+        This PR contains unresolved merge conflict markers and cannot be reviewed.
+
+        | File | Line(s) |
+        |------|---------|
+        | {file-path} | {line-numbers} |
+
+        Please resolve all conflicts and push again.
+        ```
+      - **Skip this PR entirely** — do not proceed to architecture context loading or review for this PR. Report it as "Rejected: conflict markers" in the final summary.
+
+   4. **If no conflict markers are found**, proceed to step 4 for this PR.
 
 4. **Load architecture context** (Governing: SPEC-0009 REQ "Architecture Context Loading"):
    - If a spec identifier is provided or can be inferred from PR metadata (e.g., PR body contains "SPEC-XXXX"), read `spec.md`, `design.md`, and any referenced ADRs from the resolved spec directory. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
@@ -207,6 +244,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
 | CI checks pass after re-evaluation but code issues remain | Report as "CI green, code changes requested" — do not merge |
 | Epic closure fails (API error) | Log warning, report in final summary — epic remains open for manual closure |
 | Cannot determine parent epic from PR body | Skip epic closure check for that PR — no error |
+| Conflict markers detected in PR diff | Reject with REQUEST_CHANGES listing file paths and line numbers; skip all further review for that PR |
 
 ## Rules
 
@@ -232,3 +270,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
 - MUST re-verify CI status after responder pushes fixes — never merge with failing checks
 - MUST NOT merge a PR unless ALL status checks are passing
 - This skill reads CLAUDE.md configuration but MUST NOT write to it (consumer, not producer) (Governing: SPEC-0009 REQ "Configuration Persistence")
+- MUST scan ALL files in every PR diff for conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) before any review logic runs (Governing: SPEC-0015 REQ "Conflict-Marker CI Gate")
+- MUST reject PRs with conflict markers using REQUEST_CHANGES with file paths and line numbers — zero tolerance, any file type
+- MUST skip all further review (architecture context loading, spec compliance, code quality) for PRs rejected by the conflict-marker gate
+- Conflict-marker gate runs before CI checks — a PR with conflict markers is rejected even if CI is green
