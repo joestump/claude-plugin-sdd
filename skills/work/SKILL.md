@@ -7,6 +7,8 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, T
 argument-hint: [SPEC-XXXX | issue numbers | (empty = propose from backlog)] [--max-agents N] [--draft] [--dry-run] [--no-tests]
 ---
 
+<!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
+
 # Work on Issues
 
 You are picking up tracker issues and implementing them in parallel using git worktrees. Each issue gets its own worktree and worker agent.
@@ -42,8 +44,8 @@ You are picking up tracker issues and implementing them in parallel using git wo
    Options: "Approve this batch" / "Let me pick manually" (if chosen, present full backlog and ask for issue numbers).
 
    **Flag parsing:**
-   - `--max-agents N`: Maximum concurrent worker agents (default 4). Read `.claude-plugin-design.json` `worktrees.max_agents` as fallback default.
-   - `--draft`: Create draft PRs instead of regular PRs. Default is regular (non-draft) PRs. Read `.claude-plugin-design.json` `worktrees.pr_mode` as fallback.
+   - `--max-agents N`: Maximum concurrent worker agents (default 4). Read CLAUDE.md `Worktrees > Max Agents` as fallback default.
+   - `--draft`: Create draft PRs instead of regular PRs. Default is regular (non-draft) PRs. Read CLAUDE.md `Worktrees > PR Mode` as fallback.
    - `--dry-run`: Preview what would happen without creating worktrees or doing any work. Report the list of issues, branch names, and agent assignments, then stop.
    - `--no-tests`: Skip test execution in workers.
 
@@ -54,7 +56,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 4. **Discover workable issues**: Search the tracker for open issues:
    - If a **spec** was provided: find all open issues referencing that spec.
    - If **issue numbers** were provided: fetch those specific issues.
-   - If **no arguments** were provided: fetch all open, non-epic issues across the tracker (or the configured project/milestone scope in `.claude-plugin-design.json` if present).
+   - If **no arguments** were provided: fetch all open, non-epic issues across the tracker (or the configured project/milestone scope in CLAUDE.md `Projects` if present).
 
    **Filtering rules:**
    - **Skip epics**: Issues labeled `epic` or titled "Implement ..." are grouping issues, not implementation work.
@@ -93,7 +95,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
      - If the user says stop, halt and report.
    - Run `git fetch` to ensure we have the latest remote state.
 
-7. **Read `.claude-plugin-design.json` worktree config**: Read the `worktrees` section (see plugin's `references/shared-patterns.md` § "Config Schema"). Defaults: `base_dir`=`.claude/worktrees/`, `max_agents`=3, `auto_cleanup`=false, `pr_mode`="ready". CLI flags override config values.
+7. **Read worktree config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `#### Worktrees` subsection from the `### Design Plugin Configuration` section in CLAUDE.md. Defaults: `Base Dir`=`.claude/worktrees/`, `Max Agents`=3, `Auto Cleanup`=false, `PR Mode`="ready". CLI flags override config values.
 
 7a. **Resolve parallelism limit** (Governing: SPEC-0015 REQ "Parallelism Limits", ADR-0017 Layer 1):
 
@@ -132,7 +134,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    ```bash
    git worktree add .claude/worktrees/{branch-name} -b {branch-name}
    ```
-   Use the base directory from `.claude-plugin-design.json` `worktrees.base_dir` if set, otherwise `.claude/worktrees/`.
+   Use the base directory from CLAUDE.md `Worktrees > Base Dir` if set, otherwise `.claude/worktrees/`.
 
    **9.2: Create a task** using `TaskCreate` for each issue, with the issue details, branch name, and worktree path.
 
@@ -214,7 +216,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
     **12.1: Shut down team.** Send `shutdown_request` to all workers via `SendMessage`.
 
-    **12.2: Offer worktree cleanup.** If `.claude-plugin-design.json` `worktrees.auto_cleanup` is `true`, remove worktrees for successfully-PRed issues automatically. Otherwise, use `AskUserQuestion`:
+    **12.2: Offer worktree cleanup.** If CLAUDE.md `Worktrees > Auto Cleanup` is `true`, remove worktrees for successfully-PRed issues automatically. Otherwise, use `AskUserQuestion`:
     - "Remove worktrees for completed issues? (Failed issue worktrees are always preserved.)"
     - Options: "Yes, clean up" / "No, keep them"
     - If yes: `git worktree remove .claude/worktrees/{branch-name}` for each successful issue.
@@ -275,7 +277,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - When no arguments are provided, MUST analyze the backlog and propose a batch to the user before starting any work
 - MUST read spec.md and design.md before dispatching workers only when a spec is provided or resolvable from issue bodies
 - MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
-- MUST check `.claude-plugin-design.json` for saved tracker preference before running detection
+- MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
 - MUST extract branch names from issue bodies — never invent branch names
 - MUST skip epics (labeled `epic` or titled "Implement ...") — only work on implementation issues
 - MUST skip issues without `### Branch` sections and suggest `/design:enrich`

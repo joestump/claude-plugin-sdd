@@ -7,6 +7,8 @@ allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Task, AskUserQuestion, TeamC
 argument-hint: [spec-name or SPEC-XXXX] [--review] [--scrum] [--project <name>] [--no-projects] [--branch-prefix <prefix>] [--no-branches]
 ---
 
+<!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
+
 # Plan Sprint from Specification
 
 You are breaking down an existing specification into trackable work items (epics and story-sized issues) in the user's issue tracker. Instead of creating one issue per requirement, you group related requirements into 3-4 story-sized issues by functional area, with task checklists in the issue body for requirement traceability. See ADR-0011 and SPEC-0010.
@@ -151,7 +153,7 @@ Ordered for implementation (dependencies respected):
 
 ---
 
-4. **Detect the issue tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`. Read the full "Config Schema" section there for the `.claude-plugin-design.json` format — it defines tracker-specific `tracker_config` fields (GitHub/Gitea/GitLab: `owner`/`repo`, Jira: `project_key`, Linear: `team_id`, Beads: `{}`), plus `projects`, `branches`, and `pr_conventions` sections used in steps 5–7. When the user selects a tracker for the first time, offer to save both `tracker` and `tracker_config` to `.claude-plugin-design.json`.
+4. **Detect the issue tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Read the `### Design Plugin Configuration` section from CLAUDE.md for tracker type, tracker-specific config (GitHub/Gitea/GitLab: Owner/Repo, Jira: Project Key, Linear: Team ID, Beads: no extra config), plus Branch Conventions, PR Conventions, and Projects settings used in steps 5–7. When the user selects a tracker for the first time, offer to save the configuration to the `### Design Plugin Configuration` section in CLAUDE.md.
 
 5. **Create issues in the detected tracker**:
 
@@ -213,9 +215,9 @@ Ordered for implementation (dependencies respected):
      - A `## Requirements` section containing a task checklist (see step 5.3)
      - Acceptance criteria summarized at the end
    - **After creating the issue** (to obtain the issue number), unless `--no-branches` is set, update the issue body to append a `### Branch` section:
-     - Stories: `` `feature/{issue-number}-{slug}` `` (or custom prefix from `--branch-prefix` or `.claude-plugin-design.json` `branches.prefix`)
-     - Epics: `` `epic/{issue-number}-{slug}` `` (or custom prefix from `--branch-prefix` or `.claude-plugin-design.json` `branches.epic_prefix`)
-     - The slug MUST be derived from the story title using kebab-case, max 50 chars (or `.claude-plugin-design.json` `branches.slug_max_length`)
+     - Stories: `` `feature/{issue-number}-{slug}` `` (or custom prefix from `--branch-prefix` or CLAUDE.md `Branch Conventions > Prefix`)
+     - Epics: `` `epic/{issue-number}-{slug}` `` (or custom prefix from `--branch-prefix` or CLAUDE.md `Branch Conventions > Epic Prefix`)
+     - The slug MUST be derived from the story title using kebab-case, max 50 chars (or CLAUDE.md `Branch Conventions > Slug Max Length`)
      - This requires a two-pass approach: create the issue first to get the number, then update the body
 
    **5.2.1: Detect HTTP endpoint stories for security checklist injection.**
@@ -281,11 +283,11 @@ Ordered for implementation (dependencies respected):
      - **Beads**: `bd resolve`
      - **Jira**: `{PROJECT-KEY}-{number}` reference
      - **Linear**: `{TEAM}-{number}` reference
-   - Use `.claude-plugin-design.json` `pr_conventions` settings when available (close_keyword, ref_keyword, include_spec_reference)
+   - Use CLAUDE.md `PR Conventions` settings when available (Close Keyword, Ref Keyword, Include Spec Reference)
 
    **5.4: Set up dependencies between stories.** Where stories have logical ordering (e.g., setup before core logic, core before extensions), set up dependency relationships between story issues using the tracker's native features. If using Beads, use `bd dep add`.
 
-   **5.5: Gather tracker-specific config.** If the tracker requires configuration not already saved (e.g., repo owner/name for GitHub, project key for Jira), use `AskUserQuestion` to ask the user. Offer to save the config to `.claude-plugin-design.json`.
+   **5.5: Gather tracker-specific config.** If the tracker requires configuration not already saved (e.g., repo owner/name for GitHub, project key for Jira), use `AskUserQuestion` to ask the user. Offer to save the config to the `### Design Plugin Configuration` section in CLAUDE.md.
 
    **5.6: Project grouping.** Unless `--no-projects` is set:
    - **Default (per-epic)**: For each epic, create a tracker-native project and add the epic and its child stories:
@@ -297,11 +299,11 @@ Ordered for implementation (dependencies respected):
      - **Beads**: No-op (the epic IS the grouping)
    - **`--project <name>`**: Create a single project with the given name and add all issues to it
    - Use `ToolSearch` to discover project-creation MCP tools at runtime
-   - Read `.claude-plugin-design.json` `projects.default_mode` and `projects.project_ids` for cached settings. If a project ID is already cached for this spec, reuse it instead of creating a new one.
+   - Read CLAUDE.md `Projects > Default Mode` and cached project IDs for settings. If a project ID is already cached for this spec, reuse it instead of creating a new one.
    - **Repository linking is critical**: For trackers that support project-repository associations (GitHub Projects V2, Gitea), the project MUST be linked to the repository after creation. Without this step, the project exists but is invisible from the repository's Projects tab.
    - **Graceful failure**: If project creation fails, warn the user but do not block issue creation. Report the failure in the final summary.
 
-   **5.7: Workspace enrichment.** After project creation, enrich the project with navigational context and structure. Read `.claude-plugin-design.json` `projects` configuration for custom settings (views, columns, iteration_weeks). All enrichment steps use **graceful degradation**: if a feature is unavailable for the tracker, skip that step and log "Skipped {step}: {tracker} does not support {feature}". (Governing: SPEC-0011, ADR-0012)
+   **5.7: Workspace enrichment.** After project creation, enrich the project with navigational context and structure. Read CLAUDE.md `Projects` configuration for custom settings (Views, Columns, Iteration Weeks). All enrichment steps use **graceful degradation**: if a feature is unavailable for the tracker, skip that step and log "Skipped {step}: {tracker} does not support {feature}". (Governing: SPEC-0011, ADR-0012)
 
    **For GitHub Projects V2:**
    1. **Set project description**: A short summary referencing the spec number and capability title.
@@ -322,12 +324,12 @@ Ordered for implementation (dependencies respected):
       ## Dependencies
       - #{n} → #{m} (prerequisite)
       ```
-   3. **Add iteration field**: Create a "Sprint" iteration field via GraphQL with cycle length from `.claude-plugin-design.json` `projects.iteration_weeks` (default: 2 weeks). Assign foundation stories to Sprint 1, dependents to Sprint 2, etc.
-   4. **Create named views**: Create three views via GraphQL using names from `.claude-plugin-design.json` `projects.views` (default: "All Work" table, "Board" board, "Roadmap" roadmap). If a default "Table" view exists, rename it to the first configured view.
+   3. **Add iteration field**: Create a "Sprint" iteration field via GraphQL with cycle length from CLAUDE.md `Projects > Iteration Weeks` (default: 2 weeks). Assign foundation stories to Sprint 1, dependents to Sprint 2, etc.
+   4. **Create named views**: Create three views via GraphQL using names from CLAUDE.md `Projects > Views` (default: "All Work" table, "Board" board, "Roadmap" roadmap). If a default "Table" view exists, rename it to the first configured view.
 
    **For Gitea:**
    1. **Create milestones**: One milestone per epic. Assign stories to the milestone corresponding to their epic.
-   2. **Configure board columns**: Create columns from `.claude-plugin-design.json` `projects.columns` (default: Todo, In Progress, In Review, Done).
+   2. **Configure board columns**: Create columns from CLAUDE.md `Projects > Columns` (default: Todo, In Progress, In Review, Done).
    3. **Create native dependency links**: For each story that depends on another, create a native dependency via `POST /repos/{owner}/{repo}/issues/{index}/dependencies` (or via MCP tools discovered by `ToolSearch`).
 
    **For other trackers**: Skip tracker-specific enrichment. Log skipped steps in the report.
@@ -411,9 +413,9 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - Story groupings SHOULD target 200-500 line PRs — functional cohesion takes priority over line-count targets (Governing: SPEC-0010 REQ "PR Size Target")
 - Coupled requirements (same files, shared data structures) MUST be placed in the same story (Governing: SPEC-0010 REQ "Grouping Heuristics")
 - MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
-- MUST check `.claude-plugin-design.json` for saved tracker preference before running detection
-- MUST offer to save tracker preference when a tracker is selected for the first time
-- When merging into `.claude-plugin-design.json`, preserve existing keys — only update changed sections
+- MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
+- MUST offer to save tracker preference to the `### Design Plugin Configuration` section in CLAUDE.md when a tracker is selected for the first time
+- When writing config to CLAUDE.md, preserve existing keys — only update changed sections
 - Dependency ordering between stories SHOULD reflect logical implementation order, not spec document order
 - Project grouping failures MUST NOT prevent issue creation
 - MUST link created projects to the repository for trackers that support project-repository associations (e.g., GitHub Projects V2 via `gh project link`, Gitea). Without linking, projects are invisible from the repository's Projects tab.
@@ -425,7 +427,7 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - MUST use try-then-create pattern for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - MUST enrich projects after creation with descriptions, READMEs, views, iterations (GitHub) or milestones, columns, dependencies (Gitea) (Governing: SPEC-0011, ADR-0012)
 - Enrichment failures MUST be skipped and reported, never fail the entire operation (Governing: SPEC-0011 REQ "Graceful Degradation")
-- `.claude-plugin-design.json` `projects.views`, `projects.columns`, `projects.iteration_weeks` are all optional with sensible defaults — do NOT overwrite existing keys when they are absent
+- CLAUDE.md `Projects > Views`, `Projects > Columns`, `Projects > Iteration Weeks` are all optional with sensible defaults — do NOT overwrite existing keys when they are absent
 - Story issues MUST be consumable by `/design:work` and `/design:review` — they use the same `### Branch` and `### PR Convention` structural sections (Governing: SPEC-0010 REQ "Downstream Compatibility")
 - When `--scrum` is set, organize and enrich MUST run automatically after grooming — NEVER require the user to run `/design:organize` or `/design:enrich` separately (Governing: SPEC-0012 REQ "Automatic Organize and Enrich")
 - Stories that involve HTTP endpoints MUST include a `## Security Checklist` section with authentication, input validation, output encoding, rate limiting, and body size limit items (Governing: ADR-0018, SPEC-0016 REQ "Security Checklist in Issues")
