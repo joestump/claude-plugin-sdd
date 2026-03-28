@@ -89,6 +89,75 @@ Do NOT inject the Security Requirements section. Proceed with the standard spec 
 
 Read the Security Requirements template from `references/security-requirements-template.md` and inject it into the spec after the functional requirements. The template covers all six required topics: authentication, rate limiting, security headers, request body size limits, CSRF protection, and redirect validation.
 
+## UI-Facing Detection and Accessibility Injection
+
+<!-- Governing: ADR-0019 (Frontend Quality Standards), SPEC-0016 REQ "Accessibility Requirements for UI Specs" -->
+
+Before writing the spec, determine whether the capability is **UI-facing**. A spec is UI-facing if ANY of the following are true:
+
+- It involves HTML templates or server-rendered pages (Go `html/template`, Django, Rails, Jinja, etc.)
+- It includes browser-rendered UI or interactive frontend components
+- It uses HTMX, Alpine.js, or other frontend interaction libraries
+- It defines modals, dialogs, forms, dashboards, or other interactive UI elements
+- The capability name or description references: UI, dashboard, frontend, template, page, form, modal, dialog, widget, component
+
+A spec is **NOT UI-facing** if it exclusively involves: API-only backends consumed by other services, CLI tools, batch/cron jobs, data migrations, background workers, message queue consumers, internal libraries, or purely offline processing.
+
+**Note:** A spec can be both web-facing AND UI-facing (e.g., a web dashboard with HTTP endpoints). When both apply, inject BOTH the Security Requirements section and the Accessibility Requirements section.
+
+### When the spec IS UI-facing
+
+You MUST inject an **## Accessibility Requirements** section into spec.md, placed after the functional `## Requirements` section (and after the Security Requirements section if both apply). This section MUST cover all six topics below. Use the template in the "Accessibility Requirements Section Template" below.
+
+### When the spec is NOT UI-facing
+
+Do NOT inject the Accessibility Requirements section. Proceed with the standard spec template only.
+
+## Accessibility Requirements Section Template
+
+```markdown
+## Accessibility Requirements
+
+This spec involves user-facing UI. The following accessibility requirements are MANDATORY per WCAG 2.1 AA.
+
+### WCAG 2.1 AA Compliance
+
+All UI components produced by this spec MUST meet WCAG 2.1 Level AA conformance as the minimum accessibility target.
+
+### ARIA Landmarks
+
+Page structure elements MUST include ARIA landmark roles:
+- `role="banner"` on the site header
+- `role="navigation"` on navigation regions
+- `role="main"` on the primary content area
+- `role="contentinfo"` on the site footer
+
+### Icon-Only Controls
+
+All icon-only controls (buttons, links) that have no visible text label MUST include an `aria-label` attribute describing the control's purpose.
+
+### Dynamic Content Regions
+
+Dynamically updated content (HTMX swaps, auto-refresh panels, real-time status updates) MUST use `aria-live` regions:
+- `aria-live="polite"` for non-urgent updates
+- `aria-live="assertive"` for critical status changes
+
+### Keyboard Navigation
+
+All interactive elements MUST be operable via keyboard:
+- Logical tab order following visual layout
+- Enter/Space to activate buttons and controls
+- Escape to dismiss popups, dropdowns, and dialogs
+- Arrow keys for navigation within composite widgets (tabs, menus, tree views)
+
+### Focus Management
+
+Modals and dialogs MUST implement focus management:
+- Focus MUST be trapped within the modal when open (Tab/Shift+Tab cycles within the modal)
+- Focus MUST move to the modal's first focusable element on open
+- Focus MUST return to the triggering element when the modal is closed
+```
+
 ## Auth-by-Default in Endpoint Tables
 
 <!-- Governing: ADR-0018 (Security-by-Default), SPEC-0016 REQ "Auth-by-Default" -->
@@ -145,7 +214,7 @@ Example endpoint table with auth-by-default:
 - **THEN** {expected outcome}
 ```
 
-**Note:** For web-facing specs, append the Security Requirements section (from the template above) after the functional requirements.
+**Note:** For web-facing specs, append the Security Requirements section (from the template above) after the functional requirements. For UI-facing specs, append the Accessibility Requirements section after the functional requirements (and after Security Requirements if both apply).
 
 ## design.md Template
 
@@ -220,9 +289,12 @@ Example endpoint table with auth-by-default:
   - Alignment between spec requirements and design decisions
   - **Security section present for web-facing specs** (Governing: ADR-0018, SPEC-0016)
   - **Auth-by-default applied to all endpoint tables** (Governing: ADR-0018, SPEC-0016)
+  - **Accessibility section present for UI-facing specs** (Governing: ADR-0019, SPEC-0016)
 - If converting from an ADR, reference the ADR number in the spec's Overview section
 - design.md MUST include at least one Mermaid architecture diagram. Prefer C4 context/container diagrams for system-level, sequence diagrams for flows, and ERDs for data models.
 - When implementing code governed by this spec, agents MUST leave governing comments per `references/shared-patterns.md` § "Governing Comment Format": `// Governing: ADR-XXXX (desc), SPEC-XXXX REQ "Requirement Name"`
 - For web-facing specs: MUST inject the Security Requirements section covering authentication, rate limiting, security headers, body size limits, CSRF protection, and redirect validation (Governing: ADR-0018, SPEC-0016 REQ "Mandatory Security Section in Web Specs")
 - For web-facing specs: MUST apply auth-by-default — every endpoint defaults to "Auth: Required"; public endpoints need "Auth: Public" with explicit justification (Governing: ADR-0018, SPEC-0016 REQ "Auth-by-Default")
 - MUST NOT inject the Security Requirements section for non-web specs (CLI tools, libraries, batch jobs, data migrations, background workers)
+- For UI-facing specs: MUST inject the Accessibility Requirements section covering WCAG 2.1 AA, ARIA landmarks, `aria-label` on icon-only controls, `aria-live` for dynamic content, keyboard navigation, and focus management (Governing: ADR-0019, SPEC-0016 REQ "Accessibility Requirements for UI Specs")
+- MUST NOT inject the Accessibility Requirements section for non-UI specs (API-only, CLI, batch jobs, background workers, internal libraries)
