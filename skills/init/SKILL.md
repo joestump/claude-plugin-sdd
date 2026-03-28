@@ -66,7 +66,33 @@ Set up the project's `CLAUDE.md` with architecture context so Claude sessions ar
    - Create a new `CLAUDE.md` at the project root with the `## Architecture Context` section
    - This is the expected first-run case -- do not treat it as an error
 
-4. **Report what happened** using the appropriate output format below.
+4. **Permission Auto-Configuration** (Governing: ADR-0015, SPEC-0014):
+
+   After writing the CLAUDE.md configuration section (including tracker detection), offer to configure `.claude/settings.json` with permission allowlists.
+
+   a. **Determine the tracker type** from the CLAUDE.md config section just written (or from the tracker detection that happened during init). If no tracker was detected, only include the base `git` permissions.
+
+   b. **Build the permission allowlist** based on detected tracker:
+
+      | Tracker | Permissions to Add |
+      |---------|-------------------|
+      | All projects | `Bash(git *)` |
+      | GitHub (gh CLI) | `Bash(gh *)` |
+      | Gitea (MCP) | `mcp__gitea__*` |
+      | GitLab (MCP) | `mcp__gitlab__*` |
+      | GitLab (glab CLI) | `Bash(glab *)` |
+      | GitHub (MCP) | `mcp__github__*` |
+
+   c. **Show the user** the exact permissions being added via `AskUserQuestion`:
+      > "Configure `.claude/settings.json` with these permission allowlists so that git, tracker, and PR operations don't require manual approval?"
+
+      Display the permissions as a table. Options: "Yes, configure permissions" / "No, skip"
+
+   d. **If approved**: Read existing `.claude/settings.json` if it exists. Merge the new permissions into the existing `permissions.allow` array (don't overwrite existing entries). Write the updated file.
+
+   e. **If declined**: Skip and note in the output that permissions were not configured.
+
+5. **Report what happened** using the appropriate output format below.
 
 ## Content to Add
 
@@ -143,3 +169,4 @@ CLAUDE.md already contains architecture context references. No changes made.
 - MUST NOT delete `.claude-plugin-design.json` without explicit user consent via `AskUserQuestion`
 - When merging migrated config into an existing `### Design Plugin Configuration` section, CLAUDE.md values take precedence on conflicts
 - Migration MUST translate JSON key names to the canonical CLAUDE.md format defined in `references/shared-patterns.md` § "Config Resolution > CLAUDE.md Configuration Format"
+- MUST offer to configure `.claude/settings.json` with tracker-appropriate permission allowlists during init (Governing: ADR-0015, SPEC-0014)
