@@ -81,6 +81,17 @@ Resolve a spec identifier to a file path. Use the resolved spec directory from t
 - If no spec identifier is provided (ignoring flags), list available specs by globbing `{spec-dir}/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to use.
 - If the spec doesn't exist, tell the user and suggest `/design:spec` to create one.
 
+## Spec Pairing Validation
+
+Before operating on a spec, verify that both `spec.md` and `design.md` exist in the spec directory. These are a paired unit (ADR-0003, SPEC-0003) and must always coexist.
+
+### Algorithm
+1. Given a resolved spec directory path `{spec-dir}/{capability-name}/`
+2. Check that both `spec.md` and `design.md` exist
+3. If either is missing, report: "Incomplete spec: {capability-name} is missing {missing-file}. Run `/design:spec {capability-name}` to create the paired files."
+4. For read-only skills (prime, list, check): emit a WARNING and continue with available file
+5. For write skills (plan, work, review, organize, enrich): emit an ERROR and halt — do not operate on incomplete specs
+
 ## Config Resolution
 
 Canonical algorithm for reading plugin configuration from CLAUDE.md. All skills that need configuration MUST use this pattern. No skill SHALL read `.claude-plugin-design.json` directly.
@@ -158,6 +169,19 @@ The `### Design Plugin Configuration` section in CLAUDE.md uses the following ma
 
 Skills MAY tolerate minor natural-language variations in key names (e.g., "Branch prefix" vs. "Prefix") since Claude interprets these as natural language.
 
+## Config Producers and Consumers
+
+| Skill | Reads Config | Writes Config | Notes |
+|-------|-------------|--------------|-------|
+| init | Yes | Yes | Primary config producer; migration + workspace setup |
+| plan | Yes | Yes | Writes project IDs and tracker config back |
+| organize | Yes | No | Consumer only |
+| enrich | Yes | No | Consumer only |
+| work | Yes | No | Consumer only |
+| review | Yes | No | Consumer only |
+| prime, check, audit, discover | No | No | Read-only skills; no config needed |
+| adr, spec, list, status, docs | No | No | Operate on artifacts, not config |
+
 ## Tracker Detection
 
 ### Check for Saved Preference
@@ -195,6 +219,51 @@ Used when a skill supports `--review` mode with a drafter/auditor and reviewer a
 4. Maximum 2 revision rounds. After that, the reviewer approves with noted concerns.
 5. The lead agent finalizes only after receiving "APPROVED"
 
+## Worker Communication Protocol
+
+When multiple worker agents operate in parallel (e.g., `/design:work`, `/design:review`), they coordinate via `SendMessage` broadcasts to prevent duplicate code and file conflicts.
+
+### Message Types
+
+| Message | Direction | Purpose |
+|---------|-----------|---------|
+| `FILE_CLAIM: #{issue} claiming {file-path}` | Worker -> All siblings | Broadcast before modifying a file |
+| `TYPE_CREATED: #{issue} created {TypeName} in {file-path}` | Worker -> All siblings | Broadcast after creating new types/structs/interfaces |
+| `TYPE_IMPORTED: #{issue} will import {TypeName} from {file-path}` | Worker -> Claimant | Acknowledge reuse of sibling's type |
+| `CONFLICT_ALERT: #{issue} also needs {file-path}` | Worker -> Claimant + Lead | Request coordination for overlapping files |
+| `BUNDLE_REQUEST: #{issue} implementation is trivially small` | Worker -> Lead | Request additional issues to combine |
+
+### Rules
+- Workers MUST broadcast FILE_CLAIM before modifying any file
+- Workers MUST broadcast TYPE_CREATED after creating new types
+- Workers receiving TYPE_CREATED MUST import rather than recreate
+- Workers receiving FILE_CLAIM for a file they also need MUST send CONFLICT_ALERT and wait for lead coordination
+- Lead handles BUNDLE_REQUEST by checking queue for bundleable issues
+
+## Multi-Agent Team Protocols
+
+Skills use different team structures depending on the task:
+
+### Simple Drafter-Reviewer (used by: adr, spec)
+- 2 agents: drafter + reviewer
+- Max 2 revision rounds
+- Reviewer approves or requests changes
+
+### Grooming Ceremony (used by: plan --scrum)
+- 5 agents: Product Owner, Scrum Master, Engineer A, Engineer B ("Grumpy"), Architect
+- Full backlog decomposition with dissent resolution
+- Engineer B specifically challenges vague requirements
+
+### Triage Ceremony (used by: audit --scrum)
+- 5 agents: Same roles as grooming but different responsibilities
+- Engineer B challenges whether findings are genuine drift vs intentional evolution
+- Architect makes final call on source-of-truth disputes
+
+### Worker Coordination (used by: work, review)
+- 1 lead + N workers
+- Workers communicate via Worker Communication Protocol (above)
+- Lead manages queue, handles bundle requests, tracks lifecycle labels
+
 ## Try-Then-Create Label Pattern
 
 When applying labels (e.g., `epic`, `story`, `spec`), attempt to apply the label first. If the tracker returns "label not found", create the label with a default color and retry.
@@ -217,6 +286,23 @@ Tracker-specific close keywords (or use CLAUDE.md `PR Conventions > Close Keywor
 - **Beads**: `bd resolve`
 - **Jira**: `{PROJECT-KEY}-{number}` reference
 - **Linear**: `{TEAM}-{number}` reference
+
+## Governing Comment Format
+
+All skills that generate or modify code MUST use file-level governing comment blocks (ADR-0020). The canonical format:
+
+```
+// Governing: ADR-XXXX (short description), ADR-YYYY (short description)
+// Implements: SPEC-XXXX REQ "Requirement Name", SPEC-YYYY REQ "Requirement Name"
+```
+
+For markdown files: `<!-- Governing: ... -->`
+
+### Rules
+- MUST use file-level blocks at the top of each file (not per-line annotations)
+- Inline governing comments SHOULD only be used when the connection is non-obvious from the file-level block
+- MUST NOT create separate PRs for retroactive governing comment addition
+- Governing comments MUST be added in the same PR that implements the feature
 
 ## Foundation Story Detection
 
