@@ -1,0 +1,176 @@
+{
+  "skill_name": "design",
+  "tier": 2,
+  "evals": [
+    {
+      "id": 100,
+      "skill": "spec",
+      "prompt": "Create a spec for our new webhook-delivery service. It will expose REST endpoints for registering webhook URLs, listing subscriptions, and triggering test deliveries. The service reads events from a Kafka topic and fans out HTTP POST requests to registered endpoints with retries. We're building this in Go with a PostgreSQL database for subscription storage.",
+      "expected_output": "Creates paired spec.md and design.md under docs/openspec/specs/webhook-delivery/. The spec includes a Security Requirements section (web-facing: REST endpoints over HTTP), auth-by-default endpoint table with all endpoints defaulting to Auth: Required, and backend quality guidelines for error handling (service boundaries, external HTTP calls), concurrency (fan-out workers, Kafka consumer), and database operations (PostgreSQL). No Accessibility Requirements section (API-only, no UI).",
+      "assertions": [
+        {"text": "spec.md created at docs/openspec/specs/webhook-delivery/spec.md", "type": "structural"},
+        {"text": "design.md created at docs/openspec/specs/webhook-delivery/design.md (paired artifact)", "type": "structural"},
+        {"text": "spec.md contains a '## Security Requirements' section with all six subsections (Authentication, Rate Limiting, Security Headers, Request Body Size Limits, CSRF Protection, Redirect Validation)", "type": "content"},
+        {"text": "Endpoint table uses auth-by-default: all endpoints show 'Auth: Required' unless explicitly marked 'Auth: Public' with justification", "type": "content"},
+        {"text": "spec.md contains '### Requirement: Error Handling Standards' with error wrapping, sentinel errors, no silent swallowing, and structured logging", "type": "content"},
+        {"text": "spec.md contains '### Requirement: Concurrency Safety' with context propagation, worker lifecycle, race safety, and race detection CI", "type": "content"},
+        {"text": "spec.md contains '### Requirement: Database Operation Standards' with transactions, connection lifecycle, and parameterized queries", "type": "content"},
+        {"text": "spec.md does NOT contain an '## Accessibility Requirements' section (API-only, no UI)", "type": "content"},
+        {"text": "spec.md uses RFC 2119 keywords (MUST, SHALL, SHOULD, MAY, etc.) for all normative requirements", "type": "content"},
+        {"text": "spec.md uses SPEC-XXXX numbering (not RFC-XXXX)", "type": "content"},
+        {"text": "design.md contains at least one Mermaid diagram", "type": "content"},
+        {"text": "Backend quality guidelines use language-agnostic terms (not Go-specific like 'goroutines' or 'slog')", "type": "content"}
+      ],
+      "files": []
+    },
+    {
+      "id": 101,
+      "skill": "spec",
+      "prompt": "We need a spec for an admin dashboard. It's a web UI built with Go html/template and HTMX that lets ops staff manage feature flags, view system health, and browse audit logs. It has server-rendered pages with modals for creating/editing flags, a real-time status panel that auto-refreshes, and REST endpoints backing the UI. The backend uses PostgreSQL.",
+      "expected_output": "Creates paired spec.md and design.md. The spec is both web-facing (REST endpoints, HTTP server) AND UI-facing (html/template, HTMX, modals, dashboard). It includes BOTH Security Requirements and Accessibility Requirements sections, plus auth-by-default endpoint tables and backend quality guidelines for error handling and database operations.",
+      "assertions": [
+        {"text": "spec.md created at docs/openspec/specs/admin-dashboard/spec.md", "type": "structural"},
+        {"text": "design.md created at docs/openspec/specs/admin-dashboard/design.md (paired artifact)", "type": "structural"},
+        {"text": "spec.md contains a '## Security Requirements' section (web-facing: REST endpoints)", "type": "content"},
+        {"text": "spec.md contains an '## Accessibility Requirements' section (UI-facing: html/template, HTMX, modals)", "type": "content"},
+        {"text": "Accessibility section includes WCAG 2.1 AA, ARIA landmarks, aria-label for icon-only controls, aria-live for dynamic content (auto-refresh panel), keyboard navigation, and focus management (modals)", "type": "content"},
+        {"text": "Endpoint table uses auth-by-default: all endpoints default to 'Auth: Required'", "type": "content"},
+        {"text": "spec.md contains backend quality requirements for error handling and database operations", "type": "content"},
+        {"text": "spec.md uses RFC 2119 keywords for all normative requirements", "type": "content"},
+        {"text": "Scenarios use exactly #### heading level (not ### or bullets)", "type": "content"},
+        {"text": "Every requirement has at least one scenario with WHEN/THEN format", "type": "content"}
+      ],
+      "files": []
+    },
+    {
+      "id": 102,
+      "skill": "spec",
+      "prompt": "Create a spec for a CLI tool called db-migrate that runs database schema migrations. It reads migration files from a directory, connects to PostgreSQL, applies them in order inside transactions, and logs results. It's a command-line tool only -- no web server, no UI, no HTTP endpoints. It does handle concurrent migration locking to prevent two instances from running at once.",
+      "expected_output": "Creates paired spec.md and design.md. This is a CLI tool with NO web or UI component. It MUST NOT include Security Requirements or Accessibility Requirements sections. It SHOULD include backend quality guidelines for error handling (database operations, file I/O), concurrency (migration locking), and database operations (transactions, connections, parameterized queries).",
+      "assertions": [
+        {"text": "spec.md created at docs/openspec/specs/db-migrate/spec.md", "type": "structural"},
+        {"text": "design.md created at docs/openspec/specs/db-migrate/design.md (paired artifact)", "type": "structural"},
+        {"text": "spec.md does NOT contain a '## Security Requirements' section (CLI tool, not web-facing)", "type": "content"},
+        {"text": "spec.md does NOT contain an '## Accessibility Requirements' section (CLI tool, not UI-facing)", "type": "content"},
+        {"text": "spec.md contains '### Requirement: Error Handling Standards' (database operations, file I/O can fail)", "type": "content"},
+        {"text": "spec.md contains '### Requirement: Concurrency Safety' (concurrent migration locking)", "type": "content"},
+        {"text": "spec.md contains '### Requirement: Database Operation Standards' (transactions, connections, parameterized queries)", "type": "content"},
+        {"text": "spec.md uses SPEC-XXXX numbering (not RFC-XXXX)", "type": "content"},
+        {"text": "design.md contains at least one Mermaid diagram", "type": "content"}
+      ],
+      "files": []
+    },
+    {
+      "id": 103,
+      "skill": "check",
+      "prompt": "Check src/api/ for drift against our ADRs and specs",
+      "expected_output": "Performs a drift check on the src/api/ directory. Scans for security lint patterns (unbounded body read, template safety bypass, user-controlled redirect, missing auth middleware, DOM injection, CDN without SRI) in source files. Produces a findings table with Severity, Category, Finding, Source, and Location columns. Security lint findings use category 'Security Lint' and severity [WARNING].",
+      "assertions": [
+        {"text": "Output contains '## Drift Check: src/api/' heading", "type": "structural"},
+        {"text": "Output contains a findings table with columns: Severity, Category, Finding, Source, Location", "type": "structural"},
+        {"text": "Security lint findings (if any) use category 'Security Lint' and severity '[WARNING]'", "type": "content"},
+        {"text": "Security lint scan checks for all 6 patterns: unbounded body read, template safety bypass, user-controlled redirect, missing auth middleware, DOM injection, CDN without SRI", "type": "behavioral"},
+        {"text": "Each security lint finding includes file path with line number in Location column", "type": "content"},
+        {"text": "Each security lint finding includes a remediation suggestion", "type": "content"},
+        {"text": "Output ends with a Summary section showing Critical/Warning/Info counts", "type": "structural"},
+        {"text": "Output includes suggested actions based on findings", "type": "structural"}
+      ],
+      "files": []
+    },
+    {
+      "id": 104,
+      "skill": "check",
+      "prompt": "Run a drift check on our templates/ directory",
+      "expected_output": "Performs a drift check on the templates/ directory. Scans for template quality patterns: duplicate inline script blocks, duplicate form structures, duplicate navigation/sidebar markup, dev-only CDN URLs, and multiple JS interaction frameworks. Template quality findings use category 'Template Quality' with individually defined severities ([WARNING] for duplicate scripts/nav/dev CDN, [INFO] for duplicate forms/framework sprawl).",
+      "assertions": [
+        {"text": "Output contains '## Drift Check: templates/' heading", "type": "structural"},
+        {"text": "Template quality scan checks for all 5 patterns: duplicate inline scripts, duplicate form structure, duplicate navigation/sidebar, dev-only CDN URLs, multiple JS frameworks", "type": "behavioral"},
+        {"text": "Template quality findings use category 'Template Quality'", "type": "content"},
+        {"text": "Duplicate inline script findings use severity '[WARNING]'", "type": "content"},
+        {"text": "Duplicate form structure findings use severity '[INFO]'", "type": "content"},
+        {"text": "Dev-only CDN findings use severity '[WARNING]'", "type": "content"},
+        {"text": "Multiple JS framework findings use severity '[INFO]'", "type": "content"},
+        {"text": "Each template quality finding includes affected file paths in Location column", "type": "content"}
+      ],
+      "files": []
+    },
+    {
+      "id": 105,
+      "skill": "check",
+      "prompt": "Check this project for drift. There are no ADRs or specs yet.",
+      "expected_output": "Reports that no design artifacts were found and suggests creating them. Does NOT proceed with analysis. Suggests using /design:adr or /design:spec to create first artifacts.",
+      "assertions": [
+        {"text": "Output reports 'No design artifacts found' (or equivalent message when neither ADR nor spec directories exist)", "type": "content"},
+        {"text": "Output suggests '/design:adr' to create first ADR", "type": "content"},
+        {"text": "Output suggests '/design:spec' to create first spec", "type": "content"},
+        {"text": "Does NOT produce a findings table (no artifacts to check against)", "type": "structural"}
+      ],
+      "files": []
+    },
+    {
+      "id": 106,
+      "skill": "discover",
+      "prompt": "Discover what implicit architecture decisions exist in this codebase. We haven't documented anything yet.",
+      "expected_output": "Produces a discovery report analyzing the entire project. Spawns 4 parallel agents for: dependency/framework analysis, architectural pattern analysis, project structure/boundary analysis, and configuration/infrastructure analysis. Report includes suggested ADRs (implicit decisions) and suggested specs (subsystem boundaries), each with confidence levels and copy-paste-ready commands. Does NOT create any files.",
+      "assertions": [
+        {"text": "Output contains '## Discovery Report' heading", "type": "structural"},
+        {"text": "Output contains a '### Suggested ADRs' section with a table including Confidence, Decision, Evidence, and Command columns", "type": "structural"},
+        {"text": "Output contains a '### Suggested Specs' section with a table including Confidence, Subsystem, Boundary, and Command columns", "type": "structural"},
+        {"text": "Every suggestion includes a confidence level (High, Medium, or Low)", "type": "content"},
+        {"text": "Every ADR suggestion includes a copy-paste-ready '/design:adr' command in the Command column", "type": "content"},
+        {"text": "Every spec suggestion includes a copy-paste-ready '/design:spec' command in the Command column", "type": "content"},
+        {"text": "Suggestions are sorted by confidence (High first, then Medium, then Low) within each section", "type": "content"},
+        {"text": "Every suggestion cites specific evidence from the codebase (file paths, dependency declarations, config entries)", "type": "content"},
+        {"text": "Output contains a '### Next Steps' section", "type": "structural"},
+        {"text": "No files are created or modified (read-only skill)", "type": "behavioral"}
+      ],
+      "files": []
+    },
+    {
+      "id": 107,
+      "skill": "discover",
+      "prompt": "Discover architecture in the src/payments/ directory",
+      "expected_output": "If src/payments/ does not exist, reports the error and stops without falling back to full-project analysis. If it does exist, scopes the discovery to that directory only.",
+      "assertions": [
+        {"text": "If scope path does not exist, output contains 'Scope not found: src/payments/' error message", "type": "content"},
+        {"text": "If scope path does not exist, does NOT fall back to full-project analysis", "type": "behavioral"},
+        {"text": "If scope path exists, output contains '## Discovery Report' scoped to src/payments/", "type": "structural"},
+        {"text": "No files are created or modified (read-only skill)", "type": "behavioral"}
+      ],
+      "files": []
+    },
+    {
+      "id": 108,
+      "skill": "docs",
+      "prompt": "Generate a documentation site for our project. We have ADRs in docs/adrs/ and specs in docs/openspec/specs/.",
+      "expected_output": "Runs pre-flight checks (Node.js, ADR/spec existence), detects no existing Docusaurus site, proceeds with scaffold mode. Creates docs-site/ directory from templates/docusaurus/, customizes package.json and docusaurus.config.ts, runs npm install, creates .design-docs.json manifest with tracked files and SHA-256 checksums, and updates .claudeignore.",
+      "assertions": [
+        {"text": "Pre-flight check verifies Node.js is installed", "type": "behavioral"},
+        {"text": "Pre-flight check verifies ADR and/or spec directories have content", "type": "behavioral"},
+        {"text": "docs-site/ directory created from templates/docusaurus/ via cp -r", "type": "structural"},
+        {"text": "docs-site/package.json customized with project name", "type": "content"},
+        {"text": "docs-site/docusaurus.config.ts customized with project title and URLs", "type": "content"},
+        {"text": "npm install run in docs-site/ directory", "type": "behavioral"},
+        {"text": ".design-docs.json manifest created at project root with version, mode ('scaffold'), siteDir, createdAt, updatedAt, and files object", "type": "structural"},
+        {"text": "Manifest files object contains SHA-256 checksums in 'sha256:<hex-digest>' format", "type": "content"},
+        {"text": ".claudeignore updated with docs-site/node_modules/, docs-site/build/, docs-site/.docusaurus/ entries", "type": "content"},
+        {"text": "Offers to start the dev server after completion", "type": "behavioral"}
+      ],
+      "files": []
+    },
+    {
+      "id": 109,
+      "skill": "docs",
+      "prompt": "Generate docs for our project. We just initialized it yesterday -- no ADRs or specs yet.",
+      "expected_output": "Pre-flight check detects no ADR or spec content. Reports that no artifacts were found and suggests creating some with /design:adr or /design:spec. Does NOT proceed with site generation.",
+      "assertions": [
+        {"text": "Output reports no ADRs or specs found", "type": "content"},
+        {"text": "Output suggests '/design:adr' or '/design:spec' to create first artifacts", "type": "content"},
+        {"text": "Does NOT create a docs-site/ directory", "type": "structural"},
+        {"text": "Does NOT create .design-docs.json", "type": "structural"},
+        {"text": "Does NOT run npm install", "type": "behavioral"}
+      ],
+      "files": []
+    }
+  ]
+}
