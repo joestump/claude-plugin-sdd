@@ -1,0 +1,317 @@
+{
+  "skill_name": "design",
+  "tier": 3,
+  "evals": [
+    {
+      "id": 200,
+      "skill": "adr",
+      "prompt": "We need an ADR for choosing PostgreSQL over MongoDB for our user data store",
+      "expected_output": "Creates a new ADR file in docs/adrs/ using MADR format with PostgreSQL vs MongoDB as considered options",
+      "assertions": [
+        {"text": "ADR file created at docs/adrs/ADR-XXXX-*.md with correct sequential numbering", "type": "structural"},
+        {"text": "YAML frontmatter contains status: proposed", "type": "format"},
+        {"text": "At least 2 considered options listed (PostgreSQL and MongoDB minimum)", "type": "content"},
+        {"text": "Pros and cons section exists for each considered option", "type": "content"},
+        {"text": "Decision Outcome section present with chosen option and justification", "type": "structural"},
+        {"text": "Mermaid diagram included in Architecture Diagram section", "type": "content"},
+        {"text": "Suggests next step: /design:spec", "type": "behavioral"}
+      ],
+      "files": []
+    },
+    {
+      "id": 201,
+      "skill": "adr",
+      "prompt": "Create an ADR about using gRPC for inter-service communication --module api",
+      "expected_output": "Creates ADR scoped to the api module's docs/adrs/ directory using artifact path resolution",
+      "assertions": [
+        {"text": "Artifact path resolution invoked with --module api", "type": "behavioral"},
+        {"text": "ADR file created under the api module's ADR directory, not the project root", "type": "structural"},
+        {"text": "YAML frontmatter contains status: proposed and date field", "type": "format"},
+        {"text": "Considered Options section includes gRPC and at least one alternative (e.g., REST, GraphQL)", "type": "content"},
+        {"text": "ADR number is sequential within the module's ADR directory", "type": "format"},
+        {"text": "CLAUDE.md integration check targets the module root, not project root", "type": "behavioral"}
+      ],
+      "files": []
+    },
+    {
+      "id": 202,
+      "skill": "init",
+      "prompt": "/design:init",
+      "expected_output": "Creates CLAUDE.md with architecture context, detects .gitmodules for workspace setup, offers permission auto-configuration",
+      "assertions": [
+        {"text": "Checks for .claude-plugin-design.json migration before main init flow", "type": "behavioral"},
+        {"text": "CLAUDE.md created or updated with ## Architecture Context section", "type": "structural"},
+        {"text": "CLAUDE.md contains references to docs/adrs/ and docs/openspec/specs/", "type": "content"},
+        {"text": "Offers to configure .claude/settings.json with permission allowlists via AskUserQuestion", "type": "behavioral"},
+        {"text": "Checks for .gitmodules and offers workspace setup if submodules found", "type": "behavioral"},
+        {"text": "Detects backend project manifests (go.mod, package.json, etc.) and suggests structured logging ADR if none exists", "type": "behavioral"},
+        {"text": "Outputs next steps mentioning /design:adr, /design:spec, and /design:prime", "type": "content"}
+      ],
+      "files": []
+    },
+    {
+      "id": 203,
+      "skill": "init",
+      "prompt": "/design:init",
+      "expected_output": "Detects already-configured CLAUDE.md and reports no changes needed (idempotent re-run)",
+      "assertions": [
+        {"text": "Reads existing CLAUDE.md and finds both docs/adrs/ and docs/openspec/specs/ references", "type": "behavioral"},
+        {"text": "Reports 'already configured' without modifying the file", "type": "behavioral"},
+        {"text": "Does NOT append a duplicate ## Architecture Context section", "type": "structural"},
+        {"text": "Output includes current ADR path and spec path", "type": "content"}
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\nThis project uses the [design plugin](https://github.com/joestump/claude-plugin-design) for architecture governance.\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        }
+      ]
+    },
+    {
+      "id": 204,
+      "skill": "prime",
+      "prompt": "/design:prime authentication",
+      "expected_output": "Loads architecture context filtered by 'authentication' topic, showing only semantically relevant ADRs and specs",
+      "assertions": [
+        {"text": "Checks CLAUDE.md for design plugin references before scanning", "type": "behavioral"},
+        {"text": "Scans ADR and spec directories for artifacts", "type": "behavioral"},
+        {"text": "Applies semantic topic filter — matches ADRs/specs related to auth, sessions, tokens, access control", "type": "behavioral"},
+        {"text": "Output includes 'Matching ADRs' and 'Matching Specs' tables with Relevance column", "type": "format"},
+        {"text": "Output includes 'Skipped' section listing non-matching artifacts", "type": "format"},
+        {"text": "Output includes 'Summaries' section with 2-3 sentence summaries of matching artifacts", "type": "format"},
+        {"text": "No files are modified (read-only skill)", "type": "behavioral"}
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        },
+        {
+          "path": "docs/adrs/ADR-0001-jwt-authentication.md",
+          "content": "---\nstatus: accepted\ndate: 2025-06-15\n---\n\n# ADR-0001: Use JWT for API Authentication\n\n## Context and Problem Statement\n\nWe need a stateless authentication mechanism for our API.\n\n## Decision Outcome\n\nChosen option: JWT tokens, because they enable stateless auth.\n"
+        },
+        {
+          "path": "docs/adrs/ADR-0002-postgresql.md",
+          "content": "---\nstatus: accepted\ndate: 2025-07-01\n---\n\n# ADR-0002: Use PostgreSQL for Primary Database\n\n## Context and Problem Statement\n\nWe need a relational database for user data.\n\n## Decision Outcome\n\nChosen option: PostgreSQL, because of its reliability.\n"
+        }
+      ]
+    },
+    {
+      "id": 205,
+      "skill": "prime",
+      "prompt": "/design:prime",
+      "expected_output": "Detects missing design plugin references in CLAUDE.md and instructs user to run /design:init first",
+      "assertions": [
+        {"text": "Reads CLAUDE.md (or detects it doesn't exist)", "type": "behavioral"},
+        {"text": "Output tells user to run /design:init first", "type": "content"},
+        {"text": "Does NOT attempt to scan for ADRs or specs", "type": "behavioral"},
+        {"text": "No files are modified (read-only skill)", "type": "behavioral"}
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "# My Project\n\nThis is a web application.\n"
+        }
+      ]
+    },
+    {
+      "id": 206,
+      "skill": "list",
+      "prompt": "/design:list spec",
+      "expected_output": "Lists only specs (not ADRs) with status, date, and title in a formatted table",
+      "assertions": [
+        {"text": "Parses 'spec' filter argument — only shows specs, not ADRs", "type": "behavioral"},
+        {"text": "Output contains a Specifications table with ID, Title, Status, Date columns", "type": "format"},
+        {"text": "Does NOT include an Architecture Decisions table", "type": "format"},
+        {"text": "Specs are sorted by SPEC number", "type": "format"},
+        {"text": "No files are modified (read-only skill)", "type": "behavioral"}
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        },
+        {
+          "path": "docs/openspec/specs/web-dashboard/spec.md",
+          "content": "---\nstatus: approved\ndate: 2025-08-01\n---\n\n# SPEC-0001: Web Dashboard\n"
+        },
+        {
+          "path": "docs/openspec/specs/api-gateway/spec.md",
+          "content": "---\nstatus: draft\ndate: 2025-09-15\n---\n\n# SPEC-0002: API Gateway\n"
+        }
+      ]
+    },
+    {
+      "id": 207,
+      "skill": "list",
+      "prompt": "/design:list",
+      "expected_output": "Reports no ADRs or specs found and suggests creating them",
+      "assertions": [
+        {"text": "Scans docs/adrs/ and docs/openspec/specs/ directories (or detects they don't exist)", "type": "behavioral"},
+        {"text": "Output states no ADRs found and suggests /design:adr", "type": "content"},
+        {"text": "Output states no specs found and suggests /design:spec", "type": "content"},
+        {"text": "Does NOT output empty tables", "type": "format"},
+        {"text": "No files are modified (read-only skill)", "type": "behavioral"}
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        }
+      ]
+    },
+    {
+      "id": 208,
+      "skill": "status",
+      "prompt": "/design:status ADR-0003 accepted",
+      "expected_output": "Updates ADR-0003 YAML frontmatter status from proposed to accepted",
+      "assertions": [
+        {"text": "Locates the ADR-0003 file by globbing docs/adrs/ADR-0003-*.md", "type": "behavioral"},
+        {"text": "Edits only the status field in the YAML frontmatter", "type": "structural"},
+        {"text": "Status changed from 'proposed' to 'accepted'", "type": "content"},
+        {"text": "No content outside YAML frontmatter is modified", "type": "structural"},
+        {"text": "Reports the change: 'proposed -> accepted'", "type": "content"}
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        },
+        {
+          "path": "docs/adrs/ADR-0003-event-driven-arch.md",
+          "content": "---\nstatus: proposed\ndate: 2025-10-01\ndecision-makers: [team-lead]\n---\n\n# ADR-0003: Use Event-Driven Architecture\n\n## Context and Problem Statement\n\nWe need to decouple services for scalability.\n\n## Decision Outcome\n\nChosen option: Event-driven with message queues.\n"
+        }
+      ]
+    },
+    {
+      "id": 209,
+      "skill": "status",
+      "prompt": "/design:status",
+      "expected_output": "Lists available ADRs and specs with current statuses, then prompts user to choose which to update",
+      "assertions": [
+        {"text": "Detects missing identifier argument", "type": "behavioral"},
+        {"text": "Scans for available ADRs and specs and presents them with current statuses", "type": "behavioral"},
+        {"text": "Uses AskUserQuestion to prompt user for which artifact to update", "type": "behavioral"},
+        {"text": "Shows valid status options (proposed/accepted/deprecated/superseded for ADRs, draft/review/approved/implemented/deprecated for specs)", "type": "content"}
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        },
+        {
+          "path": "docs/adrs/ADR-0001-choose-framework.md",
+          "content": "---\nstatus: proposed\ndate: 2025-06-01\n---\n\n# ADR-0001: Choose Frontend Framework\n"
+        },
+        {
+          "path": "docs/openspec/specs/dashboard/spec.md",
+          "content": "---\nstatus: draft\ndate: 2025-07-01\n---\n\n# SPEC-0001: Web Dashboard\n"
+        }
+      ]
+    },
+    {
+      "id": 210,
+      "skill": "organize",
+      "prompt": "Organize the issues for SPEC-0005 into a GitHub project --dry-run",
+      "expected_output": "Previews project creation and issue grouping without making any changes",
+      "assertions": [
+        {"text": "Resolves SPEC-0005 by reading spec.md from the spec directory", "type": "behavioral"},
+        {"text": "Validates spec pairing (checks both spec.md and design.md exist)", "type": "behavioral"},
+        {"text": "Detects tracker via Config Resolution pattern from CLAUDE.md", "type": "behavioral"},
+        {"text": "Searches tracker for issues referencing SPEC-0005", "type": "behavioral"},
+        {"text": "Presents three-tier intervention choice (leave as-is / restructure workspace / complete refactor)", "type": "behavioral"},
+        {"text": "In --dry-run mode: reports what WOULD be done at each tier without modifying anything", "type": "behavioral"},
+        {"text": "No tracker issues or projects are created or modified", "type": "structural"}
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### Design Plugin Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n\n#### Projects\n- **Default Mode**: per-epic\n- **Views**: All Work, Board, Roadmap\n- **Columns**: Todo, In Progress, In Review, Done\n- **Iteration Weeks**: 2\n"
+        },
+        {
+          "path": "docs/openspec/specs/notification-service/spec.md",
+          "content": "---\nstatus: approved\ndate: 2025-09-01\n---\n\n# SPEC-0005: Notification Service\n\n## Overview\n\nReal-time notification delivery system.\n\n### Requirement: Email Notifications\n\nThe system MUST support email delivery.\n\n### Requirement: Push Notifications\n\nThe system SHOULD support push notifications.\n"
+        },
+        {
+          "path": "docs/openspec/specs/notification-service/design.md",
+          "content": "# SPEC-0005: Notification Service — Design\n\n## Architecture\n\nEvent-driven notification pipeline.\n"
+        }
+      ]
+    },
+    {
+      "id": 211,
+      "skill": "organize",
+      "prompt": "Organize issues for SPEC-0003 --module worker",
+      "expected_output": "Resolves spec within the worker module's artifact paths and organizes issues scoped to that module",
+      "assertions": [
+        {"text": "Artifact path resolution invoked with --module worker", "type": "behavioral"},
+        {"text": "Spec resolved from worker module's spec directory, not project root", "type": "behavioral"},
+        {"text": "Validates spec pairing (spec.md + design.md) within the module", "type": "behavioral"},
+        {"text": "Reads tracker config from CLAUDE.md via Config Resolution pattern", "type": "behavioral"},
+        {"text": "Presents three-tier intervention choice via AskUserQuestion", "type": "behavioral"},
+        {"text": "Uses ToolSearch to discover tracker project tools at runtime", "type": "behavioral"}
+      ],
+      "files": []
+    },
+    {
+      "id": 212,
+      "skill": "enrich",
+      "prompt": "Add branch names and PR conventions to all SPEC-0005 issues",
+      "expected_output": "Enriches existing tracker issues for SPEC-0005 with ### Branch and ### PR Convention sections",
+      "assertions": [
+        {"text": "Resolves SPEC-0005 by reading spec.md from the spec directory", "type": "behavioral"},
+        {"text": "Validates spec pairing (checks both spec.md and design.md exist)", "type": "behavioral"},
+        {"text": "Reads Branch Conventions and PR Conventions from CLAUDE.md ### Design Plugin Configuration", "type": "behavioral"},
+        {"text": "Detects tracker via Config Resolution pattern", "type": "behavioral"},
+        {"text": "For each issue: checks if ### Branch section already exists before adding (idempotent)", "type": "behavioral"},
+        {"text": "For each issue: checks if ### PR Convention section already exists before adding (idempotent)", "type": "behavioral"},
+        {"text": "Branch slug derived from issue title in kebab-case, max 50 chars", "type": "format"},
+        {"text": "Epic issues get epic/ prefix, task issues get feature/ prefix", "type": "format"},
+        {"text": "Reports summary: issues enriched, skipped, and any failures", "type": "content"}
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### Design Plugin Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n\n#### Branch Conventions\n- **Enabled**: true\n- **Prefix**: feature\n- **Epic Prefix**: epic\n- **Slug Max Length**: 50\n\n#### PR Conventions\n- **Enabled**: true\n- **Close Keyword**: Closes\n- **Ref Keyword**: Part of\n- **Include Spec Reference**: true\n"
+        },
+        {
+          "path": "docs/openspec/specs/notification-service/spec.md",
+          "content": "---\nstatus: approved\ndate: 2025-09-01\n---\n\n# SPEC-0005: Notification Service\n\n## Overview\n\nReal-time notification delivery system.\n"
+        },
+        {
+          "path": "docs/openspec/specs/notification-service/design.md",
+          "content": "# SPEC-0005: Notification Service — Design\n\n## Architecture\n\nEvent-driven notification pipeline.\n"
+        }
+      ]
+    },
+    {
+      "id": 213,
+      "skill": "enrich",
+      "prompt": "Enrich issues for SPEC-0002 --branch-prefix hotfix --dry-run",
+      "expected_output": "Previews enrichment with custom 'hotfix' branch prefix without modifying any issues",
+      "assertions": [
+        {"text": "Parses --branch-prefix hotfix and --dry-run flags from arguments", "type": "behavioral"},
+        {"text": "Resolves SPEC-0002 and validates spec pairing (spec.md + design.md)", "type": "behavioral"},
+        {"text": "Uses 'hotfix' as the branch prefix instead of default 'feature'", "type": "content"},
+        {"text": "For each issue: shows what ### Branch and ### PR Convention sections WOULD be added", "type": "format"},
+        {"text": "Shows exact content that would be appended to each issue body", "type": "content"},
+        {"text": "Indicates which issues would be skipped (already have sections)", "type": "content"},
+        {"text": "No tracker issues are modified in --dry-run mode", "type": "structural"}
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### Design Plugin Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n"
+        },
+        {
+          "path": "docs/openspec/specs/api-gateway/spec.md",
+          "content": "---\nstatus: approved\ndate: 2025-08-15\n---\n\n# SPEC-0002: API Gateway\n\n## Overview\n\nCentralized API gateway for routing and rate limiting.\n"
+        },
+        {
+          "path": "docs/openspec/specs/api-gateway/design.md",
+          "content": "# SPEC-0002: API Gateway — Design\n\n## Architecture\n\nReverse proxy with middleware pipeline.\n"
+        }
+      ]
+    }
+  ]
+}
