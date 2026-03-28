@@ -15,7 +15,7 @@ Set up the project's `CLAUDE.md` with architecture context so Claude sessions ar
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-**Module support**: If `$ARGUMENTS` contains `--module <name>`, resolve the module root by reading the `### Modules` section from the project-root `CLAUDE.md`. All CLAUDE.md reads and writes in the steps below target the module's `CLAUDE.md` at the module root instead of the project root. If the project has no `### Modules` section and `--module` is provided, error: "No modules defined in CLAUDE.md. Run `/design:init` without `--module` first, then add a `### Modules` section."
+**Module support**: If `$ARGUMENTS` contains `--module <name>`, resolve the module root using the Workspace Detection pattern from `references/shared-patterns.md`. All CLAUDE.md reads and writes in the steps below target the module's `CLAUDE.md` at the module root instead of the project root. If workspace detection finds no modules and `--module` is provided, error: "No modules detected. Run `/design:init` without `--module` first to set up workspace."
 
 0. **Check for `.claude-plugin-design.json` migration** (Governing: SPEC-0014 REQ "Migration from JSON to CLAUDE.md"):
 
@@ -96,7 +96,63 @@ Set up the project's `CLAUDE.md` with architecture context so Claude sessions ar
 
    e. **If declined**: Skip and note in the output that permissions were not configured.
 
-5. **Report what happened** using the appropriate output format below.
+5. **Workspace Detection and Setup** (Governing: ADR-0016, SPEC-0014 REQ "Init Workspace Setup"):
+
+   <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Workspace Detection", SPEC-0014 REQ "Init Workspace Setup" -->
+
+   After permissions configuration, detect and set up workspace modules.
+
+   a. **Check for `.gitmodules`** in the project root.
+
+   b. **If `.gitmodules` exists:**
+
+      - Parse it to extract submodule names and paths (using the algorithm in `references/shared-patterns.md` § "Workspace Detection > Step 1").
+      - Display the discovered submodules to the user:
+        ```
+        Discovered workspace modules from .gitmodules:
+        - service-api (services/api)
+        - service-web (services/web)
+        - shared-lib (packages/shared)
+        ```
+
+      - For each submodule, check if a `CLAUDE.md` exists at the submodule root:
+        - **If `CLAUDE.md` exists**: Report "Already configured" and skip (unless the user explicitly requests update).
+        - **If `CLAUDE.md` does not exist**: Offer to create it with a minimal `## Architecture Context` section:
+          ```markdown
+          ## Architecture Context
+
+          This module uses the [design plugin](https://github.com/joestump/claude-plugin-design) for architecture governance.
+
+          - Architecture Decision Records are in `docs/adrs/`
+          - Specifications are in `docs/openspec/specs/`
+          ```
+
+      - Ask via `AskUserQuestion`:
+        - "Create CLAUDE.md for {N} unconfigured submodule(s)? ({list of names})"
+        - Options: "Yes, create for all" / "Let me pick" / "No, skip workspace setup"
+        - If "Let me pick": present each submodule individually for yes/no
+
+      - **Write `### Workspace Modules` table** in the root `CLAUDE.md` (inside the `## Architecture Context` section, after the existing content). List all discovered submodules:
+        ```markdown
+        ### Workspace Modules
+
+        | Module | Root | Description |
+        |--------|------|-------------|
+        | service-api | services/api | |
+        | service-web | services/web | |
+        | shared-lib | packages/shared | |
+        ```
+        If a `### Workspace Modules` table already exists, update it with any newly discovered modules (preserve existing entries and their descriptions, add missing modules).
+
+   c. **If `.gitmodules` does not exist:**
+
+      - Check if the root `CLAUDE.md` already has a `### Workspace Modules` section.
+      - If it does: report "Workspace modules already configured (manual)" and skip.
+      - If it does not: skip workspace setup silently (single-module project is the default).
+
+   d. **Order of operations when both `.gitmodules` and `.claude-plugin-design.json` exist**: Migration (step 0) runs first, then workspace setup (this step). This ensures the migrated configuration is in CLAUDE.md before workspace modules are appended.
+
+6. **Report what happened** using the appropriate output format below.
 
 ## Content to Add
 
@@ -174,3 +230,8 @@ CLAUDE.md already contains architecture context references. No changes made.
 - When merging migrated config into an existing `### Design Plugin Configuration` section, CLAUDE.md values take precedence on conflicts
 - Migration MUST translate JSON key names to the canonical CLAUDE.md format defined in `references/shared-patterns.md` § "Config Resolution > CLAUDE.md Configuration Format"
 - MUST offer to configure `.claude/settings.json` with tracker-appropriate permission allowlists during init (Governing: ADR-0015, SPEC-0014)
+- MUST detect `.gitmodules` and offer workspace setup when submodules are found (Governing: ADR-0016, SPEC-0014 REQ "Init Workspace Setup")
+- MUST NOT create submodule CLAUDE.md files without user consent via `AskUserQuestion`
+- MUST write `### Workspace Modules` table in root CLAUDE.md when workspace is detected
+- MUST skip submodules that already have CLAUDE.md (unless user explicitly requests update)
+- When `.gitmodules` and `.claude-plugin-design.json` both exist, migration (step 0) runs before workspace setup (step 5)
