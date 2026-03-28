@@ -415,6 +415,150 @@ The following settings can be placed in CLAUDE.md under `## Design Plugin Config
 
 The hotspot threshold accepts integer values from 1-100 representing the percentage of recent PRs that must touch a file for it to be classified as a hotspot. Lower values are more conservative (more files flagged); higher values are more permissive.
 
+## Pre-Flight PR Awareness
+
+<!-- Governing: ADR-0017 (Parallel Agent Coordination), SPEC-0015 REQ "Pre-Flight PR Awareness" -->
+
+Algorithm for building a sibling PR manifest and maintaining live awareness across parallel worker agents. This pattern prevents duplicate types, overlapping file modifications, and wasted rebases by giving each agent visibility into what siblings are doing.
+
+### When to Apply
+
+Run this before dispatching worker agents in `/design:work` (after team creation, before worktree assignment). The manifest is built once by the lead, injected into each worker's context, and then kept current via live `SendMessage` broadcasts.
+
+### Algorithm
+
+1. **Query the tracker for open PRs in the sprint/epic.** Use the PR Search by Spec pattern (above) or equivalent tracker query to find all open PRs associated with the current batch of work. Include PRs from previous `/design:work` runs that haven't merged yet.
+
+2. **For each open PR, extract:**
+   - PR number and associated issue number
+   - Files modified (`gh pr diff {number} --name-only` or equivalent)
+   - New types, structs, interfaces, or shared helpers introduced (scan the diff for type/struct/interface/class/function definitions)
+   - Current status (draft, ready for review, approved, merged)
+
+3. **For each foundation PR (labeled `foundation`), extract shared artifacts:**
+   - Types and interfaces defined
+   - Helper functions and utilities
+   - The file paths where they live
+   - Whether the PR is merged (artifacts available on main) or in-progress (artifacts available on the branch)
+
+4. **Build the Sibling PR Manifest.** Structure the manifest as three sections:
+
+   ```
+   ### Sibling PR Manifest
+
+   #### Files Currently Being Modified by Siblings — AVOID modifying
+   - `internal/handlers/params.go` — PR #283 (issue #42)
+   - `internal/store/link_store.go` — PR #281 (issue #40, foundation)
+
+   #### Shared Types Available — IMPORT, do NOT recreate
+   - `PublicLink` struct in `internal/store/link_store.go` — from PR #281 (merged, on main)
+   - `ParseIntParam()` in `internal/handlers/params.go` — from PR #283 (in-progress, import after merge)
+
+   #### In-Progress Sibling PRs
+   | PR | Issue | Branch | Files Modified | Status |
+   |----|-------|--------|---------------|--------|
+   | #283 | #42 | feature/42-param-helpers | params.go, errors.go | in-progress |
+   | #284 | #43 | feature/43-link-api | link_handler.go | in-progress |
+   ```
+
+5. **Inject the manifest into each worker's context** when dispatching work (step 9.4 of `/design:work`).
+
+### Live Updates via SendMessage
+
+The static manifest is a snapshot. Workers keep it current by broadcasting updates per the **Worker Communication Protocol** (above):
+
+- **FILE_CLAIM**: Before modifying any file, broadcast `FILE_CLAIM: #{issue} claiming {file-path}`. Siblings receiving this update their local manifest's "Files Currently Being Modified" section.
+- **TYPE_CREATED**: After creating a new type, struct, interface, or shared helper, broadcast `TYPE_CREATED: #{issue} created {TypeName} in {file-path}`. Siblings receiving this add it to their "Shared Types Available" section and MUST import rather than recreate.
+- **AVAILABILITY**: When a foundation or sibling PR merges, the lead broadcasts `AVAILABILITY: PR #{number} merged — {artifact list} now on main`. Workers receiving this know the types are available directly from main and file avoidance directives for those files are lifted.
+- **CONFLICT_ALERT**: If a worker needs a file already claimed by a sibling, it sends `CONFLICT_ALERT: #{issue} also needs {file-path}` and waits for lead coordination.
+
+### Edge Cases
+
+- **No open sibling PRs**: Manifest is empty — workers operate independently. Live broadcasting still applies for new claims during the session.
+- **Foundation PR not yet merged**: Types are listed as "in-progress" — workers should plan to import from the expected location once merged, and avoid recreating.
+- **Stale manifest**: If a worker detects that a claimed file has been merged and released, it should treat the file as available for modification (file avoidance is lifted).
+
+## Topological Merge Ordering
+
+<!-- Governing: ADR-0017 (Parallel Agent Coordination), SPEC-0015 REQ "Topological Merge Ordering" -->
+
+Algorithm for computing the optimal merge order for a batch of sprint PRs based on file overlap analysis. Merging in the right order minimizes rebase churn, merge conflicts, and wasted reviewer effort.
+
+### When to Apply
+
+Run this after all PRs in a `/design:work` batch are ready (status `in-review`), before merging begins. Also applicable in `/design:review` when processing a batch of sprint PRs.
+
+### Algorithm
+
+1. **Collect PR file lists.** For each open PR in the batch:
+   ```bash
+   gh pr diff {number} --name-only
+   ```
+   Store as `PR#{number} → Set<file-path>`.
+
+2. **Build a file overlap graph.** For each pair of PRs (A, B):
+   - Compute `overlap = files(A) ∩ files(B)`
+   - If `overlap` is non-empty, record an edge `A ↔ B` with the overlapping files as the edge weight
+
+3. **Classify PRs into tiers:**
+
+   - **Tier 0 (isolated)**: PRs with zero overlap with any other PR. These can merge in any order, or in parallel.
+   - **Tier 1 (foundation)**: PRs labeled `foundation` that have dependents. These merge after Tier 0.
+   - **Tier N (dependent)**: PRs that overlap with Tier N-1 PRs. These merge after their overlap predecessors and rebase first.
+
+4. **Within each tier, apply secondary ordering:**
+   - Fewer modified files first (smaller PRs merge earlier — less rebase surface)
+   - Foundation PRs before feature PRs at the same tier
+   - If two PRs overlap only with each other, the one with fewer total files goes first
+
+5. **Detect circular dependencies.** If the overlap graph contains a cycle (A overlaps B, B overlaps C, C overlaps A, and ordering constraints create a cycle):
+   - Report the cycle to the user: "Circular file dependency detected between PRs #X, #Y, #Z (all modify {files}). Please specify merge order."
+   - Do NOT proceed with merging the cycle until the user resolves it
+
+6. **Report the merge order to the user before merging:**
+
+   ```
+   ### Merge Order
+
+   | Order | PR | Issue | Overlapping Files | Action |
+   |-------|----|-------|-------------------|--------|
+   | 1 | #142 | #42 Isolated feature | (none) | Merge |
+   | 1 | #145 | #45 Another isolated | (none) | Merge |
+   | 2 | #141 | #41 Foundation types | main.go, sync.go | Merge, then rebase #143 #144 |
+   | 3 | #143 | #43 Depends on #141 | sync.go | Rebase, then merge |
+   | 4 | #144 | #44 Touches everything | main.go, sync.go, generator.go, config.go | Rebase, then merge |
+
+   Proceed with this merge order? (Y/n)
+   ```
+
+7. **Execute the merge sequence:**
+
+   For each tier, in order:
+   1. Merge all PRs in the current tier (parallel-safe within a tier for Tier 0)
+   2. After each merge, auto-rebase all remaining open PRs against main:
+      ```bash
+      git fetch origin main
+      git -C {worktree-path} rebase origin/main
+      ```
+   3. If a rebase fails, report the failure and skip that PR (preserve for manual resolution)
+   4. Re-run CI/tests on rebased PRs before merging them in their tier
+
+### PR Stacking
+
+When two PRs have a direct dependency (PR B requires types or changes introduced by PR A), offer PR stacking instead of sequential merge-then-rebase:
+
+- **Detection**: PR B's issue body declares `Depends on #{A's issue}`, AND they share modified files
+- **Offer**: "PR #B depends on PR #A. Stack #B on top of #A's branch to avoid rebase conflicts? (Y/n)"
+- **If accepted**: Create B's branch from A's branch instead of main. When A merges, B only needs a rebase onto main (not a conflict resolution).
+- **If declined**: Proceed with normal sequential merge ordering
+
+### Edge Cases
+
+- **Single PR in batch**: Skip ordering — merge directly.
+- **All PRs are isolated**: Report "All PRs are independent — merging in parallel is safe." Merge all.
+- **Rebase failure**: Preserve the worktree, report the conflicting files, and continue with other PRs. The failed PR can be fixed manually.
+- **PR already merged**: Skip it in the ordering and treat its files as part of main for overlap analysis of remaining PRs.
+
 ## Severity Assignment Rules
 
 - MUST, SHALL, or MUST NOT violation → `[CRITICAL]`
