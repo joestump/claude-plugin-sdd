@@ -16,7 +16,7 @@ Every skill in the SDD plugin hardcodes `docs/adrs/` and `docs/openspec/specs/` 
 * **Claude Code already recursively loads CLAUDE.md**: Subdirectory CLAUDE.md files are automatically loaded into session context, meaning workspace discovery infrastructure already exists
 * **Per-module autonomy**: Each submodule should own its architectural decisions independently — a service team should not need to coordinate ADR numbering with unrelated modules
 * **Aggregate views are still valuable**: Operations like `/sdd:audit`, `/sdd:list`, and `/sdd:docs` should be able to report across all modules in a single invocation
-* **No new config format**: ADR-0015 (markdown-native configuration) eliminates `.claude-plugin-sdd.json` in favor of CLAUDE.md — workspace config should follow the same principle rather than introducing yet another config mechanism
+* **No new config format**: ADR-0015 (markdown-native configuration) eliminates `.claude-plugin-design.json` in favor of CLAUDE.md — workspace config should follow the same principle rather than introducing yet another config mechanism
 * **Minimal migration burden**: Existing single-root projects should continue working without any changes
 
 ## Considered Options
@@ -60,7 +60,7 @@ Implementation will be confirmed by:
 
 ### Option 1: Workspace Configuration JSON at Top Level
 
-A top-level `workspace.json` or a `workspace` key in `.claude-plugin-sdd.json` that maps module names to paths and their artifact directories.
+A top-level `workspace.json` or a `workspace` key in `.claude-plugin-design.json` that maps module names to paths and their artifact directories.
 
 ```json
 {

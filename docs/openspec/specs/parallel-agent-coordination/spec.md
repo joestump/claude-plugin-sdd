@@ -139,7 +139,7 @@ Before an agent begins coding on a story, `/sdd:work` MUST inject a "Sibling PR 
 
 ### Requirement: Design Document Isolation
 
-Agents MUST NOT modify spec files (`docs/openspec/specs/`), ADR files (`docs/adrs/`), or shared configuration files (`.claude-plugin-sdd.json`, root-level `CLAUDE.md`) in feature PRs. Design document updates MUST be batched into a single post-merge PR created after all feature PRs in a sprint have merged. Governing comments (per ADR-0020) MUST be added in the implementing feature PR as file-level header blocks, not as separate PRs. `/sdd:work` MUST enforce this by instructing each agent to skip design doc modifications and by validating PR diffs before submission.
+Agents MUST NOT modify spec files (`docs/openspec/specs/`), ADR files (`docs/adrs/`), or shared configuration files (`.claude-plugin-design.json`, root-level `CLAUDE.md`) in feature PRs. Design document updates MUST be batched into a single post-merge PR created after all feature PRs in a sprint have merged. Governing comments (per ADR-0020) MUST be added in the implementing feature PR as file-level header blocks, not as separate PRs. `/sdd:work` MUST enforce this by instructing each agent to skip design doc modifications and by validating PR diffs before submission.
 
 #### Scenario: Agent attempts to update spec in feature PR
 
@@ -158,8 +158,8 @@ Agents MUST NOT modify spec files (`docs/openspec/specs/`), ADR files (`docs/adr
 
 #### Scenario: Config file conflict prevention
 
-- **WHEN** a sprint has 7 parallel feature PRs and `.claude-plugin-sdd.json` exists in the repo
-- **THEN** no feature PR modifies `.claude-plugin-sdd.json`, eliminating it as a merge conflict source (per evidence from claude-ops where this file was modified by every single PR)
+- **WHEN** a sprint has 7 parallel feature PRs and `.claude-plugin-design.json` exists in the repo
+- **THEN** no feature PR modifies `.claude-plugin-design.json`, eliminating it as a merge conflict source (per evidence from claude-ops where this file was modified by every single PR)
 
 ### Requirement: Conflict-Marker CI Gate
 

@@ -107,7 +107,7 @@ flowchart TD
     A["/sdd:review\n[SPEC-XXXX or PR numbers]\n[--no-merge] [--dry-run]"] --> B["Resolve target PRs\n(by spec or PR numbers)"]
 
     B --> C["Load architecture context\n(spec.md, design.md, ADRs)"]
-    C --> D["Read .claude-plugin-sdd.json\nfor tracker + config"]
+    C --> D["Read .claude-plugin-design.json\nfor tracker + config"]
 
     D --> E["Create team:\n2 reviewers + 2 responders"]
 
@@ -169,9 +169,9 @@ sequenceDiagram
 ## More Information
 
 - This ADR extends the `/sdd:work` pipeline (ADR-0009) by adding the review-and-merge phase. It does not modify `/sdd:work` -- it operates on PRs that already exist.
-- The two-pair structure (2+2) is a default. For small batches (1-2 PRs), the skill may use a single pair (1+1) to avoid unnecessary agent overhead. The `.claude-plugin-sdd.json` `review` section can configure `max_pairs`.
+- The two-pair structure (2+2) is a default. For small batches (1-2 PRs), the skill may use a single pair (1+1) to avoid unnecessary agent overhead. The `.claude-plugin-design.json` `review` section can configure `max_pairs`.
 - Responders need worktree access to push fix commits. They reuse the worktrees created by `/sdd:work` if they still exist, or create new ones from the PR branch.
 - The one-round limit is a hard constraint to prevent runaway review cycles. Complex PRs that cannot be resolved in one round are left for human follow-up with clear comments explaining what remains.
 - Reviewers check against three criteria: (1) spec acceptance criteria from the linked issue, (2) governing ADR compliance, and (3) general code quality (tests pass, no regressions, clean diffs).
-- Auto-merge uses the tracker's merge API (e.g., `gh pr merge --squash` for GitHub). The merge strategy (squash, merge, rebase) can be configured via `.claude-plugin-sdd.json` `review.merge_strategy`.
+- Auto-merge uses the tracker's merge API (e.g., `gh pr merge --squash` for GitHub). The merge strategy (squash, merge, rebase) can be configured via `.claude-plugin-design.json` `review.merge_strategy`.
 - Related: ADR-0008 (standalone sprint planning), ADR-0009 (project grouping and developer workflow), `/sdd:work` (parallel issue implementation).

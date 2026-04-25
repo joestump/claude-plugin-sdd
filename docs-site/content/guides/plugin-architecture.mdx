@@ -79,8 +79,8 @@ The file `references/shared-patterns.md` exists to deduplicate logic that five o
 The shared patterns file contains:
 
 - **Spec Resolution**: How to resolve a spec identifier (SPEC number, directory name, or interactive selection) to a file path.
-- **Tracker Detection**: The algorithm for discovering which issue trackers are available — checking saved preferences in `.claude-plugin-sdd.json`, probing for MCP tools, falling back to CLI detection, and prompting the user to choose when multiple trackers are found.
-- **Config Schema**: The full schema for `.claude-plugin-sdd.json` with all optional keys.
+- **Tracker Detection**: The algorithm for discovering which issue trackers are available — checking saved preferences in `.claude-plugin-design.json`, probing for MCP tools, falling back to CLI detection, and prompting the user to choose when multiple trackers are found.
+- **Config Schema**: The full schema for `.claude-plugin-design.json` with all optional keys.
 - **Team Handoff Protocol**: The drafter-reviewer message flow used by `--review` mode (draft, review, revise up to 2 rounds, approve).
 - **Try-Then-Create Label Pattern**: Attempt to apply a label; if it doesn't exist, create it with a default color and retry.
 - **Branch Naming Conventions**: How to derive branch names from issue numbers and titles.
@@ -91,7 +91,7 @@ The shared patterns file contains:
 
 ## Configuration
 
-### `.claude-plugin-sdd.json`
+### `.claude-plugin-design.json`
 
 This is the per-project configuration file, created in the user's project root. It is not part of the plugin itself — it lives in whatever project the user is working on.
 

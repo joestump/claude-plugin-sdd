@@ -32,11 +32,11 @@ The `/sdd:review` skill SHALL accept either a spec identifier or explicit PR num
 
 ### Requirement: Tracker Detection
 
-The skill SHALL detect the user's tracker using the same detection flow as `/sdd:plan` (SPEC-0007, Requirement: Tracker Detection). The skill MUST check `.claude-plugin-sdd.json` for a saved tracker preference before running detection.
+The skill SHALL detect the user's tracker using the same detection flow as `/sdd:plan` (SPEC-0007, Requirement: Tracker Detection). The skill MUST check `.claude-plugin-design.json` for a saved tracker preference before running detection.
 
 #### Scenario: Saved preference available
 
-- **WHEN** `.claude-plugin-sdd.json` exists with a `"tracker"` key and the tracker is still available
+- **WHEN** `.claude-plugin-design.json` exists with a `"tracker"` key and the tracker is still available
 - **THEN** the skill SHALL use the saved tracker and configuration directly without prompting
 
 #### Scenario: No tracker detected
@@ -180,7 +180,7 @@ After the responder addresses feedback, the reviewer SHALL re-evaluate the PR. I
 
 #### Scenario: Merge strategy configuration
 
-- **WHEN** `.claude-plugin-sdd.json` contains `review.merge_strategy`
+- **WHEN** `.claude-plugin-design.json` contains `review.merge_strategy`
 - **THEN** the skill SHALL use the configured strategy (`squash`, `merge`, or `rebase`) instead of the default `squash`
 
 #### Scenario: Issue closure on merge
@@ -223,16 +223,16 @@ The skill SHALL support a `--dry-run` flag that previews which PRs would be revi
 
 ### Requirement: Configuration Persistence
 
-The skill SHALL read review configuration from `.claude-plugin-sdd.json`. The skill SHALL NOT write to `.claude-plugin-sdd.json` (it is a consumer, not a producer of configuration).
+The skill SHALL read review configuration from `.claude-plugin-design.json`. The skill SHALL NOT write to `.claude-plugin-design.json` (it is a consumer, not a producer of configuration).
 
 #### Scenario: Review config schema
 
-- **WHEN** `.claude-plugin-sdd.json` contains a `review` section
+- **WHEN** `.claude-plugin-design.json` contains a `review` section
 - **THEN** the skill SHALL read `review.max_pairs` (default 2), `review.merge_strategy` (default "squash"), and `review.auto_cleanup` (default false) and apply them
 
 #### Scenario: No review config
 
-- **WHEN** `.claude-plugin-sdd.json` does not contain a `review` section
+- **WHEN** `.claude-plugin-design.json` does not contain a `review` section
 - **THEN** the skill SHALL use defaults: 2 pairs, squash merge, no auto-cleanup
 
 ### Requirement: Reporting

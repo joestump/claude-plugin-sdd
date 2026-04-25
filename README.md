@@ -37,7 +37,7 @@ Add to your project's `.claude/settings.json`:
     }
   },
   "enabledPlugins": {
-    "design@claude-plugin-sdd": true
+    "sdd@claude-plugin-sdd": true
   }
 }
 ```

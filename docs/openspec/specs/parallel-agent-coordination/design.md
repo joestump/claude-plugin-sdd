@@ -8,7 +8,7 @@ The evidence is consistent across all three repos:
 
 - **spotter**: `nopHandler` struct implemented independently in two packages; LLM client code (`ChatRequest`/`ChatResponse`, `callOpenAI()`) duplicated across 4 packages (181 lines removed in cleanup PR 171); PR 144 required merge-conflict-resolution commits after 5 other PRs merged; `cmd/server/main.go` and `internal/config/config.go` were hotspot files touched by 60-70% of PRs.
 - **joe-links**: `PublicLink` struct created independently in PRs 112 and 114; `link_store.go` modified by 6 concurrent PRs; PRs 142-144 all closed without merging and recreated as 145-147 (100% wasted effort).
-- **claude-ops**: Conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) merged into `main` in `api_handlers.go`; `.claude-plugin-sdd.json` modified by all 7 parallel PRs (guaranteed conflicts); 78 concurrent PRs launched in one sprint.
+- **claude-ops**: Conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) merged into `main` in `api_handlers.go`; `.claude-plugin-design.json` modified by all 7 parallel PRs (guaranteed conflicts); 78 concurrent PRs launched in one sprint.
 
 Zero assignees, zero lifecycle labels, and zero machine-readable dependency signals were found across all three repos.
 
@@ -44,14 +44,14 @@ Governing: SPEC-0015, ADR-0017, ADR-0020.
 
 **Alternatives considered**:
 - **Post-hoc deduplication in review**: Catches duplicates too late; one agent's work is wasted. In spotter, PR 171 removed 181 lines of duplicate code that should never have been written.
-- **Shared code registry file**: Adds a coordination artifact that itself becomes a conflict source — the same problem as `.claude-plugin-sdd.json` in claude-ops.
+- **Shared code registry file**: Adds a coordination artifact that itself becomes a conflict source — the same problem as `.claude-plugin-design.json` in claude-ops.
 - **Agent-to-agent chat during implementation**: Requires synchronous coordination between parallel agents; defeats the purpose of parallelism and adds token cost with uncertain reliability.
 
 ### Hotspot Serialization Over Optimistic Parallelism
 
 **Choice**: Files modified by >50% of recent PRs are classified as hotspots; stories touching them are serialized.
 
-**Rationale**: In joe-links, `link_store.go` was modified by 6 concurrent PRs — every single one required rebase. In claude-ops, `.claude-plugin-sdd.json` was modified by all 7 PRs. Serializing stories that touch these files eliminates the rebase cascade at the cost of slightly longer wall-clock time for those stories. The tradeoff is favorable: 3 serial PRs that each merge cleanly beat 3 parallel PRs that each require 2 rebases.
+**Rationale**: In joe-links, `link_store.go` was modified by 6 concurrent PRs — every single one required rebase. In claude-ops, `.claude-plugin-design.json` was modified by all 7 PRs. Serializing stories that touch these files eliminates the rebase cascade at the cost of slightly longer wall-clock time for those stories. The tradeoff is favorable: 3 serial PRs that each merge cleanly beat 3 parallel PRs that each require 2 rebases.
 
 **Alternatives considered**:
 - **File locking**: Not supported by git; would require a custom coordination server.
@@ -78,7 +78,7 @@ Governing: SPEC-0015, ADR-0017, ADR-0020.
 **Alternatives considered**:
 - **Tracker-native status fields**: Not available on GitHub Issues or Gitea; would require tracker-specific branching logic.
 - **Comment-based status**: Machine-parseable but invisible in list views; requires reading each issue to determine state.
-- **External state file**: Same conflict problem as `.claude-plugin-sdd.json`.
+- **External state file**: Same conflict problem as `.claude-plugin-design.json`.
 
 ### Pre-Flight Manifest Injection
 
@@ -106,7 +106,7 @@ Governing: SPEC-0015, ADR-0017, ADR-0020.
 
 **Choice**: Feature PRs must not modify spec/ADR/config files; all design doc updates are batched into a single post-merge PR.
 
-**Rationale**: In claude-ops, `.claude-plugin-sdd.json` was modified by every single PR — guaranteed merge conflicts on every rebase. Spec and ADR files were similarly touched by 5-7 PRs simultaneously. The root cause is that each agent believed it was responsible for updating design docs. The fix is architectural: no feature agent touches design docs, and a single consolidation step handles all updates after feature work is complete. Governing comments (per ADR-0020) are the exception — they belong in the implementing PR because they annotate the code being written.
+**Rationale**: In claude-ops, `.claude-plugin-design.json` was modified by every single PR — guaranteed merge conflicts on every rebase. Spec and ADR files were similarly touched by 5-7 PRs simultaneously. The root cause is that each agent believed it was responsible for updating design docs. The fix is architectural: no feature agent touches design docs, and a single consolidation step handles all updates after feature work is complete. Governing comments (per ADR-0020) are the exception — they belong in the implementing PR because they annotate the code being written.
 
 **Alternatives considered**:
 - **Lock design doc files**: git does not support file-level locking; would require a coordination server.

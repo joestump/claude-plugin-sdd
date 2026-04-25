@@ -2,7 +2,7 @@
 
 ## Overview
 
-This specification formalizes the requirements for eliminating `.claude-plugin-sdd.json` in favor of structured markdown sections in `CLAUDE.md`, and for enabling multi-module workspace support through auto-discovery and path resolution. These two capabilities are tightly coupled: workspace mode depends on configuration living in `CLAUDE.md` so that Claude Code's recursive `CLAUDE.md` loading provides per-module configuration for free.
+This specification formalizes the requirements for eliminating `.claude-plugin-design.json` in favor of structured markdown sections in `CLAUDE.md`, and for enabling multi-module workspace support through auto-discovery and path resolution. These two capabilities are tightly coupled: workspace mode depends on configuration living in `CLAUDE.md` so that Claude Code's recursive `CLAUDE.md` loading provides per-module configuration for free.
 
 See ADR-0015 (Markdown-Native Configuration) and ADR-0016 (Workspace Mode for Multi-Module Projects).
 
@@ -10,7 +10,7 @@ See ADR-0015 (Markdown-Native Configuration) and ADR-0016 (Workspace Mode for Mu
 
 ### Requirement: CLAUDE.md Configuration Sections
 
-Skills MUST read configuration from a `### SDD Configuration` section in `CLAUDE.md` instead of from `.claude-plugin-sdd.json`. The configuration section MUST support the following subsections, each using markdown lists with bold keys:
+Skills MUST read configuration from a `### SDD Configuration` section in `CLAUDE.md` instead of from `.claude-plugin-design.json`. The configuration section MUST support the following subsections, each using markdown lists with bold keys:
 
 - **`#### Tracker`**: Type, URL, owner, repo (or project key / team ID depending on tracker)
 - **`#### Branch Conventions`**: Prefix, epic prefix, slug length
@@ -18,7 +18,7 @@ Skills MUST read configuration from a `### SDD Configuration` section in `CLAUDE
 - **`#### Review`**: Max pairs, merge strategy, auto cleanup
 - **`#### Worktrees`**: Base directory, max agents, auto cleanup, PR mode
 
-Skills MUST NOT read from `.claude-plugin-sdd.json` for any configuration value. Configuration values expressed in markdown SHOULD use the same key names as the current JSON schema to minimize cognitive migration cost. Skills MAY tolerate minor natural-language variations in key names (e.g., "Branch prefix" vs. "Prefix") since Claude interprets these as natural language.
+Skills MUST NOT read from `.claude-plugin-design.json` for any configuration value. Configuration values expressed in markdown SHOULD use the same key names as the current JSON schema to minimize cognitive migration cost. Skills MAY tolerate minor natural-language variations in key names (e.g., "Branch prefix" vs. "Prefix") since Claude interprets these as natural language.
 
 #### Scenario: Skill reads tracker config from CLAUDE.md
 
@@ -37,7 +37,7 @@ Skills MUST NOT read from `.claude-plugin-sdd.json` for any configuration value.
 
 ### Requirement: Config Resolution Pattern in shared-patterns.md
 
-`references/shared-patterns.md` MUST include a "Config Resolution" pattern that defines a single, canonical algorithm for reading configuration from CLAUDE.md. All skills that need configuration MUST use this pattern. No skill SHALL read `.claude-plugin-sdd.json` directly.
+`references/shared-patterns.md` MUST include a "Config Resolution" pattern that defines a single, canonical algorithm for reading configuration from CLAUDE.md. All skills that need configuration MUST use this pattern. No skill SHALL read `.claude-plugin-design.json` directly.
 
 The Config Resolution pattern MUST specify:
 
@@ -46,12 +46,12 @@ The Config Resolution pattern MUST specify:
 3. For any missing keys, apply documented defaults
 4. If no configuration section exists at all, fall through to auto-detection
 
-The pattern MUST replace the existing "Config Schema (`.claude-plugin-sdd.json`)" and "Tracker Detection > Check for Saved Preference" sections in `shared-patterns.md`. The Tracker Detection flow MUST be updated to check CLAUDE.md first instead of JSON.
+The pattern MUST replace the existing "Config Schema (`.claude-plugin-design.json`)" and "Tracker Detection > Check for Saved Preference" sections in `shared-patterns.md`. The Tracker Detection flow MUST be updated to check CLAUDE.md first instead of JSON.
 
 #### Scenario: Config Resolution pattern used by plan skill
 
 - **WHEN** `/sdd:plan` needs the tracker type and branch conventions
-- **THEN** it follows the Config Resolution pattern from `shared-patterns.md`, reading CLAUDE.md sections, not `.claude-plugin-sdd.json`
+- **THEN** it follows the Config Resolution pattern from `shared-patterns.md`, reading CLAUDE.md sections, not `.claude-plugin-design.json`
 
 #### Scenario: Module-level config overrides root config
 
@@ -61,29 +61,29 @@ The pattern MUST replace the existing "Config Schema (`.claude-plugin-sdd.json`)
 #### Scenario: Config Resolution replaces JSON references in shared-patterns.md
 
 - **WHEN** `shared-patterns.md` is updated per this spec
-- **THEN** all references to `.claude-plugin-sdd.json` in the Tracker Detection and Config Schema sections MUST be replaced with CLAUDE.md-based equivalents
+- **THEN** all references to `.claude-plugin-design.json` in the Tracker Detection and Config Schema sections MUST be replaced with CLAUDE.md-based equivalents
 
 ### Requirement: Migration from JSON to CLAUDE.md
 
-`/sdd:init` MUST detect an existing `.claude-plugin-sdd.json` file in the project root. When detected, `/sdd:init` MUST read the JSON contents, translate each key-value pair into the equivalent CLAUDE.md markdown section format, and offer to write the configuration into CLAUDE.md using `AskUserQuestion`.
+`/sdd:init` MUST detect an existing `.claude-plugin-design.json` file in the project root. When detected, `/sdd:init` MUST read the JSON contents, translate each key-value pair into the equivalent CLAUDE.md markdown section format, and offer to write the configuration into CLAUDE.md using `AskUserQuestion`.
 
-After successful migration, `/sdd:init` SHOULD offer to remove the `.claude-plugin-sdd.json` file. The user MUST confirm deletion; the skill MUST NOT delete the file without explicit consent.
+After successful migration, `/sdd:init` SHOULD offer to remove the `.claude-plugin-design.json` file. The user MUST confirm deletion; the skill MUST NOT delete the file without explicit consent.
 
 The migration MUST preserve all configuration values exactly. If CLAUDE.md already contains a `### SDD Configuration` section, the migration MUST merge new values into existing sections rather than duplicating or overwriting.
 
 #### Scenario: Fresh migration from JSON
 
-- **WHEN** the user runs `/sdd:init` and `.claude-plugin-sdd.json` exists with tracker, branch, and PR settings, and CLAUDE.md has no configuration section
+- **WHEN** the user runs `/sdd:init` and `.claude-plugin-design.json` exists with tracker, branch, and PR settings, and CLAUDE.md has no configuration section
 - **THEN** `/sdd:init` writes a `### SDD Configuration` section to CLAUDE.md with all settings from the JSON file and offers to delete the JSON file
 
 #### Scenario: Migration with existing CLAUDE.md config
 
-- **WHEN** `.claude-plugin-sdd.json` exists and CLAUDE.md already has a `### SDD Configuration` section with partial settings
+- **WHEN** `.claude-plugin-design.json` exists and CLAUDE.md already has a `### SDD Configuration` section with partial settings
 - **THEN** `/sdd:init` merges the JSON values into the existing CLAUDE.md section, preserving values already present in CLAUDE.md (CLAUDE.md takes precedence on conflicts)
 
 #### Scenario: User declines JSON deletion
 
-- **WHEN** `/sdd:init` offers to delete `.claude-plugin-sdd.json` after migration and the user declines
+- **WHEN** `/sdd:init` offers to delete `.claude-plugin-design.json` after migration and the user declines
 - **THEN** the JSON file is preserved and the skill emits a warning that dual config sources exist
 
 ### Requirement: Workspace Detection from .gitmodules
@@ -219,5 +219,5 @@ Per-module `CLAUDE.md` files MAY contain module-specific configuration overrides
 
 #### Scenario: Workspace init with existing JSON config
 
-- **WHEN** `/sdd:init` detects both `.gitmodules` and `.claude-plugin-sdd.json`
+- **WHEN** `/sdd:init` detects both `.gitmodules` and `.claude-plugin-design.json`
 - **THEN** `/sdd:init` performs JSON migration first (per the Migration requirement), then proceeds with workspace setup using the migrated configuration

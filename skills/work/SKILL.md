@@ -90,7 +90,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    | `{spec-dir}` | Spec changes require coordinated review |
    | `{adr-dir}` | ADR changes require coordinated review |
    | `CLAUDE.md` (project root) | Shared configuration — concurrent edits cause conflicts |
-   | `.claude-plugin-sdd.json` | Plugin configuration — concurrent edits cause conflicts |
+   | `.claude-plugin-design.json` | Plugin configuration — concurrent edits cause conflicts |
 
    **Exception:** Governing comments (per ADR-0020) MUST be added in feature PRs, not deferred. These are inline code comments (e.g., `// Governing: ADR-XXXX, SPEC-XXXX REQ "..."`) and are NOT considered design document modifications.
 
@@ -290,7 +290,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
         ```bash
         git -C {worktree-path} diff --name-only
         ```
-        For each modified file, check if it falls under a protected path (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-sdd.json`).
+        For each modified file, check if it falls under a protected path (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-design.json`).
 
         **If protected files are found:**
         1. Revert each protected file:
@@ -550,7 +550,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST auto-rebase all remaining open PRs after each merge
 - MUST detect circular file dependencies in the merge order graph and request manual resolution — do NOT merge PRs in a cycle without user input
 - If a rebase fails during merge ordering, MUST preserve the worktree and report the conflict for manual resolution
-- Workers MUST NOT modify protected paths (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-sdd.json`) in feature branches (Governing: SPEC-0015 REQ "Design Document Isolation")
+- Workers MUST NOT modify protected paths (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-design.json`) in feature branches (Governing: SPEC-0015 REQ "Design Document Isolation")
 - Workers MUST run `git diff --name-only` before staging and revert any protected files that were modified
 - Workers MUST record reverted protected-file changes in a `### Deferred Design Doc Updates` section in the PR body
 - Governing comments (per ADR-0020) are inline code annotations and MUST be added in feature PRs — they are NOT subject to design document isolation

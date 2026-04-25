@@ -12,7 +12,7 @@ ADR-0009 decided to add project grouping and developer workflow conventions (bra
 - Share spec resolution and tracker detection logic with `/sdd:plan` for consistency
 - Support dry-run previews so users can verify changes before applying them
 - Be idempotent: safe to run multiple times without duplicating projects or sections
-- Read `.claude-plugin-sdd.json` for saved preferences to minimize re-prompting
+- Read `.claude-plugin-design.json` for saved preferences to minimize re-prompting
 
 ### Non-Goals
 - Re-creating issues (both skills operate on existing issues only)
@@ -34,18 +34,18 @@ ADR-0009 decided to add project grouping and developer workflow conventions (bra
 
 ### Shared spec resolution and tracker detection
 
-**Choice**: Reuse the same spec resolution (SPEC number or capability name) and tracker detection (`.claude-plugin-sdd.json` → ToolSearch + CLI probing) flows from `/sdd:plan`.
-**Rationale**: Users already understand these patterns from `/sdd:plan`. Consistency reduces cognitive load and ensures `.claude-plugin-sdd.json` preferences work identically across all three skills. The duplication is in the SKILL.md instructions only -- there is no shared code to maintain.
+**Choice**: Reuse the same spec resolution (SPEC number or capability name) and tracker detection (`.claude-plugin-design.json` → ToolSearch + CLI probing) flows from `/sdd:plan`.
+**Rationale**: Users already understand these patterns from `/sdd:plan`. Consistency reduces cognitive load and ensures `.claude-plugin-design.json` preferences work identically across all three skills. The duplication is in the SKILL.md instructions only -- there is no shared code to maintain.
 **Alternatives considered**:
 - Accept only SPEC numbers (not capability names): Inconsistent with `/sdd:plan`; users would have to look up the SPEC number
-- Skip `.claude-plugin-sdd.json` and always prompt: Adds friction; defeats the preference persistence from ADR-0008
+- Skip `.claude-plugin-design.json` and always prompt: Adds friction; defeats the preference persistence from ADR-0008
 
 ### Issue discovery via tracker search
 
 **Choice**: Search for issues containing the spec number (e.g., "SPEC-0007") in their body text using the tracker's native search API.
 **Rationale**: Every issue created by `/sdd:plan` includes a spec reference in its body (per SPEC-0007, Requirement: Issue Creation Flow). Searching by spec number reliably discovers these issues. Tracker-native search is fast and requires no local state.
 **Alternatives considered**:
-- Maintain a local issue manifest in `.claude-plugin-sdd.json`: Adds complexity; goes stale when issues are deleted or moved
+- Maintain a local issue manifest in `.claude-plugin-design.json`: Adds complexity; goes stale when issues are deleted or moved
 - Search by label (e.g., `spec:SPEC-0007`): Not all trackers support structured labels; `/sdd:plan` does not currently set labels
 
 ### Epic classification heuristics
@@ -61,7 +61,7 @@ ADR-0009 decided to add project grouping and developer workflow conventions (bra
 **Choice**: For each issue, read the body first to check for existing sections, then update with appended content.
 **Rationale**: Idempotency requires checking whether `### Branch` and `### PR Convention` sections already exist. Blindly appending would create duplicates. The two-pass approach (read body, check for sections, append if missing, write) is the simplest way to achieve idempotency.
 **Alternatives considered**:
-- Track enriched issues in `.claude-plugin-sdd.json`: Adds local state that can go stale; the issue body is the source of truth
+- Track enriched issues in `.claude-plugin-design.json`: Adds local state that can go stale; the issue body is the source of truth
 - Use a marker comment instead of section headers: Less readable; section headers serve as useful documentation for developers
 
 ## Architecture
@@ -72,7 +72,7 @@ flowchart TD
         A["Parse arguments\n(spec ID, flags)"]
         B["Resolve spec\n(SPEC-XXXX or name)"]
         C["Read spec.md"]
-        D["Detect tracker\n(.claude-plugin-sdd.json → ToolSearch)"]
+        D["Detect tracker\n(.claude-plugin-design.json → ToolSearch)"]
         E["Search tracker for\nissues referencing spec"]
         F["Classify: epics vs tasks"]
     end
@@ -89,7 +89,7 @@ flowchart TD
     end
 
     subgraph "/sdd:enrich"
-        L["Read .claude-plugin-sdd.json\nbranch/PR config"]
+        L["Read .claude-plugin-design.json\nbranch/PR config"]
         L --> M["For each issue"]
         M --> N{"Has ### Branch?"}
         N -->|"No"| O["Append branch\nsection"]
@@ -171,7 +171,7 @@ sequenceDiagram
 - **GitHub Projects V2 API complexity**: GitHub Projects V2 uses a GraphQL-only API with separate concepts for projects, items, and fields. The `gh project create` and `gh project item-add` CLI commands abstract most of this, but edge cases (organization vs. user projects, project visibility) may require additional handling. Mitigation: use `ToolSearch` to discover MCP tools first; fall back to CLI; graceful failure on project creation errors.
 - **Rate limiting during enrichment**: Enriching many issues involves one read and one write API call per issue. For large specs with 20+ tasks, this could hit rate limits. Mitigation: the skill processes issues sequentially; individual failures are reported and skipped without blocking the rest.
 - **Issue body format assumptions**: The enrichment skill assumes issue bodies are markdown and that appending `### Branch` sections at the end is appropriate. If trackers use different body formats (e.g., Jira's wiki markup), the appended content may not render correctly. Mitigation: the `### Branch` and `### PR Convention` sections use simple markdown that renders acceptably in most contexts.
-- **Stale `.claude-plugin-sdd.json` project IDs**: If a project is deleted from the tracker but its ID remains cached in `.claude-plugin-sdd.json`, the organize skill will attempt to reuse it and fail. Mitigation: the skill handles project-not-found errors gracefully and falls back to creating a new project.
+- **Stale `.claude-plugin-design.json` project IDs**: If a project is deleted from the tracker but its ID remains cached in `.claude-plugin-design.json`, the organize skill will attempt to reuse it and fail. Mitigation: the skill handles project-not-found errors gracefully and falls back to creating a new project.
 - **Epic classification heuristics may miss custom epics**: The "Implement " title prefix and `epic` label heuristics may not catch epics created with different naming conventions. Mitigation: these heuristics match `/sdd:plan`'s output; manually created epics would need to follow the convention or be labeled.
 
 ## Open Questions

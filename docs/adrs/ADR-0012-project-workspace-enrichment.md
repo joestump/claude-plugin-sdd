@@ -53,7 +53,7 @@ This README functions as a project-scoped `/sdd:prime` output. When `/sdd:work` 
 
 ### 2. GitHub Project Iteration Fields
 
-Projects receive an iteration field named "Sprint" with a default cycle length of 2 weeks. Stories are assigned to iterations based on their dependency ordering: foundation stories go into Sprint 1, dependent stories into Sprint 2, and so on. The cycle length is configurable via `.claude-plugin-sdd.json`:
+Projects receive an iteration field named "Sprint" with a default cycle length of 2 weeks. Stories are assigned to iterations based on their dependency ordering: foundation stories go into Sprint 1, dependent stories into Sprint 2, and so on. The cycle length is configurable via `.claude-plugin-design.json`:
 
 ```json
 {
@@ -125,9 +125,9 @@ This replaces the body-text-based dependency hints currently used across all tra
 
 The three tiers give operators explicit control over how invasive the reorganization is. Tier (b) is safe for production backlogs where issue state must not change. Tier (c) is for messy backlogs that need a complete overhaul.
 
-### .claude-plugin-sdd.json Additions
+### .claude-plugin-design.json Additions
 
-The following keys are added to the `.claude-plugin-sdd.json` schema (all optional, backward-compatible):
+The following keys are added to the `.claude-plugin-design.json` schema (all optional, backward-compatible):
 
 ```json
 {
@@ -159,7 +159,7 @@ The following keys are added to the `.claude-plugin-sdd.json` schema (all option
 * Good, because all enhancements degrade gracefully -- if a tracker lacks a feature (e.g., no iteration support in Gitea), the skill skips it and reports rather than failing
 * Bad, because GitHub Projects V2 view and iteration configuration requires GraphQL mutations, increasing API complexity
 * Bad, because project README content must be kept in sync with the underlying spec/ADR changes -- stale READMEs could mislead agents
-* Bad, because `.claude-plugin-sdd.json` gains three new keys under `projects`, further expanding its configuration surface area
+* Bad, because `.claude-plugin-design.json` gains three new keys under `projects`, further expanding its configuration surface area
 * Neutral, because the three-tier organize model adds user interaction (a prompt with three choices) to what was previously a fully automated skill
 
 ### Confirmation
@@ -174,9 +174,9 @@ Implementation will be confirmed by:
 6. Applying a label that does not exist (e.g., `epic` on a fresh repo) auto-creates the label and applies it successfully
 7. Running `/sdd:plan` against a Gitea tracker creates native dependency links between ordered stories
 8. Running `/sdd:organize` presents three tiers (leave as-is, restructure workspace, complete refactor) and executes only the chosen tier
-9. `.claude-plugin-sdd.json` `projects.iteration_weeks` is respected when creating iteration fields
-10. `.claude-plugin-sdd.json` `projects.views` is respected when creating named views
-11. `.claude-plugin-sdd.json` `projects.columns` is respected when creating Gitea board columns
+9. `.claude-plugin-design.json` `projects.iteration_weeks` is respected when creating iteration fields
+10. `.claude-plugin-design.json` `projects.views` is respected when creating named views
+11. `.claude-plugin-design.json` `projects.columns` is respected when creating Gitea board columns
 
 ## Pros and Cons of the Options
 
@@ -277,5 +277,5 @@ flowchart LR
 - The three-tier `/sdd:organize` intervention model is designed for the reality that backlog refactoring is risky. Tier (b) is safe because it only changes workspace structure (views, columns, README) without touching any issue content. Tier (c) is powerful but invasive, so it requires explicit operator consent.
 - GitHub Projects V2 views and iteration fields must be configured via the GraphQL API (`gh api graphql`). The REST API does not support these features. Skills must use `gh api graphql -f query='...'` for these operations.
 - Gitea native dependencies use the `POST /repos/{owner}/{repo}/issues/{index}/dependencies` API endpoint. Dependencies are directional: issue A blocks issue B.
-- `.claude-plugin-sdd.json` additions are fully backward-compatible. Existing `.claude-plugin-sdd.json` files without the new keys will use the defaults specified in this ADR.
+- `.claude-plugin-design.json` additions are fully backward-compatible. Existing `.claude-plugin-design.json` files without the new keys will use the defaults specified in this ADR.
 - Related: ADR-0009 (project grouping and developer workflow conventions), ADR-0011 (story-sized issue granularity), ADR-0008 (standalone sprint planning skill).

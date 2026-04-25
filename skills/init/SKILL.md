@@ -1,6 +1,6 @@
 ---
 name: init
-description: Set up CLAUDE.md with SDD plugin references for architecture-aware sessions. Use when the user installs the plugin, says "initialize design", or wants to configure CLAUDE.md for the SDD plugin.
+description: Set up CLAUDE.md with SDD plugin references for architecture-aware sessions. Use when the user installs the plugin, says "initialize sdd", or wants to configure CLAUDE.md for the SDD plugin.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 argument-hint: [--module <name>]
 ---
@@ -25,7 +25,8 @@ Before making any changes, read the current state and build a component checklis
 
 | Component | Check | Status Values |
 |-----------|-------|---------------|
-| JSON Config | Does `.claude-plugin-sdd.json` exist in the project root? | `needs-migration` / `absent` |
+| JSON Config | Does `.claude-plugin-design.json` exist in the project root? | `needs-migration` / `absent` |
+| Legacy Headings | Does CLAUDE.md contain `### Design Plugin Configuration` or `### Design Plugin Skills`? (v3 headings) | `needs-migration` / `absent` |
 | CLAUDE.md | Does `CLAUDE.md` exist at the project root? | `exists` / `missing` |
 | Architecture Context | Does CLAUDE.md contain `## Architecture Context`? | `present` / `missing` |
 | Path References | Does CLAUDE.md contain both `docs/adrs/` and `docs/openspec/specs/`? | `both-present` / `partial` / `missing` |
@@ -38,13 +39,29 @@ Before making any changes, read the current state and build a component checklis
 
 Display the scan results before proceeding so the user can see what will change.
 
-### Step 1: JSON Config Migration
+### Step 1: Legacy v3 Migration
+
+This step handles two v3 → v4 migrations: the `### Design Plugin Configuration` / `### Design Plugin Skills` headings (renamed in v4) and the legacy `.claude-plugin-design.json` file (deprecated by ADR-0015, removed in v4).
+
+#### 1a: Legacy Heading Rewrite
+
+**Precondition**: Legacy Headings status is `needs-migration`.
+
+If CLAUDE.md does not contain either legacy heading, skip this sub-step.
+
+If CLAUDE.md contains a `### Design Plugin Configuration` heading, rewrite it in place to `### SDD Configuration`. The body content (subsections like `#### Tracker`, `#### Branch Conventions`, etc.) is preserved as-is — only the h3 heading line changes.
+
+If CLAUDE.md contains a `### Design Plugin Skills` heading, rewrite it in place to `### SDD Skills`. The skills table below the heading is left untouched (Step 2 will refresh stale `/design:*` rows to `/sdd:*` if needed).
+
+**No AskUserQuestion** — heading rewrite is deterministic and lossless.
+
+#### 1b: JSON Config Migration
 
 **Precondition**: JSON Config status is `needs-migration`.
 
-If `.claude-plugin-sdd.json` does not exist, skip this step entirely.
+If `.claude-plugin-design.json` does not exist, skip this sub-step entirely.
 
-If `.claude-plugin-sdd.json` exists:
+If `.claude-plugin-design.json` exists:
 
 1. Read the JSON file and parse its contents.
 
@@ -63,7 +80,7 @@ If `.claude-plugin-sdd.json` exists:
 
 4. Write the `### SDD Configuration` section to CLAUDE.md (append at end of `## Architecture Context` section).
 
-5. Delete `.claude-plugin-sdd.json` using `Bash` (`rm`).
+5. Delete `.claude-plugin-design.json` using `Bash` (`rm`).
 
 **No AskUserQuestion** — migration is deterministic and lossless. The JSON values are preserved exactly in the markdown format.
 
@@ -147,12 +164,12 @@ Output a component-level status table showing what was done.
 
 | Component | Status | Action Taken |
 |-----------|--------|-------------|
-| JSON Config Migration | Migrated | Moved tracker, projects, branches, pr_conventions to CLAUDE.md; deleted .claude-plugin-sdd.json |
+| JSON Config Migration | Migrated | Moved tracker, projects, branches, pr_conventions to CLAUDE.md; deleted .claude-plugin-design.json |
 | Architecture Context | Up to date | No changes |
 | Skills Table | Updated | Added /sdd:review |
 | Workflow | Updated | Added Review step (step 6), renumbered Validate to step 7 |
 | Session Coordination | Added | New section appended |
-| SDD Configuration | Added | Migrated from .claude-plugin-sdd.json |
+| SDD Configuration | Added | Migrated from .claude-plugin-design.json |
 | Permissions | Updated | Added Bash(git *), Bash(gh *), mcp__gitea__* to .claude/settings.local.json |
 | Workspace | Skipped | No .gitmodules found |
 
@@ -205,7 +222,8 @@ When creating a new CLAUDE.md or checking for template drift, read the canonical
 
 Each component is independently idempotent:
 
-- **JSON Migration**: Skip if `.claude-plugin-sdd.json` is absent. If present, migrate and delete. Re-running after migration: file is gone, skip.
+- **JSON Migration**: Skip if `.claude-plugin-design.json` is absent. If present, migrate and delete. Re-running after migration: file is gone, skip.
+- **Legacy Heading Rewrite**: Skip if neither `### Design Plugin Configuration` nor `### Design Plugin Skills` is present. If present, rewrite to the v4 names and continue. Re-running after rewrite: legacy heading is gone, skip.
 - **Skills table**: Skip rows already present (match by skill name in first column). Never remove existing rows.
 - **Workflow**: Skip steps already present (match by step name). Never remove existing steps.
 - **Named sections**: Skip if heading already exists (`### Session Coordination`, `### SDD Configuration`).
@@ -224,16 +242,16 @@ Each component is independently idempotent:
 - MUST append the Architecture Context section after existing content, not prepend
 - If CLAUDE.md does not exist, create it — this is the normal first-run case, not an error
 - Do NOT create `docs/adrs/` or `docs/openspec/specs/` directories — those are created by `/sdd:adr` and `/sdd:spec` when needed
-- MUST detect `.claude-plugin-sdd.json` before the main flow and migrate automatically (Governing: SPEC-0014 REQ "Migration from JSON to CLAUDE.md")
+- MUST detect `.claude-plugin-design.json` before the main flow and migrate automatically (Governing: SPEC-0014 REQ "Migration from JSON to CLAUDE.md")
 - MUST preserve all configuration values exactly during migration — no lossy translation
-- MUST delete `.claude-plugin-sdd.json` after successful migration — no AskUserQuestion needed
+- MUST delete `.claude-plugin-design.json` after successful migration — no AskUserQuestion needed
 - When merging migrated config into an existing `### SDD Configuration` section, CLAUDE.md values take precedence on conflicts
 - MUST auto-configure `.claude/settings.local.json` with tracker-appropriate permission allowlists — no AskUserQuestion needed
 - MUST detect `.gitmodules` and offer workspace setup when submodules are found (Governing: ADR-0016, SPEC-0014 REQ "Init Workspace Setup")
 - MUST NOT create submodule CLAUDE.md files without user consent via `AskUserQuestion`
 - MUST write `### Workspace Modules` table in root CLAUDE.md when workspace is detected
 - MUST skip submodules that already have CLAUDE.md (unless user explicitly requests update)
-- When `.gitmodules` and `.claude-plugin-sdd.json` both exist, migration (Step 1) runs before workspace setup (Step 4)
+- When `.gitmodules` and `.claude-plugin-design.json` both exist, migration (Step 1) runs before workspace setup (Step 4)
 - MUST read canonical template from `references/claude-md-template.md` for section-level diffing — never hardcode template content in this skill
 - MUST display component status scan before making changes
 - MUST report all changes in the final component status table

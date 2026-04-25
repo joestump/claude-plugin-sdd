@@ -54,7 +54,7 @@ Projects created or managed by `/sdd:plan` and `/sdd:organize` SHALL have a shor
 
 ### Requirement: GitHub Project Iteration Fields
 
-Projects created by `/sdd:plan` SHALL have an iteration field named "Sprint" with a default cycle length of 2 weeks. The cycle length SHALL be configurable via `.claude-plugin-sdd.json` key `projects.iteration_weeks`. Stories SHALL be assigned to iterations based on their dependency ordering: foundation stories go into Sprint 1, dependent stories into Sprint 2, and so on. The iteration field MUST be created via the GitHub Projects V2 GraphQL API (`gh api graphql`).
+Projects created by `/sdd:plan` SHALL have an iteration field named "Sprint" with a default cycle length of 2 weeks. The cycle length SHALL be configurable via `.claude-plugin-design.json` key `projects.iteration_weeks`. Stories SHALL be assigned to iterations based on their dependency ordering: foundation stories go into Sprint 1, dependent stories into Sprint 2, and so on. The iteration field MUST be created via the GitHub Projects V2 GraphQL API (`gh api graphql`).
 
 #### Scenario: Iteration field creation
 
@@ -71,12 +71,12 @@ Projects created by `/sdd:plan` SHALL have an iteration field named "Sprint" wit
 
 #### Scenario: Custom iteration duration
 
-- **WHEN** `.claude-plugin-sdd.json` contains `"projects": { "iteration_weeks": 3 }`
+- **WHEN** `.claude-plugin-design.json` contains `"projects": { "iteration_weeks": 3 }`
 - **THEN** the iteration field SHALL use a 3-week cycle length instead of the default 2-week cycle
 
 ### Requirement: GitHub Project Named Views
 
-Projects created by `/sdd:plan` SHALL have three named views configured. The views SHALL replace the default unnamed "Table" view that GitHub creates automatically. The view names and types SHALL be configurable via `.claude-plugin-sdd.json` key `projects.views`. Views MUST be created via the GitHub Projects V2 GraphQL API.
+Projects created by `/sdd:plan` SHALL have three named views configured. The views SHALL replace the default unnamed "Table" view that GitHub creates automatically. The view names and types SHALL be configurable via `.claude-plugin-design.json` key `projects.views`. Views MUST be created via the GitHub Projects V2 GraphQL API.
 
 #### Scenario: View creation
 
@@ -91,7 +91,7 @@ Projects created by `/sdd:plan` SHALL have three named views configured. The vie
 
 #### Scenario: Custom view configuration
 
-- **WHEN** `.claude-plugin-sdd.json` contains `"projects": { "views": ["Backlog", "Sprint Board", "Timeline"] }`
+- **WHEN** `.claude-plugin-design.json` contains `"projects": { "views": ["Backlog", "Sprint Board", "Timeline"] }`
 - **THEN** the skill SHALL create views with the custom names instead of the defaults
 - **AND** the view types SHALL map positionally: first = Table, second = Board, third = Roadmap
 
@@ -102,7 +102,7 @@ Projects created by `/sdd:plan` SHALL have three named views configured. The vie
 
 ### Requirement: Gitea Project Structure
 
-For Gitea trackers, projects created by `/sdd:plan` SHALL use milestones as epic buckets, board columns for workflow stages, and task checklists (per ADR-0011) for requirement tracking within stories. The board columns SHALL be configurable via `.claude-plugin-sdd.json` key `projects.columns`.
+For Gitea trackers, projects created by `/sdd:plan` SHALL use milestones as epic buckets, board columns for workflow stages, and task checklists (per ADR-0011) for requirement tracking within stories. The board columns SHALL be configurable via `.claude-plugin-design.json` key `projects.columns`.
 
 #### Scenario: Milestone creation
 
@@ -118,7 +118,7 @@ For Gitea trackers, projects created by `/sdd:plan` SHALL use milestones as epic
 
 #### Scenario: Custom column configuration
 
-- **WHEN** `.claude-plugin-sdd.json` contains `"projects": { "columns": ["Backlog", "Doing", "Review", "Shipped"] }`
+- **WHEN** `.claude-plugin-design.json` contains `"projects": { "columns": ["Backlog", "Doing", "Review", "Shipped"] }`
 - **THEN** the board SHALL use the custom column names instead of the defaults
 
 #### Scenario: Story assignment to milestones
@@ -215,11 +215,11 @@ For Gitea trackers, `/sdd:plan` SHALL use Gitea's native issue dependency API (`
 
 ### Requirement: Configuration Persistence
 
-The `.claude-plugin-sdd.json` file SHALL support new keys under the `projects` object for workspace enrichment configuration. All new keys SHALL be optional and backward-compatible with existing `.claude-plugin-sdd.json` files.
+The `.claude-plugin-design.json` file SHALL support new keys under the `projects` object for workspace enrichment configuration. All new keys SHALL be optional and backward-compatible with existing `.claude-plugin-design.json` files.
 
 #### Scenario: Custom configuration
 
-- **WHEN** `.claude-plugin-sdd.json` contains:
+- **WHEN** `.claude-plugin-design.json` contains:
   ```json
   {
     "projects": {
@@ -233,7 +233,7 @@ The `.claude-plugin-sdd.json` file SHALL support new keys under the `projects` o
 
 #### Scenario: Default values
 
-- **WHEN** `.claude-plugin-sdd.json` exists but does not contain `projects.views`, `projects.columns`, or `projects.iteration_weeks`
+- **WHEN** `.claude-plugin-design.json` exists but does not contain `projects.views`, `projects.columns`, or `projects.iteration_weeks`
 - **THEN** the skill SHALL use the following defaults:
 
 | Key | Default Value |
@@ -244,7 +244,7 @@ The `.claude-plugin-sdd.json` file SHALL support new keys under the `projects` o
 
 #### Scenario: Backward compatibility
 
-- **WHEN** an existing `.claude-plugin-sdd.json` file contains only `tracker` and `tracker_config` keys (pre-SPEC-0011 format)
+- **WHEN** an existing `.claude-plugin-design.json` file contains only `tracker` and `tracker_config` keys (pre-SPEC-0011 format)
 - **THEN** the skill SHALL continue to function correctly, using defaults for all workspace enrichment keys
 - **AND** the skill SHALL NOT overwrite or remove existing keys when merging new configuration
 

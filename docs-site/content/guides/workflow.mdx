@@ -94,7 +94,7 @@ The skill handles the full planning pipeline automatically:
 
 1. **Detects your issue tracker** — checks for [Beads](https://github.com/steveyegge/beads),
    GitHub, GitLab, Gitea, Jira, and Linear. Saves your choice to
-   `.claude-plugin-sdd.json` so you're not asked again.
+   `.claude-plugin-design.json` so you're not asked again.
 
 2. **Creates an epic and stories** — one epic per spec, 3–4 story issues
    grouped by functional area (Setup, Core Logic, Validation, Extensions).
@@ -228,7 +228,7 @@ rules, and notification preferences — each with WHEN/THEN scenarios.
 The agent:
 
 - **Detects Beads** (finds `.beads/` in the project root) and offers to
-  save the preference to `.claude-plugin-sdd.json`
+  save the preference to `.claude-plugin-design.json`
 - **Creates an epic**: "Implement Notification Service"
 - **Groups requirements into 3 stories** by functional area:
   - Story 1: "Setup & Event Schema" (REQ "Event Types", REQ "Schema Validation")

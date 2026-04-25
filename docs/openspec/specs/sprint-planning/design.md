@@ -9,7 +9,7 @@ Sprint planning was previously embedded as step 8 of the `/sdd:spec` skill, whic
 ### Goals
 - Enable sprint planning for any existing spec, not just newly created ones
 - Support six issue trackers (Beads, GitHub, GitLab, Gitea, Jira, Linear) with runtime detection
-- Persist tracker preferences and configuration to `.claude-plugin-sdd.json` to avoid repeated prompts
+- Persist tracker preferences and configuration to `.claude-plugin-design.json` to avoid repeated prompts
 - Decompose spec requirements into an epic/task/sub-task hierarchy with traceability
 - Fall back to `tasks.md` generation (SPEC-0006) when no tracker is available
 - Support `--review` mode for team-based plan review
@@ -43,9 +43,9 @@ Sprint planning was previously embedded as step 8 of the `/sdd:spec` skill, whic
 - Static tracker configuration in plugin.json: Goes stale; cannot adapt to environment changes
 - Require user to specify tracker on every invocation: Adds friction; ignores detectable information
 
-### Preference persistence to `.claude-plugin-sdd.json`
+### Preference persistence to `.claude-plugin-design.json`
 
-**Choice**: Store tracker choice and configuration in a `.claude-plugin-sdd.json` file at the project root. The skill checks this file before running detection.
+**Choice**: Store tracker choice and configuration in a `.claude-plugin-design.json` file at the project root. The skill checks this file before running detection.
 **Rationale**: Most projects consistently use one tracker. Asking the user to confirm their tracker on every invocation is unnecessary friction. A project-root JSON file is version-controllable, shareable with teammates, and inspectable without special tooling. The merge-on-write approach (`tracker` and `tracker_config` keys only) avoids clobbering other potential keys.
 **Alternatives considered**:
 - In-memory preference (per-session): Lost between sessions; no benefit for returning users
@@ -80,8 +80,8 @@ Sprint planning was previously embedded as step 8 of the `/sdd:spec` skill, whic
 
 ### Branch naming convention
 
-**Choice**: Use `feature/{issue-number}-{slug}` for tasks and `epic/{issue-number}-{slug}` for epics, with configurable prefixes via `--branch-prefix` or `.claude-plugin-sdd.json` `branches.prefix`.
-**Rationale**: Deterministic branch names eliminate the "what should I name this branch?" friction. The `feature/` and `epic/` prefixes follow Git Flow conventions that most teams already recognize. Including the issue number ensures traceability from branch to issue. The slug provides human-readable context. Configurability via `--branch-prefix` and `.claude-plugin-sdd.json` respects teams with established naming conventions.
+**Choice**: Use `feature/{issue-number}-{slug}` for tasks and `epic/{issue-number}-{slug}` for epics, with configurable prefixes via `--branch-prefix` or `.claude-plugin-design.json` `branches.prefix`.
+**Rationale**: Deterministic branch names eliminate the "what should I name this branch?" friction. The `feature/` and `epic/` prefixes follow Git Flow conventions that most teams already recognize. Including the issue number ensures traceability from branch to issue. The slug provides human-readable context. Configurability via `--branch-prefix` and `.claude-plugin-design.json` respects teams with established naming conventions.
 **Alternatives considered**:
 - Free-form branch names: No consistency; defeats the purpose of automation
 - Issue number only (e.g., `feature/42`): Lacks human-readable context when listing branches
@@ -116,7 +116,7 @@ flowchart TD
 
     C --> E["Read spec.md + design.md"]
 
-    E --> F{"Check .claude-plugin-sdd.json"}
+    E --> F{"Check .claude-plugin-design.json"}
     F -->|"Saved tracker found"| G{"Tracker still\navailable?"}
     G -->|"Yes"| H["Use saved tracker\n+ config"]
     G -->|"No"| I["Warn user\nfall through"]
@@ -208,13 +208,13 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    subgraph ".claude-plugin-sdd.json Lifecycle"
+    subgraph ".claude-plugin-design.json Lifecycle"
         first["/sdd:plan\n(first run)"]
         detect["Detect tracker"]
         ask["Ask to save\npreference"]
-        write["Write .claude-plugin-sdd.json"]
+        write["Write .claude-plugin-design.json"]
         second["/sdd:plan\n(subsequent run)"]
-        read_pref["Read .claude-plugin-sdd.json"]
+        read_pref["Read .claude-plugin-design.json"]
         check["Verify tracker\nstill available"]
         use["Use saved\ntracker + config"]
     end
@@ -231,8 +231,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    subgraph ".claude-plugin-sdd.json Expanded Schema"
-        root[".claude-plugin-sdd.json"]
+    subgraph ".claude-plugin-design.json Expanded Schema"
+        root[".claude-plugin-design.json"]
         root --> tracker["tracker: 'github'"]
         root --> tracker_config["tracker_config:\n  owner: 'joestump'\n  repo: 'my-project'"]
         root --> branches["branches:\n  prefix: 'feature/'\n  (default, configurable)"]
@@ -243,7 +243,7 @@ flowchart TD
 ## Risks / Trade-offs
 
 - **Tracker API variability**: Each of the six trackers has different APIs, terminology (epic vs. initiative vs. project), and capabilities. Mitigation: the skill uses `ToolSearch` to discover available operations at runtime rather than assuming a fixed API; the SKILL.md provides tracker-specific guidance for config gathering.
-- **Stale preferences**: If a user switches trackers (e.g., migrates from GitHub to Jira), the saved preference in `.claude-plugin-sdd.json` will be wrong. Mitigation: the skill validates that the saved tracker is still available and warns + falls through to detection if not.
+- **Stale preferences**: If a user switches trackers (e.g., migrates from GitHub to Jira), the saved preference in `.claude-plugin-design.json` will be wrong. Mitigation: the skill validates that the saved tracker is still available and warns + falls through to detection if not.
 - **Over-decomposition**: Breaking every requirement into tasks and every complex requirement into sub-tasks could flood the tracker. Mitigation: sub-tasks are only created for requirements with 3+ scenarios; the review mode (`--review`) provides a check against over-decomposition.
 - **Spec drift**: If the spec changes after planning, the created issues may not reflect the current requirements. Mitigation: the skill does not track previously created issues; the proposed `--gaps` mode (future) would address this by comparing spec requirements against implementation and existing issues.
 - **MCP tool naming instability**: ToolSearch patterns like `mcp__*github*` depend on MCP server naming conventions that could change. Mitigation: CLI fallbacks (`gh`, `glab`, `bd`) provide a secondary detection path; patterns are broad enough to match common naming variations.

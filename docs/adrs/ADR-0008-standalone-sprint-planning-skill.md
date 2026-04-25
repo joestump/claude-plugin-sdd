@@ -28,19 +28,19 @@ How should the plugin provide sprint planning that works with existing specs, su
 
 ## Decision Outcome
 
-Chosen option: "Option 2 -- Create a standalone `/sdd:plan` skill", because it cleanly separates spec authoring from sprint planning, allows independent evolution of each skill, and provides an intuitive invocation pattern (`/sdd:plan SPEC-0003`) that works for both new and existing specs. The standalone skill can support all six trackers and persist preferences to `.claude-plugin-sdd.json` without adding complexity to the spec skill.
+Chosen option: "Option 2 -- Create a standalone `/sdd:plan` skill", because it cleanly separates spec authoring from sprint planning, allows independent evolution of each skill, and provides an intuitive invocation pattern (`/sdd:plan SPEC-0003`) that works for both new and existing specs. The standalone skill can support all six trackers and persist preferences to `.claude-plugin-design.json` without adding complexity to the spec skill.
 
 ### Consequences
 
 * Good, because users can plan sprints from any existing spec without re-running the spec creation workflow
 * Good, because six trackers (Beads, GitHub, GitLab, Gitea, Jira, Linear) are supported with runtime detection via ToolSearch
-* Good, because tracker preferences and configuration are persisted to `.claude-plugin-sdd.json`, eliminating repeated prompts
+* Good, because tracker preferences and configuration are persisted to `.claude-plugin-design.json`, eliminating repeated prompts
 * Good, because the spec skill becomes simpler -- it no longer needs tracker detection or issue creation logic
 * Good, because the standalone skill can evolve to include `--gaps` and `--analyze` modes without affecting spec authoring
 * Good, because the `tasks.md` fallback (ADR-0007) integrates naturally as a tracker-absent path
 * Bad, because users who previously relied on step 8 of `/sdd:spec` for sprint planning must learn the new `/sdd:plan` command
 * Bad, because planning logic that was co-located with spec creation is now a separate skill, requiring users to invoke two commands for the full "spec then plan" workflow
-* Neutral, because `.claude-plugin-sdd.json` adds a new configuration file to the project root, but it only contains tracker preferences and is optional
+* Neutral, because `.claude-plugin-design.json` adds a new configuration file to the project root, but it only contains tracker preferences and is optional
 
 ### Confirmation
 
@@ -50,7 +50,7 @@ Implementation will be confirmed by:
 2. Running `/sdd:plan SPEC-0003` reads the existing spec and creates issues in the detected tracker
 3. Running `/sdd:plan` with no arguments lists available specs and asks the user to choose
 4. The skill detects all six trackers (Beads, GitHub, GitLab, Gitea, Jira, Linear) via ToolSearch and CLI probing
-5. Tracker preferences saved to `.claude-plugin-sdd.json` are used on subsequent invocations without re-prompting
+5. Tracker preferences saved to `.claude-plugin-design.json` are used on subsequent invocations without re-prompting
 6. When no tracker is detected, the skill generates `tasks.md` per ADR-0007
 7. The `--review` flag spawns a planner/reviewer team with a maximum of 2 revision rounds
 8. Every `### Requirement:` section in the spec produces at least one issue or task
@@ -70,7 +70,7 @@ Add a `--plan` flag to the spec skill that, when combined with a spec identifier
 
 ### Option 2: Create a Standalone `/sdd:plan` Skill
 
-A new skill that accepts a spec identifier (name or SPEC-XXXX number), resolves it, reads the spec and design, detects the user's tracker, and creates issues. Supports preference persistence via `.claude-plugin-sdd.json` and a `--review` flag for team-based planning review.
+A new skill that accepts a spec identifier (name or SPEC-XXXX number), resolves it, reads the spec and design, detects the user's tracker, and creates issues. Supports preference persistence via `.claude-plugin-design.json` and a `--review` flag for team-based planning review.
 
 * Good, because it has a single, clear responsibility: turn specs into trackable work items
 * Good, because it can evolve independently (add trackers, add `--gaps`/`--analyze` modes) without affecting spec authoring
@@ -111,7 +111,7 @@ Both modes would reuse the same tracker detection and issue creation pipeline es
 flowchart TD
     A["/sdd:plan\n[spec] [--review]"] --> B["Resolve spec\n(name or SPEC-XXXX)"]
     B --> C["Read spec.md\n+ design.md"]
-    C --> D{"Check .claude-plugin-sdd.json\nfor saved tracker"}
+    C --> D{"Check .claude-plugin-design.json\nfor saved tracker"}
 
     D -->|"Preference found"| E{"Tracker still\navailable?"}
     E -->|Yes| H["Use saved tracker"]
@@ -167,7 +167,7 @@ flowchart TD
 ## More Information
 
 - This ADR supersedes the sprint planning portion of the `/sdd:spec` skill (formerly step 8). The spec skill should be updated to remove its embedded sprint planning logic and instead suggest running `/sdd:plan` after spec creation.
-- The `.claude-plugin-sdd.json` preference file uses a simple schema: `{ "tracker": "{name}", "tracker_config": {...} }`. It is merged non-destructively if the file already exists with other keys.
+- The `.claude-plugin-design.json` preference file uses a simple schema: `{ "tracker": "{name}", "tracker_config": {...} }`. It is merged non-destructively if the file already exists with other keys.
 - The six supported trackers were chosen based on the availability of MCP tool servers and CLI integrations. Additional trackers can be added by extending the detection logic in step 4 of the SKILL.md.
 - The `tasks.md` fallback (ADR-0007) is used when no tracker is detected. This maintains backward compatibility with trackerless projects.
 - Related: ADR-0003 (foundational skills and artifact formats), ADR-0007 (tasks.md fallback), SPEC-0006 (tasks.md fallback requirements), SPEC-0007 (sprint planning requirements).

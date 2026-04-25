@@ -156,7 +156,7 @@ Before operating on a spec, verify that both `spec.md` and `design.md` exist in 
 
 ## Config Resolution
 
-Canonical algorithm for reading plugin configuration from CLAUDE.md. All skills that need configuration MUST use this pattern. No skill SHALL read `.claude-plugin-sdd.json` directly.
+Canonical algorithm for reading plugin configuration from CLAUDE.md. All skills that need configuration MUST use this pattern. No skill SHALL read `.claude-plugin-design.json` directly.
 
 ### Step 1: Read Root CLAUDE.md
 

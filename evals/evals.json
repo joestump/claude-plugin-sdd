@@ -1,5 +1,5 @@
 {
-  "skill_name": "design",
+  "skill_name": "sdd",
   "evals": [
     {
       "id": 1,
@@ -310,7 +310,7 @@
           "type": "structural"
         },
         {
-          "text": "Workers validate diff against protected paths (spec-dir, adr-dir, CLAUDE.md, .claude-plugin-sdd.json) before staging",
+          "text": "Workers validate diff against protected paths (spec-dir, adr-dir, CLAUDE.md, .claude-plugin-design.json) before staging",
           "type": "structural"
         },
         {
@@ -1153,7 +1153,7 @@
       "expected_output": "Creates CLAUDE.md with architecture context, detects .gitmodules for workspace setup, offers permission auto-configuration",
       "assertions": [
         {
-          "text": "Checks for .claude-plugin-sdd.json migration before main init flow",
+          "text": "Checks for .claude-plugin-design.json migration before main init flow",
           "type": "behavioral"
         },
         {

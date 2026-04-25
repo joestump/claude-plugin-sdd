@@ -34,7 +34,7 @@ const { transformAdrs } = require('./lib/transform-adrs');
 const { transformOpenspecs } = require('./lib/transform-openspecs');
 const { generateIndex } = require('./lib/generate-index');
 
-module.exports = function pluginSyncDesignDocs(context, options = {}) {
+module.exports = function pluginSyncSpecDocs(context, options = {}) {
   const projectRoot = path.resolve(context.siteDir, options.projectRoot || '..');
   const docsPath = options.docsPath || 'docs';
   const outputBase = path.join(context.siteDir, docsPath, 'architecture');

@@ -2,7 +2,7 @@
 
 ## Overview
 
-A standalone skill that resolves an existing specification, detects the user's issue tracker, and decomposes spec requirements into trackable work items (epics, tasks, sub-tasks). Supports six trackers (Beads, GitHub, GitLab, Gitea, Jira, Linear), persists tracker preferences to `.claude-plugin-sdd.json`, and falls back to `tasks.md` generation when no tracker is available. See ADR-0008.
+A standalone skill that resolves an existing specification, detects the user's issue tracker, and decomposes spec requirements into trackable work items (epics, tasks, sub-tasks). Supports six trackers (Beads, GitHub, GitLab, Gitea, Jira, Linear), persists tracker preferences to `.claude-plugin-design.json`, and falls back to `tasks.md` generation when no tracker is available. See ADR-0008.
 
 ## Requirements
 
@@ -69,22 +69,22 @@ The six supported trackers are:
 
 ### Requirement: Preference Persistence
 
-The skill SHALL persist tracker preferences to `.claude-plugin-sdd.json` in the project root when the user opts in. On subsequent invocations, the skill MUST check for a saved preference before running tracker detection.
+The skill SHALL persist tracker preferences to `.claude-plugin-design.json` in the project root when the user opts in. On subsequent invocations, the skill MUST check for a saved preference before running tracker detection.
 
 #### Scenario: Saved preference exists and tracker is available
 
-- **WHEN** `.claude-plugin-sdd.json` exists with a `"tracker"` key and the saved tracker's tools are still available
+- **WHEN** `.claude-plugin-design.json` exists with a `"tracker"` key and the saved tracker's tools are still available
 - **THEN** the skill SHALL use the saved tracker and configuration directly without prompting
 
 #### Scenario: Saved preference exists but tracker is unavailable
 
-- **WHEN** `.claude-plugin-sdd.json` exists with a `"tracker"` key but the saved tracker's tools are no longer available
+- **WHEN** `.claude-plugin-design.json` exists with a `"tracker"` key but the saved tracker's tools are no longer available
 - **THEN** the skill SHALL warn the user ("Your saved tracker '{name}' is no longer available. Detecting other trackers...") and fall through to tracker detection
 
 #### Scenario: Saving preference
 
 - **WHEN** the user agrees to save their tracker choice
-- **THEN** the skill SHALL write or merge into `.claude-plugin-sdd.json`:
+- **THEN** the skill SHALL write or merge into `.claude-plugin-design.json`:
   ```json
   {
     "tracker": "{tracker-name}",
@@ -97,9 +97,9 @@ The skill SHALL persist tracker preferences to `.claude-plugin-sdd.json` in the 
   - Linear: `{ "team_id": "..." }`
   - Beads: `{}` (no extra config needed)
 
-#### Scenario: Merging with existing .claude-plugin-sdd.json
+#### Scenario: Merging with existing .claude-plugin-design.json
 
-- **WHEN** `.claude-plugin-sdd.json` already exists with other keys
+- **WHEN** `.claude-plugin-design.json` already exists with other keys
 - **THEN** the skill SHALL merge the tracker keys without overwriting the entire file
 
 ### Requirement: Issue Creation Flow
@@ -139,7 +139,7 @@ The skill SHALL create issues following an epic-to-task-to-sub-task hierarchy de
 
 ### Requirement: Project Grouping
 
-The `/sdd:plan` skill SHALL organize created issues into tracker-native projects. The default behavior SHALL be one project per epic. The user MAY override this behavior with flags or `.claude-plugin-sdd.json` configuration. See ADR-0009.
+The `/sdd:plan` skill SHALL organize created issues into tracker-native projects. The default behavior SHALL be one project per epic. The user MAY override this behavior with flags or `.claude-plugin-design.json` configuration. See ADR-0009.
 
 #### Scenario: Default project grouping (one project per epic)
 
@@ -172,11 +172,11 @@ The `/sdd:plan` skill SHALL include a "Branch" section in each created issue's b
 - **AND WHEN** the skill creates an epic issue with number `{N}` for a capability named `{name}`
 - **THEN** the issue body SHALL include a Branch section with `epic/{N}-{slug}`
 
-#### Scenario: Custom branch prefix via `--branch-prefix` or `.claude-plugin-sdd.json`
+#### Scenario: Custom branch prefix via `--branch-prefix` or `.claude-plugin-design.json`
 
-- **WHEN** the user provides `--branch-prefix work/` on the command line or has `"branches": { "prefix": "work/" }` in `.claude-plugin-sdd.json`
+- **WHEN** the user provides `--branch-prefix work/` on the command line or has `"branches": { "prefix": "work/" }` in `.claude-plugin-design.json`
 - **THEN** the skill SHALL use the custom prefix instead of `feature/` for tasks (epics SHALL still use `epic/`)
-- **AND** command-line flags SHALL take precedence over `.claude-plugin-sdd.json` values
+- **AND** command-line flags SHALL take precedence over `.claude-plugin-design.json` values
 
 #### Scenario: Omit branch sections via `--no-branches`
 
@@ -266,7 +266,7 @@ After creating issues (or generating `tasks.md`), the skill SHALL present a summ
 
 ### Requirement: Tracker-Specific Configuration
 
-When a tracker requires configuration not already saved in `.claude-plugin-sdd.json` (e.g., repo owner/name for GitHub, project key for Jira), the skill SHALL use `AskUserQuestion` to gather it. The skill SHALL offer to save the configuration to `.claude-plugin-sdd.json`.
+When a tracker requires configuration not already saved in `.claude-plugin-design.json` (e.g., repo owner/name for GitHub, project key for Jira), the skill SHALL use `AskUserQuestion` to gather it. The skill SHALL offer to save the configuration to `.claude-plugin-design.json`.
 
 #### Scenario: GitHub/GitLab/Gitea config needed
 

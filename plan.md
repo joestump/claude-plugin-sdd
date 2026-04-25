@@ -2,7 +2,7 @@
 
 ## Table of Contents
 
-1. [Kill `.claude-plugin-sdd.json`](#key-insight-kill-claude-plugin-sddjson)
+1. [Kill `.claude-plugin-design.json`](#key-insight-kill-claude-plugin-sddjson)
 2. [Workspace Mode for Multi-Module Projects](#workspace-mode)
 3. [Init Permission Setup](#init-permission-setup)
 4. [PR Stacking and Parallel Agent Coordination](#pr-stacking-and-parallel-agent-coordination)
@@ -21,18 +21,18 @@
 The plugin produces well-structured, thoroughly documented codebases with excellent traceability from decisions to implementation. But a review of three production projects (spotter, joe-links, claude-ops) revealed systemic blind spots in five areas:
 
 1. **Hardcoded paths** — every skill assumes `docs/adrs/` and `docs/openspec/specs/` at a single project root
-2. **JSON config antipattern** — `.claude-plugin-sdd.json` creates split truth with CLAUDE.md
+2. **JSON config antipattern** — `.claude-plugin-design.json` creates split truth with CLAUDE.md
 3. **PR stacking chaos** — parallel agents create duplicate code, rebase conflicts, and wasted PRs
 4. **Security as opt-in** — no default security requirements; claude-ops shipped an unauthenticated dashboard
 5. **No frontend quality standards** — zero frontend tests, zero accessibility, template duplication across all 3 repos
 
 ---
 
-## Key Insight: Kill `.claude-plugin-sdd.json`
+## Key Insight: Kill `.claude-plugin-design.json`
 
 JSON config is a traditional-tooling reflex. Claude reads markdown natively, and Claude Code already recursively loads CLAUDE.md files from subdirectories. The config should *be* CLAUDE.md.
 
-**What `.claude-plugin-sdd.json` currently stores:**
+**What `.claude-plugin-design.json` currently stores:**
 - Tracker choice and credentials
 - Project grouping settings
 - Branch naming conventions
@@ -45,13 +45,13 @@ JSON config is a traditional-tooling reflex. Claude reads markdown natively, and
 - Two config sources (JSON + CLAUDE.md) creates split truth
 - CLAUDE.md is human-readable, version-controlled, and already understood by every Claude Code session
 - Claude Code recursively loads CLAUDE.md from subdirectories — workspace support comes for free
-- `.claude-plugin-sdd.json` was the #1 merge conflict source in claude-ops — every PR modified it
+- `.claude-plugin-design.json` was the #1 merge conflict source in claude-ops — every PR modified it
 
-**Migration path:** Move all config sections from `.claude-plugin-sdd.json` into CLAUDE.md as structured markdown sections. Each submodule's CLAUDE.md carries its own design config.
+**Migration path:** Move all config sections from `.claude-plugin-design.json` into CLAUDE.md as structured markdown sections. Each submodule's CLAUDE.md carries its own design config.
 
 ### CLAUDE.md Config Structure
 
-Example of what replaces `.claude-plugin-sdd.json`:
+Example of what replaces `.claude-plugin-design.json`:
 
 ```markdown
 ### SDD Configuration
@@ -156,7 +156,7 @@ This is the highest-impact area for improvement, based on evidence from all thre
 | Merge conflict commits | 4 | 6 | 1 |
 | PRs closed/recreated | 0 | 5 | 1 |
 | Confirmed duplicate implementations | 2 | 1 | 1 |
-| Worst file hotspot | `sync.go` (3 concurrent PRs) | `link_store.go` (6 concurrent PRs) | `.claude-plugin-sdd.json` (all 7 PRs) |
+| Worst file hotspot | `sync.go` (3 concurrent PRs) | `link_store.go` (6 concurrent PRs) | `.claude-plugin-design.json` (all 7 PRs) |
 | Conflict markers merged into main | No | No | Yes (`api_handlers.go`) |
 | Issues with assignees set | 0 | 0 | 0 |
 | Issues with "in-progress" labels | 0 | 0 | 0 |
@@ -175,7 +175,7 @@ This is the highest-impact area for improvement, based on evidence from all thre
 - claude-ops: Conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) actually merged into `main` in `api_handlers.go`. Required a follow-up commit to remove 32 lines of conflict markers.
 
 **Design document pollution:**
-- In claude-ops, `.claude-plugin-sdd.json` was modified by every single PR in parallel sprints — guaranteed merge conflicts. The spec/ADR documents were similarly touched by 5-7 PRs simultaneously.
+- In claude-ops, `.claude-plugin-design.json` was modified by every single PR in parallel sprints — guaranteed merge conflicts. The spec/ADR documents were similarly touched by 5-7 PRs simultaneously.
 
 ### Root Causes
 
@@ -247,7 +247,7 @@ Stop every PR from modifying spec/ADR/config files:
 
 - **Batch design doc updates**: Instead of each agent updating spec files, create a single "design docs update" PR that runs after all feature PRs merge
 - **Append-only governing references**: Each agent writes to `docs/governing/PR-476.md`; a consolidation step merges them into specs
-- **Kill `.claude-plugin-sdd.json`**: (See above) — this file was the #1 conflict source in claude-ops
+- **Kill `.claude-plugin-design.json`**: (See above) — this file was the #1 conflict source in claude-ops
 
 ---
 
@@ -419,7 +419,7 @@ The PR stacking reviewer found: claude-ops launched ~78 concurrent PRs just to a
 
 | ID | Title | Scope |
 |----|-------|-------|
-| ADR-0015 | Markdown-Native Configuration | Kill `.claude-plugin-sdd.json`, move config to CLAUDE.md |
+| ADR-0015 | Markdown-Native Configuration | Kill `.claude-plugin-design.json`, move config to CLAUDE.md |
 | ADR-0016 | Workspace Mode for Multi-Module Projects | Submodule support via recursive CLAUDE.md |
 | ADR-0017 | Parallel Agent Coordination and PR Stacking | Foundation-first ordering, pre-flight awareness, merge topology, design doc isolation |
 | ADR-0018 | Security-by-Default for Web Specifications | Mandatory security sections, auth-by-default, security lint patterns |
@@ -450,7 +450,7 @@ The PR stacking reviewer found: claude-ops launched ~78 concurrent PRs just to a
 12. Add "Security Lint Patterns" to `shared-patterns.md`
 
 ### Phase 3: Config Migration + Init Overhaul
-13. Update all skills to read config from CLAUDE.md instead of `.claude-plugin-sdd.json`
+13. Update all skills to read config from CLAUDE.md instead of `.claude-plugin-design.json`
 14. Update `init` — workspace detection, CLAUDE.md config, permission setup, project-type-aware ADR suggestions
 15. Add migration guidance for existing users
 

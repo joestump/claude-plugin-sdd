@@ -2,7 +2,7 @@
 
 ## Context
 
-The SDD plugin stores runtime configuration in `.claude-plugin-sdd.json` -- tracker choice, branch conventions, PR conventions, worktree settings, and review settings. This creates a split source of truth with `CLAUDE.md`, which already carries architecture context and instructions interpreted natively by Claude Code. Three production projects (spotter, joe-links, claude-ops) demonstrated two concrete failures: split truth leading to unpredictable agent behavior, and guaranteed merge conflicts when parallel agents all modify the same JSON file.
+The SDD plugin stores runtime configuration in `.claude-plugin-design.json` -- tracker choice, branch conventions, PR conventions, worktree settings, and review settings. This creates a split source of truth with `CLAUDE.md`, which already carries architecture context and instructions interpreted natively by Claude Code. Three production projects (spotter, joe-links, claude-ops) demonstrated two concrete failures: split truth leading to unpredictable agent behavior, and guaranteed merge conflicts when parallel agents all modify the same JSON file.
 
 Simultaneously, every skill hardcodes `docs/adrs/` and `docs/openspec/specs/` relative to a single project root. Multi-module projects (git submodules, monorepos) cannot use the plugin because skills silently operate on the wrong paths or miss artifacts entirely.
 
@@ -14,10 +14,10 @@ Governing: SPEC-0014, ADR-0015 (Markdown-Native Configuration), ADR-0016 (Worksp
 
 ### Goals
 
-- Eliminate `.claude-plugin-sdd.json` as a configuration source, consolidating all plugin config into `CLAUDE.md`
+- Eliminate `.claude-plugin-design.json` as a configuration source, consolidating all plugin config into `CLAUDE.md`
 - Remove the #1 merge conflict source in parallel agent workflows
 - Enable multi-module workspace support through Claude Code's recursive `CLAUDE.md` loading
-- Provide a smooth migration path for existing users with `.claude-plugin-sdd.json`
+- Provide a smooth migration path for existing users with `.claude-plugin-design.json`
 - Make artifact path resolution dynamic instead of hardcoded
 - Allow module-scoped operations across all skills
 
@@ -159,20 +159,20 @@ sequenceDiagram
 sequenceDiagram
     participant U as User
     participant I as /sdd:init
-    participant J as .claude-plugin-sdd.json
+    participant J as .claude-plugin-design.json
     participant C as CLAUDE.md
     participant G as .gitmodules
 
     U->>I: /sdd:init
 
-    I->>J: Check for .claude-plugin-sdd.json
+    I->>J: Check for .claude-plugin-design.json
     alt JSON exists
         J-->>I: {tracker: "gitea", branches: {...}, ...}
         I->>I: Translate JSON to markdown sections
-        I->>U: "Found existing config in .claude-plugin-sdd.json.\nMigrate to CLAUDE.md?"
+        I->>U: "Found existing config in .claude-plugin-design.json.\nMigrate to CLAUDE.md?"
         U-->>I: Yes
         I->>C: Write ### SDD Configuration sections
-        I->>U: "Delete .claude-plugin-sdd.json?"
+        I->>U: "Delete .claude-plugin-design.json?"
         U-->>I: Yes
         I->>J: Delete file
     end
@@ -194,7 +194,7 @@ sequenceDiagram
 - **No schema validation** -- Typos in CLAUDE.md config keys (e.g., "Brunch Conventions" instead of "Branch Conventions") will silently produce default behavior instead of erroring. Mitigation: Claude's natural language understanding tolerates minor variations; `/sdd:init` writes the canonical format; `/sdd:check` could optionally lint config sections in a future iteration.
 - **CLAUDE.md coupling** -- The plugin becomes coupled to Claude Code's `CLAUDE.md` convention. If Claude Code changes its file loading behavior, the plugin must adapt. Mitigation: `CLAUDE.md` is a stable, well-documented convention; the plugin already depends on it for architecture context.
 - **Module discovery limitations** -- `.gitmodules` parsing covers git submodules but not npm workspaces, Go modules, or Cargo workspaces. Mitigation: the CLAUDE.md fallback table supports any layout; language-specific discovery can be added in future iterations.
-- **Migration friction** -- Existing users must run `/sdd:init` to migrate from JSON to CLAUDE.md. Mitigation: the migration is one-time, automated, and preserves all values exactly; skills could also emit a deprecation warning if they detect `.claude-plugin-sdd.json` during normal operation.
+- **Migration friction** -- Existing users must run `/sdd:init` to migrate from JSON to CLAUDE.md. Mitigation: the migration is one-time, automated, and preserves all values exactly; skills could also emit a deprecation warning if they detect `.claude-plugin-design.json` during normal operation.
 - **Config merge complexity** -- Module-level overrides with root-level inheritance could produce surprising behavior if users forget which level a setting is defined at. Mitigation: `/sdd:prime` will show the resolved config per module, making the effective configuration visible.
 
 ## Migration Plan
@@ -204,11 +204,11 @@ sequenceDiagram
 1. Add "Config Resolution" pattern to `references/shared-patterns.md`
 2. Add "Artifact Path Resolution" pattern to `references/shared-patterns.md`
 3. Update existing "Tracker Detection" pattern to check CLAUDE.md first, then fall back to auto-detection
-4. Deprecate (but do not yet remove) the "Config Schema (`.claude-plugin-sdd.json`)" section
+4. Deprecate (but do not yet remove) the "Config Schema (`.claude-plugin-design.json`)" section
 
 ### Phase 2: Init Overhaul
 
-5. Update `/sdd:init` to write `### SDD Configuration` sections in CLAUDE.md instead of `.claude-plugin-sdd.json`
+5. Update `/sdd:init` to write `### SDD Configuration` sections in CLAUDE.md instead of `.claude-plugin-design.json`
 6. Add JSON-to-CLAUDE.md migration flow to `/sdd:init`
 7. Add `.gitmodules` detection and workspace setup to `/sdd:init`
 
@@ -229,20 +229,20 @@ sequenceDiagram
 
 ### Phase 5: Cleanup
 
-17. Remove "Config Schema (`.claude-plugin-sdd.json`)" section from `shared-patterns.md`
-18. Remove all remaining references to `.claude-plugin-sdd.json` from skill files
+17. Remove "Config Schema (`.claude-plugin-design.json`)" section from `shared-patterns.md`
+18. Remove all remaining references to `.claude-plugin-design.json` from skill files
 19. Update CLAUDE.md template in `/sdd:init` to reflect the new config structure
 
 ### Rollback Strategy
 
 If issues arise during migration:
-- Skills can detect both CLAUDE.md config sections and `.claude-plugin-sdd.json` simultaneously, preferring CLAUDE.md when present
+- Skills can detect both CLAUDE.md config sections and `.claude-plugin-design.json` simultaneously, preferring CLAUDE.md when present
 - The JSON file is not deleted until the user confirms, so reverting is as simple as removing the CLAUDE.md config sections
 - No destructive changes are made to existing artifacts (ADRs, specs) during migration
 
 ## Open Questions
 
 - Should `/sdd:check` lint the CLAUDE.md configuration sections for format correctness (e.g., missing bold keys, wrong subsection headings)?
-- Should the plugin support a `.claude-plugin-sdd.json` compatibility mode for a deprecation period, reading JSON as fallback when CLAUDE.md config is absent?
+- Should the plugin support a `.claude-plugin-design.json` compatibility mode for a deprecation period, reading JSON as fallback when CLAUDE.md config is absent?
 - For monorepos that are not git submodules (e.g., npm workspaces, Go multi-module), what is the right detection heuristic for the CLAUDE.md fallback table?
 - Should cross-module artifact references be supported (e.g., a spec in module A citing an ADR in module B), and if so, what is the reference syntax?

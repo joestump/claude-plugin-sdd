@@ -65,7 +65,7 @@ The SDD plugin's workflow pipeline covers architectural decisions (ADR), specifi
 
 ### Squash merge as default
 
-**Choice**: Default merge strategy is squash, configurable via `.claude-plugin-sdd.json` `review.merge_strategy`.
+**Choice**: Default merge strategy is squash, configurable via `.claude-plugin-design.json` `review.merge_strategy`.
 **Rationale**: Squash produces clean commit history (one commit per PR) which aligns with the "one issue, one branch, one PR" convention from `/sdd:plan`. Teams that prefer merge commits or rebases can configure their preference.
 **Alternatives considered**:
 - Merge commit default: Preserves individual commits but clutters history for agent-generated code
@@ -160,7 +160,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    subgraph ".claude-plugin-sdd.json review section"
+    subgraph ".claude-plugin-design.json review section"
         r1["review.max_pairs: 2"]
         r2["review.merge_strategy: 'squash'"]
         r3["review.auto_cleanup: false"]
@@ -172,7 +172,7 @@ flowchart LR
 - **One round may be insufficient**: Complex PRs with deep architectural issues may not be fully resolved in one review-response cycle. Mitigation: the skill leaves clear comments explaining what remains, and the report lists unresolved PRs for human follow-up.
 - **Auto-merge trust**: Merging without human approval requires trust in the reviewer agent's judgment. Mitigation: the `--no-merge` flag provides a safety valve; users can review approvals before manually merging.
 - **Merge conflicts**: If multiple PRs touch overlapping files, merging one may cause conflicts in another. Mitigation: the skill handles merge failures gracefully, reports the conflict, and continues with remaining PRs. The user can resolve conflicts and re-run `/sdd:review` for the affected PRs.
-- **Compute cost**: 4 agents (2 pairs) per invocation is compute-intensive. Mitigation: adaptive pair count reduces to 1 pair for small batches; `.claude-plugin-sdd.json` `review.max_pairs` provides control.
+- **Compute cost**: 4 agents (2 pairs) per invocation is compute-intensive. Mitigation: adaptive pair count reduces to 1 pair for small batches; `.claude-plugin-design.json` `review.max_pairs` provides control.
 - **Worktree state**: Reused worktrees from `/sdd:work` may have uncommitted changes or be on the wrong commit. Mitigation: responders should `git pull` and verify they are on the correct branch before making changes.
 - **Tracker API rate limits**: Submitting reviews, pushing commits, and merging in rapid succession may hit rate limits. Mitigation: sequential processing within each pair (review → response → merge) provides natural pacing; individual failures are reported and skipped.
 

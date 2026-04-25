@@ -8,7 +8,7 @@ decision-makers: joestump
 
 ## Context and Problem Statement
 
-Review of three production projects built entirely with the SDD plugin (spotter, joe-links, claude-ops) revealed systemic coordination failures when multiple agents work in parallel. Across these repos, there were 11+ merge conflict commits, 6 PRs closed and recreated due to rebase failures, conflict markers merged directly into main, duplicate structs and helper functions implemented independently in concurrent PRs, zero assignees or in-progress labels on any issue in any repo, no pre-flight conflict detection, and `.claude-plugin-sdd.json` modified by every PR causing guaranteed conflicts. How should the plugin coordinate parallel agent work to eliminate duplicate code, merge conflicts, and wasted effort?
+Review of three production projects built entirely with the SDD plugin (spotter, joe-links, claude-ops) revealed systemic coordination failures when multiple agents work in parallel. Across these repos, there were 11+ merge conflict commits, 6 PRs closed and recreated due to rebase failures, conflict markers merged directly into main, duplicate structs and helper functions implemented independently in concurrent PRs, zero assignees or in-progress labels on any issue in any repo, no pre-flight conflict detection, and `.claude-plugin-design.json` modified by every PR causing guaranteed conflicts. How should the plugin coordinate parallel agent work to eliminate duplicate code, merge conflicts, and wasted effort?
 
 ## Decision Drivers
 
@@ -17,7 +17,7 @@ Review of three production projects built entirely with the SDD plugin (spotter,
 * **Maintain parallel throughput**: Sequential execution eliminates conflicts but sacrifices the primary benefit of multi-agent work; the solution must preserve meaningful parallelism while adding coordination
 * **Foundation-first ordering**: Shared infrastructure (types, helpers, middleware, config fields) must be extracted and merged before feature PRs that depend on it, not duplicated across feature PRs
 * **Observable agent state**: Zero assignees and zero lifecycle labels across all three repos means neither humans nor sibling agents can tell what work is in-progress, creating blind coordination
-* **Design document isolation**: Spec files, ADR files, and `.claude-plugin-sdd.json` were modified by nearly every PR in every sprint, creating guaranteed merge conflicts on shared files that have nothing to do with the feature being built
+* **Design document isolation**: Spec files, ADR files, and `.claude-plugin-design.json` were modified by nearly every PR in every sprint, creating guaranteed merge conflicts on shared files that have nothing to do with the feature being built
 
 ## Considered Options
 
@@ -73,7 +73,7 @@ Stop every PR from modifying shared spec, ADR, and config files:
 
 - **Batch design doc updates**: Instead of each agent updating spec files with governing references, create a single "design docs update" PR that runs after all feature PRs merge
 - **Append-only governing references**: Each agent writes governing references to its own PR description or a per-PR file; a consolidation step merges them into specs post-sprint
-- **Kill `.claude-plugin-sdd.json`**: This file was the #1 merge conflict source in claude-ops -- every PR modified it. Migrate to CLAUDE.md (see ADR-0015).
+- **Kill `.claude-plugin-design.json`**: This file was the #1 merge conflict source in claude-ops -- every PR modified it. Migrate to CLAUDE.md (see ADR-0015).
 
 ### Evidence from Production Repos
 
@@ -83,7 +83,7 @@ Stop every PR from modifying shared spec, ADR, and config files:
 | Merge conflict commits | 4 | 6 | 1 |
 | PRs closed/recreated | 0 | 5 | 1 |
 | Confirmed duplicate implementations | 2 | 1 | 1 |
-| Worst file hotspot | `sync.go` (3 concurrent PRs) | `link_store.go` (6 concurrent PRs) | `.claude-plugin-sdd.json` (all 7 PRs) |
+| Worst file hotspot | `sync.go` (3 concurrent PRs) | `link_store.go` (6 concurrent PRs) | `.claude-plugin-design.json` (all 7 PRs) |
 | Conflict markers merged into main | No | No | Yes (`api_handlers.go`) |
 | Issues with assignees set | 0 | 0 | 0 |
 | Issues with "in-progress" labels | 0 | 0 | 0 |
@@ -93,7 +93,7 @@ Stop every PR from modifying shared spec, ADR, and config files:
 
 - **spotter**: `nopHandler` struct implemented independently in `enrichers/openai/` and `vibes/generator.go`; cleaned up in PR 168. LLM client code (`ChatRequest`/`ChatResponse` types, `callOpenAI()` HTTP logic) duplicated across 4 packages; PR 171 extracted it, removing 181 lines of duplicate code.
 - **joe-links**: `PublicLink` struct created independently in PRs 112 and 114; had to be manually unified at merge. PRs 142-144 all closed without merging and recreated as 145-147 after a dependency merged -- 100% wasted effort.
-- **claude-ops**: Conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) actually merged into `main` in `api_handlers.go`; required a follow-up commit to remove 32 lines of conflict markers. `.claude-plugin-sdd.json` modified by every single PR in parallel sprints -- guaranteed merge conflicts.
+- **claude-ops**: Conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) actually merged into `main` in `api_handlers.go`; required a follow-up commit to remove 32 lines of conflict markers. `.claude-plugin-design.json` modified by every single PR in parallel sprints -- guaranteed merge conflicts.
 - **spotter PR 144**: Required explicit merge-conflict-resolution commit after 5 other PRs merged. Commit fixed "missing AuthMiddleware function" and "missing closing brace" -- broken code from a bad rebase.
 
 ### Consequences
@@ -103,7 +103,7 @@ Stop every PR from modifying shared spec, ADR, and config files:
 * Good, because pre-flight conflict prediction prevents agents from starting work that will inevitably conflict, saving tokens and time
 * Good, because topological merge ordering eliminates the rebase churn that caused 6 PRs to be closed/recreated in joe-links
 * Good, because PR stacking eliminates rebase entirely for dependent chains -- each PR builds on its dependency's branch
-* Good, because design document isolation removes the single largest source of guaranteed conflicts (`.claude-plugin-sdd.json` in claude-ops, spec files across all repos)
+* Good, because design document isolation removes the single largest source of guaranteed conflicts (`.claude-plugin-design.json` in claude-ops, spec files across all repos)
 * Good, because the parallelism cap (3-4 agents) is empirically validated -- all three repos showed failures at 5+ concurrent PRs
 * Bad, because the planning phase becomes more expensive -- foundation story detection, hotspot analysis, and dependency graphing add token cost before any code is written
 * Bad, because lifecycle signal enforcement adds latency -- agents must wait for blocking dependencies to reach `merged` state before starting
@@ -150,7 +150,7 @@ Launch all agents simultaneously. Each agent works from `main`, creates a PR, an
 * Bad, because it merged conflict markers into main in claude-ops (`api_handlers.go`)
 * Bad, because it duplicated `nopHandler`, `PublicLink`, and LLM client code across concurrent PRs
 * Bad, because zero lifecycle signals (no assignees, no labels) made it impossible for agents or humans to know what was in-progress
-* Bad, because `.claude-plugin-sdd.json` was modified by every PR, guaranteeing conflicts on a file unrelated to feature work
+* Bad, because `.claude-plugin-design.json` was modified by every PR, guaranteeing conflicts on a file unrelated to feature work
 
 ### Option 3: File-Locking System
 
@@ -237,5 +237,5 @@ flowchart TD
 - The five layers are designed to be incrementally adoptable. Layer 2 (lifecycle signals) and Layer 5 (design doc isolation) can be implemented first with immediate impact, as they address the most visible symptoms (zero observability and guaranteed config conflicts). Layers 1, 3, and 4 build on that foundation.
 - The parallelism cap of 3-4 is empirically derived: all three repos showed failures at 5+ concurrent PRs, and claude-ops's 78-PR sprint was catastrophic. This cap should be revisited as coordination layers mature.
 - PR stacking (Layer 4) is offered as an option because it trades rebase complexity for merge complexity. Teams comfortable with stacked PRs can eliminate rebase entirely; teams preferring flat PRs get auto-rebase orchestration instead.
-- Related: ADR-0015 (Markdown-Native Configuration -- eliminates `.claude-plugin-sdd.json`, the #1 conflict source), ADR-0008 (standalone sprint planning), ADR-0009 (project grouping and developer workflow conventions), ADR-0010 (parallel PR review), SPEC-0015 (Parallel Agent Coordination spec).
-- The "design docs update" PR in Layer 5 replaces the current pattern where every agent adds `// Governing:` comments and updates spec completion status. This was the second-largest source of merge conflicts after `.claude-plugin-sdd.json`.
+- Related: ADR-0015 (Markdown-Native Configuration -- eliminates `.claude-plugin-design.json`, the #1 conflict source), ADR-0008 (standalone sprint planning), ADR-0009 (project grouping and developer workflow conventions), ADR-0010 (parallel PR review), SPEC-0015 (Parallel Agent Coordination spec).
+- The "design docs update" PR in Layer 5 replaces the current pattern where every agent adds `// Governing:` comments and updates spec completion status. This was the second-largest source of merge conflicts after `.claude-plugin-design.json`.

@@ -13,13 +13,13 @@ ADR-0012 decided to implement full workspace enrichment: project descriptions an
 - Enrich Gitea projects with milestones (one per epic), board columns (Todo/In Progress/In Review/Done), and native dependency links
 - Auto-create labels across all issue-touching skills using a try-then-create pattern, eliminating silent label-not-found failures
 - Upgrade `/sdd:organize` to a three-tier intervention model: leave as-is, restructure workspace, or complete refactor
-- Add `.claude-plugin-sdd.json` keys for `projects.views`, `projects.columns`, and `projects.iteration_weeks` (all optional, backward-compatible)
+- Add `.claude-plugin-design.json` keys for `projects.views`, `projects.columns`, and `projects.iteration_weeks` (all optional, backward-compatible)
 - Degrade gracefully when a tracker lacks a feature -- skip the enrichment step and report, never fail the entire operation
 
 ### Non-Goals
 - Syncing README content when specs or ADRs change after project creation (stale READMEs are accepted as a known trade-off)
 - Supporting iteration fields on trackers other than GitHub Projects V2 (Gitea, GitLab, Jira, and Linear lack equivalent features)
-- Adding labels to `.claude-plugin-sdd.json` configuration (label colors are hardcoded defaults; customization is a future concern)
+- Adding labels to `.claude-plugin-design.json` configuration (label colors are hardcoded defaults; customization is a future concern)
 - Modifying the core issue creation flow in `/sdd:plan` -- enrichment is a post-creation step
 - Implementing a project README refresh or update command (future work)
 - Supporting custom view types beyond the three defaults (Table, Board, Roadmap)
@@ -158,8 +158,8 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    subgraph ".claude-plugin-sdd.json expanded schema"
-        root[".claude-plugin-sdd.json"]
+    subgraph ".claude-plugin-design.json expanded schema"
+        root[".claude-plugin-design.json"]
         root --> tracker["tracker: 'github'"]
         root --> tc["tracker_config:\n  owner: '...'\n  repo: '...'"]
         root --> projects["projects:"]
@@ -185,13 +185,13 @@ flowchart TD
 
 - **Three-tier organize interaction**: The three-tier model adds a user prompt to what was previously a fully automated skill. Operators must make a choice before the skill proceeds. Mitigation: the prompt is a single question with three clear options. Tier (b) is the "safe default" for most cases.
 
-- **Configuration surface area**: `.claude-plugin-sdd.json` gains three new keys under `projects` (`views`, `columns`, `iteration_weeks`). This increases the configuration surface area. Mitigation: all keys are optional with sensible defaults. Most users will never need to set them. The keys are backward-compatible -- existing `.claude-plugin-sdd.json` files continue to work unchanged.
+- **Configuration surface area**: `.claude-plugin-design.json` gains three new keys under `projects` (`views`, `columns`, `iteration_weeks`). This increases the configuration surface area. Mitigation: all keys are optional with sensible defaults. Most users will never need to set them. The keys are backward-compatible -- existing `.claude-plugin-design.json` files continue to work unchanged.
 
 ## Migration Plan
 
 ### Updating `/sdd:plan` SKILL.md
 
-1. **After step 5.6 (project grouping)**, add a new step 5.7: "Workspace enrichment". This step reads `.claude-plugin-sdd.json` `projects` configuration and enriches the newly created project:
+1. **After step 5.6 (project grouping)**, add a new step 5.7: "Workspace enrichment". This step reads `.claude-plugin-design.json` `projects` configuration and enriches the newly created project:
    - Set project description
    - Write project README (GitHub: project field; Gitea: project description)
    - Create iteration field with configured cycle length (GitHub only)
@@ -203,7 +203,7 @@ flowchart TD
 
 2. **Wrap label application** across all issue-creation steps with the try-then-create pattern. This is cross-cutting: it applies in steps 5.1 (epic creation), 5.2 (story creation), and 5.6 (project grouping) wherever labels are applied.
 
-3. **Read `.claude-plugin-sdd.json` `projects` keys** during step 4.1 (check saved preference) alongside existing `tracker` and `tracker_config` reads.
+3. **Read `.claude-plugin-design.json` `projects` keys** during step 4.1 (check saved preference) alongside existing `tracker` and `tracker_config` reads.
 
 ### Updating `/sdd:organize` SKILL.md
 
@@ -231,6 +231,6 @@ The try-then-create label pattern must be added to every skill that applies labe
 
 - Should the project README include estimated effort or complexity per story (derived from requirement/scenario count)?
 - When `/sdd:organize` tier (c) re-groups issues, should it ask for confirmation per issue or batch all changes?
-- Should the "Sprint" iteration field name be configurable via `.claude-plugin-sdd.json`, or is a fixed name sufficient?
+- Should the "Sprint" iteration field name be configurable via `.claude-plugin-design.json`, or is a fixed name sufficient?
 - For GitHub Projects V2, should the skill attempt to set the "Board" view as the default view, or leave the "All Work" table view as default?
 - Should the auto-label creation pattern be extracted into a shared utility (e.g., a helper section in the SKILL.md template) to avoid duplicating the try-then-create logic across four skills?

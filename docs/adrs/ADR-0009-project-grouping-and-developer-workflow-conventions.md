@@ -41,7 +41,7 @@ Chosen option: "Option 2 -- Add conventions to `/sdd:plan` with opt-out flags, a
 * Good, because retroactive skills (`/sdd:organize`, `/sdd:enrich`) can evolve independently without adding complexity to the planning flow
 * Bad, because project creation adds API calls that may hit rate limits, especially with GitHub Projects V2's GraphQL-only API
 * Bad, because two-pass issue creation is required: issues must be created first to get their number, then updated with branch/PR sections that reference that number
-* Bad, because `.claude-plugin-sdd.json` gains additional configuration keys (`branches.prefix`, `projects.default`), increasing its surface area
+* Bad, because `.claude-plugin-design.json` gains additional configuration keys (`branches.prefix`, `projects.default`), increasing its surface area
 * Neutral, because the branch naming convention is opinionated (feature/epic prefixes) but configurable, balancing convention with flexibility
 
 ### Confirmation
@@ -54,7 +54,7 @@ Implementation will be confirmed by:
 4. Created issue bodies include a "Branch" section with `feature/{issue-number}-{slug}` for tasks and `epic/{issue-number}-{slug}` for epics
 5. Created issue bodies include a "PR Convention" section with tracker-specific close keywords
 6. Running `/sdd:plan SPEC-XXXX --no-branches` omits Branch and PR sections from issue bodies
-7. Custom branch prefixes via `--branch-prefix work/` or `.claude-plugin-sdd.json` `branches.prefix` are respected
+7. Custom branch prefixes via `--branch-prefix work/` or `.claude-plugin-design.json` `branches.prefix` are respected
 8. Slugs are kebab-case, derived from the requirement/epic name, and capped at 50 characters
 
 ## Pros and Cons of the Options
@@ -76,7 +76,7 @@ Add project grouping, branch naming, and PR conventions to `/sdd:plan` with `--n
 * Good, because sensible defaults work for most users while power users have full control
 * Good, because retroactive skills have focused responsibilities and minimal allowed-tools
 * Good, because the separation follows the existing plugin pattern of single-purpose skills
-* Good, because `.claude-plugin-sdd.json` can store defaults for all configuration (branch prefix, project preference) so flags are rarely needed
+* Good, because `.claude-plugin-design.json` can store defaults for all configuration (branch prefix, project preference) so flags are rarely needed
 * Neutral, because two new skills increase the plugin's command count
 * Bad, because two-pass issue creation adds complexity (create, get number, update body)
 * Bad, because the `--project` flag's semantics differ from the default behavior, which could confuse users
@@ -155,7 +155,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph ".claude-plugin-sdd.json (expanded)"
+    subgraph ".claude-plugin-design.json (expanded)"
         tracker["tracker: 'github'"]
         tracker_config["tracker_config:\n  owner: '...'\n  repo: '...'"]
         branches["branches:\n  prefix: 'feature/'"]
