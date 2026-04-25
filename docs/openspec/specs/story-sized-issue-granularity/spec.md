@@ -2,13 +2,13 @@
 
 ## Overview
 
-Changes the `/design:plan` skill from creating one tracker issue per `### Requirement:` section to grouping related requirements into 3-4 story-sized issues per spec. Each story contains a task checklist mapping individual requirements to their acceptance criteria, targeting PRs in the 200-500 line range. This preserves full requirement traceability while producing issues that are large enough for meaningful code review and small enough to review in one sitting. See ADR-0011.
+Changes the `/sdd:plan` skill from creating one tracker issue per `### Requirement:` section to grouping related requirements into 3-4 story-sized issues per spec. Each story contains a task checklist mapping individual requirements to their acceptance criteria, targeting PRs in the 200-500 line range. This preserves full requirement traceability while producing issues that are large enough for meaningful code review and small enough to review in one sitting. See ADR-0011.
 
 ## Requirements
 
 ### Requirement: Requirement Grouping
 
-The `/design:plan` skill SHALL group spec requirements into 3-4 story-sized issues by functional area instead of creating one issue per requirement. The grouping SHALL use AI judgement to cluster requirements by the area of the system they affect (e.g., data model, API endpoints, validation, configuration). The target number of stories depends on the total number of requirements in the spec.
+The `/sdd:plan` skill SHALL group spec requirements into 3-4 story-sized issues by functional area instead of creating one issue per requirement. The grouping SHALL use AI judgement to cluster requirements by the area of the system they affect (e.g., data model, API endpoints, validation, configuration). The target number of stories depends on the total number of requirements in the spec.
 
 #### Scenario: Typical spec with 10-15 requirements
 
@@ -71,7 +71,7 @@ Story groupings SHOULD target 200-500 lines of code per resulting PR. This is a 
 
 ### Requirement: Grouping Heuristics
 
-The `/design:plan` skill SHALL apply the following heuristics when grouping requirements into stories. These are guiding principles for AI judgement, not a deterministic algorithm.
+The `/sdd:plan` skill SHALL apply the following heuristics when grouping requirements into stories. These are guiding principles for AI judgement, not a deterministic algorithm.
 
 #### Scenario: Functional area cohesion
 
@@ -107,12 +107,12 @@ Branch naming SHALL apply per story, not per requirement. Each story SHALL have 
 
 ### Requirement: Backward Compatibility
 
-The `/design:plan` skill SHALL preserve all existing behavior for tracker detection, preference persistence, project grouping, and PR conventions. Only the issue granularity changes from per-requirement to per-story.
+The `/sdd:plan` skill SHALL preserve all existing behavior for tracker detection, preference persistence, project grouping, and PR conventions. Only the issue granularity changes from per-requirement to per-story.
 
 #### Scenario: Tracker detection unchanged
 
 - **WHEN** the skill detects available trackers
-- **THEN** the detection logic SHALL remain identical to SPEC-0007: check `.claude-plugin-design.json` for saved preference, probe for MCP tools via `ToolSearch`, check CLI availability, and follow the same selection flow
+- **THEN** the detection logic SHALL remain identical to SPEC-0007: check `.claude-plugin-sdd.json` for saved preference, probe for MCP tools via `ToolSearch`, check CLI availability, and follow the same selection flow
 
 #### Scenario: Project grouping unchanged
 
@@ -128,13 +128,13 @@ The `/design:plan` skill SHALL preserve all existing behavior for tracker detect
 
 #### Scenario: Preference persistence unchanged
 
-- **WHEN** the skill reads or writes `.claude-plugin-design.json`
+- **WHEN** the skill reads or writes `.claude-plugin-sdd.json`
 - **THEN** the schema and merge behavior SHALL remain identical to SPEC-0007
-- **AND** no new keys are required in `.claude-plugin-design.json` for story-sized issue support
+- **AND** no new keys are required in `.claude-plugin-sdd.json` for story-sized issue support
 
 #### Scenario: Review mode unchanged
 
-- **WHEN** the user runs `/design:plan SPEC-XXXX --review`
+- **WHEN** the user runs `/sdd:plan SPEC-XXXX --review`
 - **THEN** the team review flow SHALL remain identical to SPEC-0007, but the reviewer SHALL verify that story groupings are functionally cohesive and that every requirement appears in exactly one story's task checklist
 
 #### Scenario: tasks.md fallback unchanged
@@ -168,7 +168,7 @@ The task checklist format SHALL include structured information about each requir
 
 ### Requirement: Epic Preservation
 
-The `/design:plan` skill SHALL continue creating one epic per spec. Stories are children of the epic, replacing the per-requirement tasks that were previously children of the epic.
+The `/sdd:plan` skill SHALL continue creating one epic per spec. Stories are children of the epic, replacing the per-requirement tasks that were previously children of the epic.
 
 #### Scenario: Epic creation unchanged
 
@@ -184,18 +184,18 @@ The `/design:plan` skill SHALL continue creating one epic per spec. Stories are 
 
 ### Requirement: Downstream Compatibility
 
-Story-sized issues SHALL be consumable by `/design:work` and `/design:review` without requiring modifications to those skills' core logic.
+Story-sized issues SHALL be consumable by `/sdd:work` and `/sdd:review` without requiring modifications to those skills' core logic.
 
 #### Scenario: Work skill consumption
 
-- **WHEN** `/design:work` picks up a story issue
+- **WHEN** `/sdd:work` picks up a story issue
 - **THEN** the worker SHALL implement all requirements listed in the story's task checklist within a single worktree
 - **AND** the worker SHALL create one PR per story, using the branch name from the `### Branch` section
 - **AND** the worker SHALL leave `// Governing: SPEC-XXXX REQ "{Requirement Name}"` comments for each requirement it implements
-- **AND** the existing `/design:work` filtering rules (skip epics, require `### Branch` sections, extract PR conventions) SHALL continue to work because story issues have the same structural sections as the per-requirement issues they replace
+- **AND** the existing `/sdd:work` filtering rules (skip epics, require `### Branch` sections, extract PR conventions) SHALL continue to work because story issues have the same structural sections as the per-requirement issues they replace
 
 #### Scenario: Review skill consumption
 
-- **WHEN** `/design:review` processes a PR created from a story issue
+- **WHEN** `/sdd:review` processes a PR created from a story issue
 - **THEN** the reviewer SHALL evaluate whether the PR satisfies all requirements listed in the story's task checklist
 - **AND** the existing PR discovery and review flow SHALL work without modification because story PRs use the same branch naming convention and PR format as per-requirement PRs

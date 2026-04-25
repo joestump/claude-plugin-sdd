@@ -24,12 +24,12 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
    - `--review`: Enable team review mode. Default: off. Mutually exclusive with: `--scrum`.
    - `--scrum`: Enable scrum triage ceremony. Default: off. Mutually exclusive with: `--review`.
    - `--module <name>`: Resolve artifact paths relative to the named module. Default: none.
-   - If scope matches nothing, report: "No design artifacts or source files matched the scope \"{scope}\". Try a broader scope, or run `/design:audit` without a scope for a full project audit."
+   - If scope matches nothing, report: "No design artifacts or source files matched the scope \"{scope}\". Try a broader scope, or run `/sdd:audit` without a scope for a full project audit."
 
 2. **Locate design artifacts**:
-   - Scan `{adr-dir}` for ADR files. If the directory does not exist, report: "The `{adr-dir}` directory does not exist. Run `/design:adr [description]` to create your first ADR."
-   - Scan `{spec-dir}` for spec files. If the directory does not exist, report: "The `{spec-dir}` directory does not exist. Run `/design:spec [capability]` to create your first spec."
-   - If neither ADRs nor specs exist, report: "No design artifacts found. Create an ADR with `/design:adr` or a spec with `/design:spec` first."
+   - Scan `{adr-dir}` for ADR files. If the directory does not exist, report: "The `{adr-dir}` directory does not exist. Run `/sdd:adr [description]` to create your first ADR."
+   - Scan `{spec-dir}` for spec files. If the directory does not exist, report: "The `{spec-dir}` directory does not exist. Run `/sdd:spec [capability]` to create your first spec."
+   - If neither ADRs nor specs exist, report: "No design artifacts found. Create an ADR with `/sdd:adr` or a spec with `/sdd:spec` first."
    - It is valid for only ADRs or only specs to exist -- proceed with whatever is available and note which categories cannot be checked.
 
 3. **Choose execution mode**: Check if `$ARGUMENTS` contains `--scrum` or `--review`. `--scrum` takes precedence over `--review` if both are present.
@@ -175,10 +175,10 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
    If no cross-module inconsistencies are found, omit the "Cross-Module Inconsistencies" table and note: "No cross-module inconsistencies detected."
 
 7. **Add recommended actions** at the end, ordered by severity:
-   - For stale artifact findings, suggest `/design:status` to update
-   - For coverage gaps suggesting missing ADRs, suggest `/design:adr`
-   - For coverage gaps suggesting missing specs, suggest `/design:spec`
-   - Never suggest `/design:check` (audit is a superset of check)
+   - For stale artifact findings, suggest `/sdd:status` to update
+   - For coverage gaps suggesting missing ADRs, suggest `/sdd:adr`
+   - For coverage gaps suggesting missing specs, suggest `/sdd:spec`
+   - Never suggest `/sdd:check` (audit is a superset of check)
 
 8. **Handle clean results**: If no drift is found across any category:
 

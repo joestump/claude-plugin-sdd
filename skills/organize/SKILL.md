@@ -29,7 +29,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
 3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` and `design.md` to understand the spec number, requirement names, and architecture. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
 
-4. **Detect tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Also read `Projects` settings from the `### Design Plugin Configuration` section in CLAUDE.md for cached project IDs and enrichment config (Views, Columns, Iteration Weeks). If no tracker is found, error — projects require a tracker.
+4. **Detect tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Also read `Projects` settings from the `### SDD Configuration` section in CLAUDE.md for cached project IDs and enrichment config (Views, Columns, Iteration Weeks). If no tracker is found, error — projects require a tracker.
 
 5. **Find existing issues**: Search the tracker for issues whose body references the spec number.
    - **GitHub**: `gh issue list --search "SPEC-XXXX" --json number,title,body,labels --limit 100`
@@ -90,7 +90,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    **Tier (c) additional steps:**
    - Re-label issues using the try-then-create pattern (see `references/shared-patterns.md`)
    - Create Gitea native dependency links
-   - Add `### Branch` / `### PR Convention` to issue bodies that lack them (same logic as `/design:enrich`)
+   - Add `### Branch` / `### PR Convention` to issue bodies that lack them (same logic as `/sdd:enrich`)
 
 9. **`--dry-run` mode**: If `--dry-run` is set, report the assessment and what WOULD be done at each tier, but don't modify anything.
 
@@ -104,7 +104,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
 ## Config Reference
 
-This skill reads and writes the `Projects` subsection of the `### Design Plugin Configuration` section in CLAUDE.md. See the plugin's `references/shared-patterns.md` § "Config Resolution" for the canonical format and defaults. All keys are optional with sensible defaults. When writing, merge — do not overwrite.
+This skill reads and writes the `Projects` subsection of the `### SDD Configuration` section in CLAUDE.md. See the plugin's `references/shared-patterns.md` § "Config Resolution" for the canonical format and defaults. All keys are optional with sensible defaults. When writing, merge — do not overwrite.
 
 ## Rules
 

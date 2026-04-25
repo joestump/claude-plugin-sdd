@@ -2,22 +2,22 @@
 
 ## Overview
 
-A `--scrum` flag for `/design:audit` that adds a team-based triage ceremony on top of the standard six-category drift analysis. After completing the standard audit, a six-role scrum team groups raw findings into functional themes, applies prioritization (P1/P2/P3) and effort estimation (XS–XL), challenges false positives, distinguishes code-fix findings from artifact-update findings, and produces a prioritized remediation roadmap. ADRs and OpenSpecs are the source of truth; code that deviates is presumed wrong unless the triage team explicitly argues the artifact has become stale. See ADR-0014.
+A `--scrum` flag for `/sdd:audit` that adds a team-based triage ceremony on top of the standard six-category drift analysis. After completing the standard audit, a six-role scrum team groups raw findings into functional themes, applies prioritization (P1/P2/P3) and effort estimation (XS–XL), challenges false positives, distinguishes code-fix findings from artifact-update findings, and produces a prioritized remediation roadmap. ADRs and OpenSpecs are the source of truth; code that deviates is presumed wrong unless the triage team explicitly argues the artifact has become stale. See ADR-0014.
 
 ## Requirements
 
 ### Requirement: Scrum Flag and Mode Activation
 
-The `/design:audit` skill MUST accept a `--scrum` flag. When set, the skill SHALL first complete the full standard audit analysis (all six drift categories, severity assignments, findings table) and then execute the triage ceremony phases. The `--scrum` flag MUST compose with scope arguments: `/design:audit auth --scrum` SHALL limit both the standard audit and the triage ceremony to the auth domain. The `--scrum` flag MUST be mutually exclusive with `--review`; if both are provided, `--scrum` MUST take precedence.
+The `/sdd:audit` skill MUST accept a `--scrum` flag. When set, the skill SHALL first complete the full standard audit analysis (all six drift categories, severity assignments, findings table) and then execute the triage ceremony phases. The `--scrum` flag MUST compose with scope arguments: `/sdd:audit auth --scrum` SHALL limit both the standard audit and the triage ceremony to the auth domain. The `--scrum` flag MUST be mutually exclusive with `--review`; if both are provided, `--scrum` MUST take precedence.
 
 #### Scenario: Scoped scrum audit
 
-- **WHEN** the user runs `/design:audit security --scrum`
+- **WHEN** the user runs `/sdd:audit security --scrum`
 - **THEN** the standard audit analyzes only security-domain artifacts and code, and the triage team triages only the security-domain findings
 
 #### Scenario: Full-project scrum audit
 
-- **WHEN** the user runs `/design:audit --scrum` with no scope
+- **WHEN** the user runs `/sdd:audit --scrum` with no scope
 - **THEN** the standard audit runs against the full project and the triage team triages all findings
 
 #### Scenario: Flag precedence
@@ -35,7 +35,7 @@ The skill MUST spawn exactly five specialist agents to triage raw findings along
 | Scrum Master | Estimate remediation effort per theme (XS/S/M/L/XL); flag themes that are too large for one sprint and propose splits; ensure themes are sprint-actionable |
 | Engineer A | Assess technical complexity and implementation risk of fixes; identify themes that require large refactors vs. targeted patches |
 | Engineer B (Grumpy) | Challenge whether each finding is genuine drift or intentional architectural evolution; hold a high bar for accepting "this is fine actually"; explicitly call out when the PO wants to defer a MUST/SHALL violation |
-| Architect | Validate that ADRs and specs are still the correct source of truth; identify findings where the correct resolution is an artifact update (via `/design:adr` or `/design:spec`) rather than a code fix |
+| Architect | Validate that ADRs and specs are still the correct source of truth; identify findings where the correct resolution is an artifact update (via `/sdd:adr` or `/sdd:spec`) rather than a code fix |
 
 #### Scenario: Engineer B disputes a finding
 
@@ -45,7 +45,7 @@ The skill MUST spawn exactly five specialist agents to triage raw findings along
 #### Scenario: Architect recommends artifact update
 
 - **WHEN** the Architect determines the code reflects a better architectural decision than the current spec or ADR
-- **THEN** the finding MUST be flagged as "ARTIFACT UPDATE NEEDED" with a suggestion to run `/design:adr` or `/design:spec` to capture the evolution, rather than being added to the code-fix remediation backlog
+- **THEN** the finding MUST be flagged as "ARTIFACT UPDATE NEEDED" with a suggestion to run `/sdd:adr` or `/sdd:spec` to capture the evolution, rather than being added to the code-fix remediation backlog
 
 #### Scenario: PO wants to defer a MUST violation
 
@@ -110,7 +110,7 @@ The skill MUST emit a triage report at the end of the ceremony. The report SHALL
 
 - **Theme summary table**: theme name, finding count, highest severity, priority tier, effort estimate
 - **Per-theme details**: findings list, PO priority reasoning, SM effort reasoning, any Engineer B disputes and their resolution, any Architect artifact-update recommendations
-- **Artifact update queue**: list of findings reclassified as artifact updates, with suggested commands (`/design:adr [description]` or `/design:spec [capability]`)
+- **Artifact update queue**: list of findings reclassified as artifact updates, with suggested commands (`/sdd:adr [description]` or `/sdd:spec [capability]`)
 - **Accepted-for-now list**: MUST/SHALL violations the PO proposed to defer, with Engineer B's objection and PO's written justification documented
 
 After the triage report, the skill MUST offer to create tracker issues for P1 and P2 themes using `AskUserQuestion`.

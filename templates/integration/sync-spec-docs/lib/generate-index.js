@@ -93,7 +93,7 @@ ${rows.join('\n')}
 function generateIndex(config) {
   const { adrsSource, specsSource, outputDir, projectTitle = 'Architecture Documentation' } = config;
 
-  console.log('  [sync-design-docs] Generating index page...');
+  console.log('  [sync-spec-docs] Generating index page...');
 
   const adrCount = countAdrs(adrsSource);
   const specCount = countSpecs(specsSource);

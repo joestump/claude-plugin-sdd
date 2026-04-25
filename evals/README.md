@@ -1,6 +1,6 @@
 # Skill Evaluations
 
-Automated evaluation framework for the 15 design plugin skills.
+Automated evaluation framework for the 15 SDD plugin skills.
 
 ## Tier Structure
 

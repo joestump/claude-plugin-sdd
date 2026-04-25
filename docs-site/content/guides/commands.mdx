@@ -6,18 +6,18 @@ sidebar_position: 2
 
 # Commands
 
-All design plugin skills are invoked as Claude Code slash commands.
+All SDD plugin skills are invoked as Claude Code slash commands.
 
 ## Creating Artifacts {#creating}
 
-### `/design:adr` {#adr}
+### `/sdd:adr` {#adr}
 
 Create a new Architecture Decision Record using the MADR format.
 
 **Usage:**
 ```
-/design:adr [description]
-/design:adr [description] --review
+/sdd:adr [description]
+/sdd:adr [description] --review
 ```
 
 **What it does:**
@@ -27,25 +27,25 @@ Create a new Architecture Decision Record using the MADR format.
 - Sets status to `proposed` in YAML frontmatter
 - With `--review`, spawns a drafter + architect team (max 2 revision rounds)
 - After writing, suggests formalizing the decision into a specification with
-  `/design:spec`, which can then break requirements into sprint issues
+  `/sdd:spec`, which can then break requirements into sprint issues
 
 **Examples:**
 ```
-/design:adr Add JWT-based authentication
-/design:adr Switch from REST to GraphQL for the public API --review
+/sdd:adr Add JWT-based authentication
+/sdd:adr Switch from REST to GraphQL for the public API --review
 ```
 
 ---
 
-### `/design:spec` {#spec}
+### `/sdd:spec` {#spec}
 
 Create a new OpenSpec specification with paired requirements and design documents,
 then optionally plan a sprint by breaking requirements into trackable issues.
 
 **Usage:**
 ```
-/design:spec [capability name]
-/design:spec [capability name] --review
+/sdd:spec [capability name]
+/sdd:spec [capability name] --review
 ```
 
 **What it does:**
@@ -55,20 +55,20 @@ then optionally plan a sprint by breaking requirements into trackable issues.
   rationale, and tradeoffs
 - Assigns the next sequential `SPEC-XXXX` number
 - With `--review`, spawns a drafter + architect team (max 2 revision rounds)
-- After writing the spec, suggests running [`/design:plan`](#plan) to break
+- After writing the spec, suggests running [`/sdd:plan`](#plan) to break
   requirements into trackable issues
 
 **Examples:**
 ```
-/design:spec Authentication Service
-/design:spec WebSocket Gateway --review
+/sdd:spec Authentication Service
+/sdd:spec WebSocket Gateway --review
 ```
 
 ---
 
 ## Sprint Planning {#planning}
 
-### `/design:plan` {#plan}
+### `/sdd:plan` {#plan}
 
 Break an existing spec into story-sized tracker issues, organized into projects
 with branch naming and PR conventions. Use `--scrum` for a full team-groomed
@@ -76,9 +76,9 @@ sprint planning ceremony.
 
 **Usage:**
 ```
-/design:plan [spec-name or SPEC-XXXX]
-/design:plan [spec-name or SPEC-XXXX] --scrum
-/design:plan [spec-name or SPEC-XXXX] [--review] [--project <name>] [--no-projects] [--branch-prefix <prefix>] [--no-branches]
+/sdd:plan [spec-name or SPEC-XXXX]
+/sdd:plan [spec-name or SPEC-XXXX] --scrum
+/sdd:plan [spec-name or SPEC-XXXX] [--review] [--project <name>] [--no-projects] [--branch-prefix <prefix>] [--no-branches]
 ```
 
 **What it does:**
@@ -91,7 +91,7 @@ sprint planning ceremony.
 - Detects available issue trackers: [Beads](https://github.com/steveyegge/beads),
   GitHub (via MCP or `gh` CLI), GitLab (via MCP or `glab` CLI), Gitea (via MCP),
   Jira (via MCP), and Linear (via MCP)
-- Saves your tracker preference to `.claude-plugin-design.json` so you're not prompted again
+- Saves your tracker preference to `.claude-plugin-sdd.json` so you're not prompted again
 - Creates an epic for the spec and story issues with requirement checklists and
   acceptance criteria referencing spec and requirement numbers
 - Creates tracker-native projects with descriptions, READMEs, iteration fields,
@@ -116,27 +116,27 @@ See the [Sprint Planning guide](./sprint-planning) for a full walkthrough.
 
 **Examples:**
 ```
-/design:plan authentication-service
-/design:plan SPEC-0003
-/design:plan SPEC-0003 --scrum
-/design:plan --scrum                    # groom full backlog
-/design:plan SPEC-0003 --review
-/design:plan SPEC-0003 --project "Auth Sprint"
-/design:plan SPEC-0003 --no-branches
-/design:plan SPEC-0003 --branch-prefix hotfix
+/sdd:plan authentication-service
+/sdd:plan SPEC-0003
+/sdd:plan SPEC-0003 --scrum
+/sdd:plan --scrum                    # groom full backlog
+/sdd:plan SPEC-0003 --review
+/sdd:plan SPEC-0003 --project "Auth Sprint"
+/sdd:plan SPEC-0003 --no-branches
+/sdd:plan SPEC-0003 --branch-prefix hotfix
 ```
 
 ---
 
-### `/design:organize` {#organize}
+### `/sdd:organize` {#organize}
 
 Retroactively group existing issues into tracker-native projects.
 
 **Usage:**
 ```
-/design:organize [SPEC-XXXX or spec-name]
-/design:organize [SPEC-XXXX or spec-name] --project "Sprint 1"
-/design:organize [SPEC-XXXX or spec-name] --dry-run
+/sdd:organize [SPEC-XXXX or spec-name]
+/sdd:organize [SPEC-XXXX or spec-name] --project "Sprint 1"
+/sdd:organize [SPEC-XXXX or spec-name] --dry-run
 ```
 
 **What it does:**
@@ -148,23 +148,23 @@ Retroactively group existing issues into tracker-native projects.
 
 **Examples:**
 ```
-/design:organize SPEC-0003
-/design:organize authentication-service --project "Auth Sprint"
-/design:organize SPEC-0003 --dry-run
+/sdd:organize SPEC-0003
+/sdd:organize authentication-service --project "Auth Sprint"
+/sdd:organize SPEC-0003 --dry-run
 ```
 
 ---
 
-### `/design:enrich` {#enrich}
+### `/sdd:enrich` {#enrich}
 
 Retroactively add branch naming and PR convention sections to existing
 issue bodies.
 
 **Usage:**
 ```
-/design:enrich [SPEC-XXXX or spec-name]
-/design:enrich [SPEC-XXXX or spec-name] --branch-prefix hotfix
-/design:enrich [SPEC-XXXX or spec-name] --dry-run
+/sdd:enrich [SPEC-XXXX or spec-name]
+/sdd:enrich [SPEC-XXXX or spec-name] --branch-prefix hotfix
+/sdd:enrich [SPEC-XXXX or spec-name] --dry-run
 ```
 
 **What it does:**
@@ -177,24 +177,24 @@ issue bodies.
 
 **Examples:**
 ```
-/design:enrich SPEC-0003
-/design:enrich authentication-service --branch-prefix hotfix
-/design:enrich SPEC-0003 --dry-run
+/sdd:enrich SPEC-0003
+/sdd:enrich authentication-service --branch-prefix hotfix
+/sdd:enrich SPEC-0003 --dry-run
 ```
 
 ---
 
 ## Implementation {#implementation}
 
-### `/design:work` {#work}
+### `/sdd:work` {#work}
 
 Pick up tracker issues and implement them in parallel using git worktrees.
 Each issue gets its own worktree and worker agent.
 
 **Usage:**
 ```
-/design:work [SPEC-XXXX | issue numbers]
-/design:work [SPEC-XXXX | issue numbers] [--max-agents N] [--draft] [--dry-run] [--no-tests]
+/sdd:work [SPEC-XXXX | issue numbers]
+/sdd:work [SPEC-XXXX | issue numbers] [--max-agents N] [--draft] [--dry-run] [--no-tests]
 ```
 
 **What it does:**
@@ -210,32 +210,32 @@ Each issue gets its own worktree and worker agent.
   issues rather than opening tiny standalone PRs
 - Respects dependency ordering: blocked issues wait until prerequisites complete
 - Falls back to single-agent sequential mode if team creation fails
-- Skips epics and issues without `### Branch` sections (suggests `/design:enrich`)
-- After completion, suggests `/design:review` for automated spec-aware PR review
+- Skips epics and issues without `### Branch` sections (suggests `/sdd:enrich`)
+- After completion, suggests `/sdd:review` for automated spec-aware PR review
 
 **Examples:**
 ```
-/design:work SPEC-0003
-/design:work 42 43 47
-/design:work                          # propose from backlog
-/design:work SPEC-0003 --max-agents 5
-/design:work SPEC-0003 --draft
-/design:work SPEC-0003 --dry-run
-/design:work SPEC-0003 --no-tests
+/sdd:work SPEC-0003
+/sdd:work 42 43 47
+/sdd:work                          # propose from backlog
+/sdd:work SPEC-0003 --max-agents 5
+/sdd:work SPEC-0003 --draft
+/sdd:work SPEC-0003 --dry-run
+/sdd:work SPEC-0003 --no-tests
 ```
 
 ---
 
-### `/design:review` {#review}
+### `/sdd:review` {#review}
 
-Review and merge PRs produced by `/design:work` using reviewer-responder
+Review and merge PRs produced by `/sdd:work` using reviewer-responder
 agent pairs. Each pair processes PRs through exactly one review-response
 round.
 
 **Usage:**
 ```
-/design:review [SPEC-XXXX or PR numbers]
-/design:review [SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run]
+/sdd:review [SPEC-XXXX or PR numbers]
+/sdd:review [SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run]
 ```
 
 **What it does:**
@@ -255,25 +255,25 @@ round.
 
 **Examples:**
 ```
-/design:review SPEC-0003
-/design:review 101 102 105
-/design:review SPEC-0003 --pairs 3
-/design:review SPEC-0003 --no-merge
-/design:review SPEC-0003 --dry-run
+/sdd:review SPEC-0003
+/sdd:review 101 102 105
+/sdd:review SPEC-0003 --pairs 3
+/sdd:review SPEC-0003 --no-merge
+/sdd:review SPEC-0003 --dry-run
 ```
 
 ---
 
 ## Drift Detection {#drift}
 
-### `/design:check` {#check}
+### `/sdd:check` {#check}
 
 Quick-check a file, directory, ADR, or spec for drift. Designed for use
 during development — like running a linter.
 
 **Usage:**
 ```
-/design:check [target]
+/sdd:check [target]
 ```
 
 **What it does:**
@@ -285,14 +285,14 @@ during development — like running a linter.
 
 **Examples:**
 ```
-/design:check src/auth/
-/design:check ADR-0001
-/design:check docs/openspec/specs/auth-service/spec.md
+/sdd:check src/auth/
+/sdd:check ADR-0001
+/sdd:check docs/openspec/specs/auth-service/spec.md
 ```
 
 ---
 
-### `/design:audit` {#audit}
+### `/sdd:audit` {#audit}
 
 Comprehensive analysis of the entire project (or a scope) for all forms
 of drift, coverage gaps, stale artifacts, and policy violations. Use `--scrum`
@@ -300,9 +300,9 @@ for a team-triaged remediation roadmap.
 
 **Usage:**
 ```
-/design:audit [scope]
-/design:audit [scope] --review
-/design:audit [scope] --scrum
+/sdd:audit [scope]
+/sdd:audit [scope] --review
+/sdd:audit [scope] --scrum
 ```
 
 **What it does:**
@@ -330,18 +330,18 @@ See the [Sprint Planning guide](./sprint-planning#audit-scrum) for triage workfl
 
 **Examples:**
 ```
-/design:audit
-/design:audit src/
-/design:audit --review
-/design:audit --scrum
-/design:audit auth --scrum       # scope triage to auth domain
+/sdd:audit
+/sdd:audit src/
+/sdd:audit --review
+/sdd:audit --scrum
+/sdd:audit auth --scrum       # scope triage to auth domain
 ```
 
 ---
 
 ## Discovery {#discovery}
 
-### `/design:discover` {#discover}
+### `/sdd:discover` {#discover}
 
 Discover implicit architectural decisions and spec-worthy subsystems in an
 existing codebase. Ideal for bootstrapping design artifacts on projects that
@@ -349,7 +349,7 @@ already have code.
 
 **Usage:**
 ```
-/design:discover [scope]
+/sdd:discover [scope]
 ```
 
 **What it does:**
@@ -362,29 +362,29 @@ already have code.
 
 **Examples:**
 ```
-/design:discover
-/design:discover src/api/
+/sdd:discover
+/sdd:discover src/api/
 ```
 
 ---
 
 ## Documentation {#documentation}
 
-### `/design:docs` {#docs}
+### `/sdd:docs` {#docs}
 
 Generate a Docusaurus documentation site from your ADRs and specs, with
 RFC 2119 highlighting, status badges, cross-references, and Mermaid diagrams.
 
 **Usage:**
 ```
-/design:docs [project name]
+/sdd:docs [project name]
 ```
 
 **What it does:**
 - **First run (no site exists):** Scaffolds a complete Docusaurus site in `docs-site/`
 - **First run (existing Docusaurus site):** Offers integration mode — installs
   a build-time plugin into your existing site
-- **Subsequent runs:** Detects changes via `.design-docs.json` manifest and
+- **Subsequent runs:** Detects changes via `.sdd-docs.json` manifest and
   performs a diff-based upgrade, preserving your customizations
 - Transforms ADR markdown into MDX with badges, keyword highlighting, and
   cross-reference links
@@ -392,66 +392,66 @@ RFC 2119 highlighting, status badges, cross-references, and Mermaid diagrams.
 
 **Examples:**
 ```
-/design:docs
-/design:docs my-project
+/sdd:docs
+/sdd:docs my-project
 ```
 
 ---
 
 ## Session Management {#session}
 
-### `/design:init` {#init}
+### `/sdd:init` {#init}
 
-Set up your project's `CLAUDE.md` with design plugin references. Run once
+Set up your project's `CLAUDE.md` with SDD plugin references. Run once
 when you install the plugin.
 
 **Usage:**
 ```
-/design:init
+/sdd:init
 ```
 
 **What it does:**
 - Creates `CLAUDE.md` (or updates it) with an `## Architecture Context`
   section referencing `docs/adrs/` and `docs/openspec/specs/`
-- Adds a table of available design plugin skills
+- Adds a table of available SDD plugin skills
 - Idempotent — safe to run multiple times
 
 ---
 
-### `/design:prime` {#prime}
+### `/sdd:prime` {#prime}
 
 Load ADR and spec context into the current session for architecture-aware
 responses. Run at the start of each session.
 
 **Usage:**
 ```
-/design:prime [topic]
+/sdd:prime [topic]
 ```
 
 **What it does:**
 - Reads all ADRs and specs, summarizes each, and presents them in structured tables
 - With a topic argument, uses semantic matching to load only relevant artifacts
-  (e.g., `/design:prime security` loads auth, encryption, and access control ADRs)
+  (e.g., `/sdd:prime security` loads auth, encryption, and access control ADRs)
 - Read-only — never modifies files
 
 **Examples:**
 ```
-/design:prime
-/design:prime authentication
-/design:prime deployment
+/sdd:prime
+/sdd:prime authentication
+/sdd:prime deployment
 ```
 
 ---
 
 ## Lifecycle Management {#lifecycle}
 
-### `/design:list` {#list}
+### `/sdd:list` {#list}
 
 List all ADRs and specs with their status.
 
 **Usage:**
 ```
-/design:list [adr|spec|all]
+/sdd:list [adr|spec|all]
 ```
 
 **What it does:**
@@ -461,13 +461,13 @@ List all ADRs and specs with their status.
 
 ---
 
-### `/design:status` {#status}
+### `/sdd:status` {#status}
 
 Update the status of an ADR or spec.
 
 **Usage:**
 ```
-/design:status [ID] [new status]
+/sdd:status [ID] [new status]
 ```
 
 **Valid statuses:**
@@ -476,6 +476,6 @@ Update the status of an ADR or spec.
 
 **Examples:**
 ```
-/design:status ADR-0001 accepted
-/design:status SPEC-0003 implemented
+/sdd:status ADR-0001 accepted
+/sdd:status SPEC-0003 implemented
 ```

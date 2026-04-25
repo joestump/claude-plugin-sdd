@@ -2,7 +2,7 @@
 
 ## Context
 
-The design plugin's sprint planning workflow currently requires three separate commands (`/design:plan`, `/design:organize`, `/design:enrich`) that must be run in sequence, with no mechanism to review the quality of the produced backlog before committing it to the tracker. Planning is mechanical: requirements are decomposed into stories, but no agent challenges whether the stories are well-sized, spec-complete, or technically sound.
+The SDD plugin's sprint planning workflow currently requires three separate commands (`/sdd:plan`, `/sdd:organize`, `/sdd:enrich`) that must be run in sequence, with no mechanism to review the quality of the produced backlog before committing it to the tracker. Planning is mechanical: requirements are decomposed into stories, but no agent challenges whether the stories are well-sized, spec-complete, or technically sound.
 
 ADR-0013 identified two gaps: (1) the missing one-shot invocation that unifies the three-command sequence, and (2) the absence of deliberative grooming — the human-style scrutiny that determines whether a backlog is worth implementing. The `--scrum` flag addresses both by adding a multi-agent ceremony layer to the existing planning flow.
 
@@ -21,20 +21,20 @@ This spec formalizes SPEC-0012: the scrum mode sprint planning capability. Gover
 ### Non-Goals
 
 - Time-boxing sprints (this is a planning ceremony, not a sprint execution scheduler)
-- Implementing the stories (that is `/design:work`'s responsibility)
-- Replacing `/design:plan` for simple, fast planning runs — `--scrum` is opt-in
+- Implementing the stories (that is `/sdd:work`'s responsibility)
+- Replacing `/sdd:plan` for simple, fast planning runs — `--scrum` is opt-in
 - Providing a persistent sprint history or velocity tracking
 
 ## Decisions
 
-### `--scrum` Flag on `/design:plan` vs. a New Skill
+### `--scrum` Flag on `/sdd:plan` vs. a New Skill
 
-**Choice**: `--scrum` flag on the existing `/design:plan` skill
+**Choice**: `--scrum` flag on the existing `/sdd:plan` skill
 
-**Rationale**: The scrum ceremony is a richer mode of sprint planning, not a different operation. Adding a flag keeps the invocation surface minimal and composes naturally with existing arguments (`--no-projects`, `--no-branches`, `--project`). A new `/design:sprint` skill would split related functionality across two commands and require duplicating spec resolution and tracker detection logic.
+**Rationale**: The scrum ceremony is a richer mode of sprint planning, not a different operation. Adding a flag keeps the invocation surface minimal and composes naturally with existing arguments (`--no-projects`, `--no-branches`, `--project`). A new `/sdd:sprint` skill would split related functionality across two commands and require duplicating spec resolution and tracker detection logic.
 
 **Alternatives considered**:
-- `/design:sprint` skill: Adds a 16th command, duplicates planning logic, implies time-boxing semantics the skill does not provide
+- `/sdd:sprint` skill: Adds a 16th command, duplicates planning logic, implies time-boxing semantics the skill does not provide
 - `--review` enhancement: Overloads the existing review pattern (drafter + reviewer, 2 rounds) with a semantically different ceremony; breaks consistency with how `--review` works in other skills (adr, spec, audit)
 
 ### Multi-Agent Team Structure
@@ -101,7 +101,7 @@ sequenceDiagram
     participant EB as Engineer B
     participant AR as Architect
 
-    U->>L: /design:plan [spec] --scrum
+    U->>L: /sdd:plan [spec] --scrum
     L->>L: Phase 1: Resolve target spec or full backlog
     L->>L: Phase 2: Spec completeness audit
     L->>L: Generate missing design.md drafts
@@ -181,14 +181,14 @@ The `--scrum` flag implementation in `skills/plan/SKILL.md` MUST:
 3. Spawn the five specialist agents with explicit persona descriptions (verbatim role and personality definitions from ADR-0013)
 4. Collect feedback via `SendMessage` / `TaskUpdate` coordination using the existing team pattern
 5. Apply dissent resolution in the lead's turn, not in a sub-agent
-6. Call the organize logic (equivalent to `/design:organize`) inline after grooming
-7. Call the enrich logic (equivalent to `/design:enrich`) inline after organize
+6. Call the organize logic (equivalent to `/sdd:organize`) inline after grooming
+7. Call the enrich logic (equivalent to `/sdd:enrich`) inline after organize
 8. Respect all existing opt-out flags (`--no-projects`, `--no-branches`, `--project`, `--branch-prefix`)
 9. Write the sprint report as the final output
 
 ## Risks / Trade-offs
 
-- **Token cost** → `--scrum` spawns 5 agents and runs a full ceremony; this is expensive. Mitigation: the flag is opt-in; standard `/design:plan` remains the fast path.
+- **Token cost** → `--scrum` spawns 5 agents and runs a full ceremony; this is expensive. Mitigation: the flag is opt-in; standard `/sdd:plan` remains the fast path.
 - **Non-determinism** → Two `--scrum` runs on the same spec may produce differently ordered backlogs depending on how Engineer B's dissent resolves. Mitigation: the sprint report documents every dissent and its resolution, making the ceremony auditable.
 - **Shallow generated design.md** → Auto-generated `design.md` drafts for unspec'd issues may be thin. Mitigation: drafts are clearly marked `status: draft`; the Architect agent in the ceremony flags thin design documents for follow-up.
 - **Engineer B persona drift** → Without explicit persona instructions, an agent playing Engineer B may drift toward generic approval. Mitigation: the SKILL.md MUST include verbatim persona instructions, and the scenario requirement ("Engineer B MUST raise a substantive objection if issues exist") is a hard constraint.

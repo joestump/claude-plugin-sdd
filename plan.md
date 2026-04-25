@@ -1,8 +1,8 @@
-# Design Plugin v3.0 Plan
+# SDD Plugin v4.0 Plan
 
 ## Table of Contents
 
-1. [Kill `.claude-plugin-design.json`](#key-insight-kill-claude-plugin-designjson)
+1. [Kill `.claude-plugin-sdd.json`](#key-insight-kill-claude-plugin-sddjson)
 2. [Workspace Mode for Multi-Module Projects](#workspace-mode)
 3. [Init Permission Setup](#init-permission-setup)
 4. [PR Stacking and Parallel Agent Coordination](#pr-stacking-and-parallel-agent-coordination)
@@ -21,18 +21,18 @@
 The plugin produces well-structured, thoroughly documented codebases with excellent traceability from decisions to implementation. But a review of three production projects (spotter, joe-links, claude-ops) revealed systemic blind spots in five areas:
 
 1. **Hardcoded paths** — every skill assumes `docs/adrs/` and `docs/openspec/specs/` at a single project root
-2. **JSON config antipattern** — `.claude-plugin-design.json` creates split truth with CLAUDE.md
+2. **JSON config antipattern** — `.claude-plugin-sdd.json` creates split truth with CLAUDE.md
 3. **PR stacking chaos** — parallel agents create duplicate code, rebase conflicts, and wasted PRs
 4. **Security as opt-in** — no default security requirements; claude-ops shipped an unauthenticated dashboard
 5. **No frontend quality standards** — zero frontend tests, zero accessibility, template duplication across all 3 repos
 
 ---
 
-## Key Insight: Kill `.claude-plugin-design.json`
+## Key Insight: Kill `.claude-plugin-sdd.json`
 
 JSON config is a traditional-tooling reflex. Claude reads markdown natively, and Claude Code already recursively loads CLAUDE.md files from subdirectories. The config should *be* CLAUDE.md.
 
-**What `.claude-plugin-design.json` currently stores:**
+**What `.claude-plugin-sdd.json` currently stores:**
 - Tracker choice and credentials
 - Project grouping settings
 - Branch naming conventions
@@ -45,16 +45,16 @@ JSON config is a traditional-tooling reflex. Claude reads markdown natively, and
 - Two config sources (JSON + CLAUDE.md) creates split truth
 - CLAUDE.md is human-readable, version-controlled, and already understood by every Claude Code session
 - Claude Code recursively loads CLAUDE.md from subdirectories — workspace support comes for free
-- `.claude-plugin-design.json` was the #1 merge conflict source in claude-ops — every PR modified it
+- `.claude-plugin-sdd.json` was the #1 merge conflict source in claude-ops — every PR modified it
 
-**Migration path:** Move all config sections from `.claude-plugin-design.json` into CLAUDE.md as structured markdown sections. Each submodule's CLAUDE.md carries its own design config.
+**Migration path:** Move all config sections from `.claude-plugin-sdd.json` into CLAUDE.md as structured markdown sections. Each submodule's CLAUDE.md carries its own design config.
 
 ### CLAUDE.md Config Structure
 
-Example of what replaces `.claude-plugin-design.json`:
+Example of what replaces `.claude-plugin-sdd.json`:
 
 ```markdown
-### Design Plugin Configuration
+### SDD Configuration
 
 #### Tracker
 - **Type**: gitea
@@ -114,11 +114,11 @@ Leverage CLAUDE.md's recursive loading. Each submodule's CLAUDE.md declares its 
 
 ### Problem
 
-Running `/design:work` with parallel agents means dozens of `git push`, `gh pr create`, and MCP tool calls — each requiring manual approval.
+Running `/sdd:work` with parallel agents means dozens of `git push`, `gh pr create`, and MCP tool calls — each requiring manual approval.
 
 ### Solution
 
-`/design:init` offers to configure `.claude/settings.json` with permission allowlists based on detected tracker.
+`/sdd:init` offers to configure `.claude/settings.json` with permission allowlists based on detected tracker.
 
 ### Recommended Allowlist
 
@@ -156,7 +156,7 @@ This is the highest-impact area for improvement, based on evidence from all thre
 | Merge conflict commits | 4 | 6 | 1 |
 | PRs closed/recreated | 0 | 5 | 1 |
 | Confirmed duplicate implementations | 2 | 1 | 1 |
-| Worst file hotspot | `sync.go` (3 concurrent PRs) | `link_store.go` (6 concurrent PRs) | `.claude-plugin-design.json` (all 7 PRs) |
+| Worst file hotspot | `sync.go` (3 concurrent PRs) | `link_store.go` (6 concurrent PRs) | `.claude-plugin-sdd.json` (all 7 PRs) |
 | Conflict markers merged into main | No | No | Yes (`api_handlers.go`) |
 | Issues with assignees set | 0 | 0 | 0 |
 | Issues with "in-progress" labels | 0 | 0 | 0 |
@@ -175,7 +175,7 @@ This is the highest-impact area for improvement, based on evidence from all thre
 - claude-ops: Conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) actually merged into `main` in `api_handlers.go`. Required a follow-up commit to remove 32 lines of conflict markers.
 
 **Design document pollution:**
-- In claude-ops, `.claude-plugin-design.json` was modified by every single PR in parallel sprints — guaranteed merge conflicts. The spec/ADR documents were similarly touched by 5-7 PRs simultaneously.
+- In claude-ops, `.claude-plugin-sdd.json` was modified by every single PR in parallel sprints — guaranteed merge conflicts. The spec/ADR documents were similarly touched by 5-7 PRs simultaneously.
 
 ### Root Causes
 
@@ -188,7 +188,7 @@ This is the highest-impact area for improvement, based on evidence from all thre
 
 ### Solution: Five-Layer Coordination System
 
-#### Layer 1: Dependency-Aware Planning (`/design:plan`)
+#### Layer 1: Dependency-Aware Planning (`/sdd:plan`)
 
 During issue decomposition, identify **foundation stories** before feature stories:
 
@@ -198,7 +198,7 @@ During issue decomposition, identify **foundation stories** before feature stori
 - **Config consolidation**: When multiple features add config fields and server wiring, create a single "wiring story" that stubs all config fields. Feature stories then fill in implementations.
 - **Maximum parallelism**: Cap concurrent agents at 3-4 per sprint. Empirically, 8+ concurrent PRs caused failures in all repos.
 
-#### Layer 2: Issue Lifecycle Signals (`/design:work`)
+#### Layer 2: Issue Lifecycle Signals (`/sdd:work`)
 
 Structured status tracking so agents know what's in flight:
 
@@ -207,7 +207,7 @@ Structured status tracking so agents know what's in flight:
 - **Machine-readable dependencies**: Use task list syntax in epic bodies: `- [ ] #272 (blocks: #273, #274)` instead of free-text "Depends on #141"
 - **Dependency enforcement**: Refuse to start an issue if its dependencies are not in `merged` state
 
-#### Layer 3: Pre-Flight PR Awareness (`/design:work`)
+#### Layer 3: Pre-Flight PR Awareness (`/sdd:work`)
 
 Before an agent starts coding, inject context about sibling work:
 
@@ -229,7 +229,7 @@ Shared types available (from foundation PR #281):
 
 **File-level conflict prediction**: Query all `in-progress` issues and their planned file changes. If overlap exceeds 2 files, serialize instead of parallelize.
 
-#### Layer 4: Topological Merge Ordering (`/design:work`, `/design:review`)
+#### Layer 4: Topological Merge Ordering (`/sdd:work`, `/sdd:review`)
 
 Compute optimal merge order by analyzing file overlap:
 
@@ -247,7 +247,7 @@ Stop every PR from modifying spec/ADR/config files:
 
 - **Batch design doc updates**: Instead of each agent updating spec files, create a single "design docs update" PR that runs after all feature PRs merge
 - **Append-only governing references**: Each agent writes to `docs/governing/PR-476.md`; a consolidation step merges them into specs
-- **Kill `.claude-plugin-design.json`**: (See above) — this file was the #1 conflict source in claude-ops
+- **Kill `.claude-plugin-sdd.json`**: (See above) — this file was the #1 conflict source in claude-ops
 
 ---
 
@@ -269,7 +269,7 @@ Spotter's security is strongest — but only because it was retrofitted via dedi
 
 ### Solution
 
-1. **Security spec template**: `/design:spec` injects a mandatory "Security Requirements" section into every web-facing spec:
+1. **Security spec template**: `/sdd:spec` injects a mandatory "Security Requirements" section into every web-facing spec:
    - Authentication requirement (explicitly justify any public endpoints)
    - Rate limiting strategy
    - Security headers (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
@@ -277,9 +277,9 @@ Spotter's security is strongest — but only because it was retrofitted via dedi
    - CSRF protection strategy
    - Open redirect prevention for any redirect parameter
 
-2. **Security checklist in issues**: When `/design:plan` creates issues involving HTTP endpoints, include a security checklist in the issue body: authentication, input validation, output encoding, rate limiting, body size limits.
+2. **Security checklist in issues**: When `/sdd:plan` creates issues involving HTTP endpoints, include a security checklist in the issue body: authentication, input validation, output encoding, rate limiting, body size limits.
 
-3. **Security lint in `/design:check`**: Flag known dangerous patterns:
+3. **Security lint in `/sdd:check`**: Flag known dangerous patterns:
    - `io.ReadAll(r.Body)` without `MaxBytesReader`
    - `template.HTML` with unsanitized content
    - `http.Redirect` with user-controlled URLs
@@ -307,9 +307,9 @@ Spotter's security is strongest — but only because it was retrofitted via dedi
 
 ### Solution
 
-1. **Logging ADR on init**: When `/design:init` detects a Go project (via `go.mod`), suggest creating an ADR mandating structured logging (`slog`). Two of three repos fell back to `log.Printf`.
+1. **Logging ADR on init**: When `/sdd:init` detects a Go project (via `go.mod`), suggest creating an ADR mandating structured logging (`slog`). Two of three repos fell back to `log.Printf`.
 
-2. **Error handling guidelines**: `/design:spec` for Go projects includes:
+2. **Error handling guidelines**: `/sdd:spec` for Go projects includes:
    - Always `%w` in `fmt.Errorf`, never `%v`
    - Sentinel errors for domain concepts (`ErrNotFound`, `ErrSlugTaken`)
    - Never return `nil, nil` for not-found — use sentinel errors
@@ -323,7 +323,7 @@ Spotter's security is strongest — but only because it was retrofitted via dedi
 
 5. **Go version awareness**: Read `go.mod` to determine Go version. Use `any` instead of `interface{}`, explore generics for common patterns.
 
-6. **CI requirements**: `/design:plan` for Go projects should create a CI story including `go vet`, `go test -race`, and `golangci-lint`.
+6. **CI requirements**: `/sdd:plan` for Go projects should create a CI story including `go vet`, `go test -race`, and `golangci-lint`.
 
 ---
 
@@ -344,12 +344,12 @@ Spotter's security is strongest — but only because it was retrofitted via dedi
 
 ### Solution
 
-1. **Frontend test scaffolding**: When `/design:plan` creates stories touching UI (templates, JS, CSS), automatically create companion test stories:
+1. **Frontend test scaffolding**: When `/sdd:plan` creates stories touching UI (templates, JS, CSS), automatically create companion test stories:
    - Template render tests (correct HTML structure for given data)
    - JavaScript unit tests for inline/external JS functions
    - HTMX swap integration tests
 
-2. **Accessibility requirements**: `/design:spec` injects a mandatory "Accessibility Requirements" section into every UI spec:
+2. **Accessibility requirements**: `/sdd:spec` injects a mandatory "Accessibility Requirements" section into every UI spec:
    - WCAG 2.1 AA compliance
    - Required ARIA landmarks
    - `aria-label` on icon-only controls
@@ -357,13 +357,13 @@ Spotter's security is strongest — but only because it was retrofitted via dedi
    - Keyboard navigation
    - Focus management for modals
 
-3. **Template duplication detection**: `/design:check` flags:
+3. **Template duplication detection**: `/sdd:check` flags:
    - Duplicate inline `<script>` blocks
    - Same form structure appearing in multiple templates
    - Navigation/sidebar rendered more than once
    - Identical JS functions defined twice in same file
 
-4. **CDN audit**: `/design:check` flags:
+4. **CDN audit**: `/sdd:check` flags:
    - CDN `<script>`/`<link>` without `integrity` attributes
    - `cdn.tailwindcss.com` (dev-only)
    - More than 1 JS interaction framework per project
@@ -419,7 +419,7 @@ The PR stacking reviewer found: claude-ops launched ~78 concurrent PRs just to a
 
 | ID | Title | Scope |
 |----|-------|-------|
-| ADR-0015 | Markdown-Native Configuration | Kill `.claude-plugin-design.json`, move config to CLAUDE.md |
+| ADR-0015 | Markdown-Native Configuration | Kill `.claude-plugin-sdd.json`, move config to CLAUDE.md |
 | ADR-0016 | Workspace Mode for Multi-Module Projects | Submodule support via recursive CLAUDE.md |
 | ADR-0017 | Parallel Agent Coordination and PR Stacking | Foundation-first ordering, pre-flight awareness, merge topology, design doc isolation |
 | ADR-0018 | Security-by-Default for Web Specifications | Mandatory security sections, auth-by-default, security lint patterns |
@@ -450,7 +450,7 @@ The PR stacking reviewer found: claude-ops launched ~78 concurrent PRs just to a
 12. Add "Security Lint Patterns" to `shared-patterns.md`
 
 ### Phase 3: Config Migration + Init Overhaul
-13. Update all skills to read config from CLAUDE.md instead of `.claude-plugin-design.json`
+13. Update all skills to read config from CLAUDE.md instead of `.claude-plugin-sdd.json`
 14. Update `init` — workspace detection, CLAUDE.md config, permission setup, project-type-aware ADR suggestions
 15. Add migration guidance for existing users
 

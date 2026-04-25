@@ -76,5 +76,5 @@ List all ADRs and specs in the project with their status, date, and title.
    ```
 
 5. **Handle empty results**: If no ADRs or specs exist, tell the user:
-   - "No ADRs found. Create one with `/design:adr [description]`."
-   - "No specs found. Create one with `/design:spec [capability]`."
+   - "No ADRs found. Create one with `/sdd:adr [description]`."
+   - "No specs found. Create one with `/sdd:spec [capability]`."

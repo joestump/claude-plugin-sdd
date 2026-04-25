@@ -9,7 +9,7 @@ argument-hint: [SPEC-XXXX or spec-name] [--branch-prefix <prefix>] [--dry-run] [
 
 # Enrich Issues with Developer Workflow Conventions
 
-You are retroactively adding `### Branch` and `### PR Convention` sections to existing tracker issues that were created by `/design:plan` (or manually) for a given spec.
+You are retroactively adding `### Branch` and `### PR Convention` sections to existing tracker issues that were created by `/sdd:plan` (or manually) for a given spec.
 
 ## Process
 
@@ -31,7 +31,7 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
 
 4. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`. If no tracker is found, error — enrichment requires a tracker.
 
-5. **Read branch/PR config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `### Design Plugin Configuration` section from CLAUDE.md, specifically the `#### Branch Conventions` and `#### PR Conventions` subsections:
+5. **Read branch/PR config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `### SDD Configuration` section from CLAUDE.md, specifically the `#### Branch Conventions` and `#### PR Conventions` subsections:
 
    ```markdown
    #### Branch Conventions
@@ -115,7 +115,7 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
 
 ## Config Reference
 
-This skill reads the `Branch Conventions` and `PR Conventions` subsections of the `### Design Plugin Configuration` section in CLAUDE.md. See the plugin's `references/shared-patterns.md` § "Config Resolution" for the canonical format and defaults, and § "Branch Naming Conventions" and "PR Close Keywords" for conventions.
+This skill reads the `Branch Conventions` and `PR Conventions` subsections of the `### SDD Configuration` section in CLAUDE.md. See the plugin's `references/shared-patterns.md` § "Config Resolution" for the canonical format and defaults, and § "Branch Naming Conventions" and "PR Close Keywords" for conventions.
 
 ## Rules
 

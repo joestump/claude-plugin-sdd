@@ -2,9 +2,9 @@
 
 ## Context
 
-Projects created by `/design:plan` (ADR-0009, SPEC-0007) and `/design:organize` are currently dumb containers -- they hold issues but provide no navigational context, views, or structure. A GitHub Project created by `/design:plan` is an empty board with a default "Table" view and no description. A Gitea project is similarly bare. This means agents have no project-scoped context (they must independently rediscover architecture context every time), humans have no useful views (they must manually configure boards and roadmaps), and tracker-native features like iteration fields, milestones, and dependencies go unused.
+Projects created by `/sdd:plan` (ADR-0009, SPEC-0007) and `/sdd:organize` are currently dumb containers -- they hold issues but provide no navigational context, views, or structure. A GitHub Project created by `/sdd:plan` is an empty board with a default "Table" view and no description. A Gitea project is similarly bare. This means agents have no project-scoped context (they must independently rediscover architecture context every time), humans have no useful views (they must manually configure boards and roadmaps), and tracker-native features like iteration fields, milestones, and dependencies go unused.
 
-ADR-0012 decided to implement full workspace enrichment: project descriptions and READMEs, iteration fields, named views, Gitea milestones and board columns, auto-label creation, Gitea native dependencies, and a three-tier `/design:organize` intervention model. This spec formalizes those decisions into implementable requirements. See ADR-0012, ADR-0009, and ADR-0011.
+ADR-0012 decided to implement full workspace enrichment: project descriptions and READMEs, iteration fields, named views, Gitea milestones and board columns, auto-label creation, Gitea native dependencies, and a three-tier `/sdd:organize` intervention model. This spec formalizes those decisions into implementable requirements. See ADR-0012, ADR-0009, and ADR-0011.
 
 ## Goals / Non-Goals
 
@@ -12,15 +12,15 @@ ADR-0012 decided to implement full workspace enrichment: project descriptions an
 - Enrich GitHub Projects with a description, README, iteration field ("Sprint"), and three named views (All Work, Board, Roadmap)
 - Enrich Gitea projects with milestones (one per epic), board columns (Todo/In Progress/In Review/Done), and native dependency links
 - Auto-create labels across all issue-touching skills using a try-then-create pattern, eliminating silent label-not-found failures
-- Upgrade `/design:organize` to a three-tier intervention model: leave as-is, restructure workspace, or complete refactor
-- Add `.claude-plugin-design.json` keys for `projects.views`, `projects.columns`, and `projects.iteration_weeks` (all optional, backward-compatible)
+- Upgrade `/sdd:organize` to a three-tier intervention model: leave as-is, restructure workspace, or complete refactor
+- Add `.claude-plugin-sdd.json` keys for `projects.views`, `projects.columns`, and `projects.iteration_weeks` (all optional, backward-compatible)
 - Degrade gracefully when a tracker lacks a feature -- skip the enrichment step and report, never fail the entire operation
 
 ### Non-Goals
 - Syncing README content when specs or ADRs change after project creation (stale READMEs are accepted as a known trade-off)
 - Supporting iteration fields on trackers other than GitHub Projects V2 (Gitea, GitLab, Jira, and Linear lack equivalent features)
-- Adding labels to `.claude-plugin-design.json` configuration (label colors are hardcoded defaults; customization is a future concern)
-- Modifying the core issue creation flow in `/design:plan` -- enrichment is a post-creation step
+- Adding labels to `.claude-plugin-sdd.json` configuration (label colors are hardcoded defaults; customization is a future concern)
+- Modifying the core issue creation flow in `/sdd:plan` -- enrichment is a post-creation step
 - Implementing a project README refresh or update command (future work)
 - Supporting custom view types beyond the three defaults (Table, Board, Roadmap)
 
@@ -55,8 +55,8 @@ ADR-0012 decided to implement full workspace enrichment: project descriptions an
 
 ### Three-tier organize model
 
-**Choice**: `/design:organize` gauges project messiness and presents exactly three options: (a) leave as-is, (b) restructure workspace only, (c) complete refactor.
-**Rationale**: Backlog refactoring is risky. Some operators want to add views and README without touching any issues (tier b). Others want a full overhaul (tier c). The three-tier model makes the blast radius explicit. Tier (a) is an escape hatch. Tier (b) is safe for production backlogs. Tier (c) is for messy backlogs that need a complete reset. This replaces the current behavior where `/design:organize` can only create projects and add issues -- it cannot restructure an existing project.
+**Choice**: `/sdd:organize` gauges project messiness and presents exactly three options: (a) leave as-is, (b) restructure workspace only, (c) complete refactor.
+**Rationale**: Backlog refactoring is risky. Some operators want to add views and README without touching any issues (tier b). Others want a full overhaul (tier c). The three-tier model makes the blast radius explicit. Tier (a) is an escape hatch. Tier (b) is safe for production backlogs. Tier (c) is for messy backlogs that need a complete reset. This replaces the current behavior where `/sdd:organize` can only create projects and add issues -- it cannot restructure an existing project.
 **Alternatives considered**:
 - Always restructure everything: Too invasive; no control over what changes
 - Two tiers (do nothing / do everything): No middle ground for workspace-only changes
@@ -74,17 +74,17 @@ ADR-0012 decided to implement full workspace enrichment: project descriptions an
 ### Gitea native dependencies over body-text hints
 
 **Choice**: Use Gitea's native issue dependency API (`POST /repos/{owner}/{repo}/issues/{index}/dependencies`) for story ordering instead of embedding dependency hints in issue body text.
-**Rationale**: Gitea has first-class dependency support that surfaces in the issue UI, is queryable via API, and is understood by dependency-aware workflows. Body-text hints are fragile (they can be edited or misformatted), not machine-readable without parsing, and invisible to Gitea's dependency UI. Using native dependencies makes `/design:work` able to query unblocked stories via API instead of parsing issue bodies.
+**Rationale**: Gitea has first-class dependency support that surfaces in the issue UI, is queryable via API, and is understood by dependency-aware workflows. Body-text hints are fragile (they can be edited or misformatted), not machine-readable without parsing, and invisible to Gitea's dependency UI. Using native dependencies makes `/sdd:work` able to query unblocked stories via API instead of parsing issue bodies.
 **Alternatives considered**:
 - Body-text dependency hints (current approach): Not machine-readable; invisible to Gitea UI
 - Custom field for dependencies: Gitea does not support custom issue fields
-- Skip dependencies for Gitea: Loses dependency ordering, which is critical for `/design:work`
+- Skip dependencies for Gitea: Loses dependency ordering, which is critical for `/sdd:work`
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A["/design:plan creates project"] --> B["Set project description"]
+    A["/sdd:plan creates project"] --> B["Set project description"]
     B --> C["Write project README"]
     C --> D{"Tracker type?"}
 
@@ -119,8 +119,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    subgraph "/design:organize three-tier model"
-        A["Invoke /design:organize"] --> B["Assess project state"]
+    subgraph "/sdd:organize three-tier model"
+        A["Invoke /sdd:organize"] --> B["Assess project state"]
         B --> C["Report findings:\n- Missing views\n- No README\n- Missing columns\n- Missing dependencies\n- Label gaps"]
         C --> D{"Operator choice?"}
 
@@ -151,15 +151,15 @@ flowchart LR
         R5["Dependencies:\n#10 -> #11 -> #12"]
     end
 
-    Agent["/design:work\nagent"] -->|"reads"| R1
+    Agent["/sdd:work\nagent"] -->|"reads"| R1
     Agent -->|"reads"| R3
     Agent -->|"reads"| R4
 ```
 
 ```mermaid
 flowchart TD
-    subgraph ".claude-plugin-design.json expanded schema"
-        root[".claude-plugin-design.json"]
+    subgraph ".claude-plugin-sdd.json expanded schema"
+        root[".claude-plugin-sdd.json"]
         root --> tracker["tracker: 'github'"]
         root --> tc["tracker_config:\n  owner: '...'\n  repo: '...'"]
         root --> projects["projects:"]
@@ -175,7 +175,7 @@ flowchart TD
 
 - **GitHub Projects V2 GraphQL API complexity**: View creation, iteration field configuration, and README setting all require GraphQL mutations with specific field IDs and project node IDs. The API is complex, has separate rate limits from the REST API, and requires the `project` OAuth scope. Mitigation: the skill uses `gh api graphql` which handles authentication automatically. Operations are infrequent (once per project). Failures degrade gracefully.
 
-- **Stale project READMEs**: The README is generated at project creation time from the current state of specs, ADRs, and source files. If these artifacts change after project creation, the README becomes stale and may mislead agents. Mitigation: this is accepted as a known trade-off. A future `/design:refresh` skill could update READMEs. The README includes file paths (not content), so moderate spec drift does not immediately invalidate it.
+- **Stale project READMEs**: The README is generated at project creation time from the current state of specs, ADRs, and source files. If these artifacts change after project creation, the README becomes stale and may mislead agents. Mitigation: this is accepted as a known trade-off. A future `/sdd:refresh` skill could update READMEs. The README includes file paths (not content), so moderate spec drift does not immediately invalidate it.
 
 - **Iteration assignment heuristics**: Assigning stories to sprints based on dependency depth is a rough heuristic. Some stories may have equal depth but different effort levels, leading to unbalanced sprints. Mitigation: the iteration assignment is a starting point, not a commitment. Operators can reassign stories between sprints in the GitHub UI. The skill does not attempt to estimate effort.
 
@@ -185,13 +185,13 @@ flowchart TD
 
 - **Three-tier organize interaction**: The three-tier model adds a user prompt to what was previously a fully automated skill. Operators must make a choice before the skill proceeds. Mitigation: the prompt is a single question with three clear options. Tier (b) is the "safe default" for most cases.
 
-- **Configuration surface area**: `.claude-plugin-design.json` gains three new keys under `projects` (`views`, `columns`, `iteration_weeks`). This increases the configuration surface area. Mitigation: all keys are optional with sensible defaults. Most users will never need to set them. The keys are backward-compatible -- existing `.claude-plugin-design.json` files continue to work unchanged.
+- **Configuration surface area**: `.claude-plugin-sdd.json` gains three new keys under `projects` (`views`, `columns`, `iteration_weeks`). This increases the configuration surface area. Mitigation: all keys are optional with sensible defaults. Most users will never need to set them. The keys are backward-compatible -- existing `.claude-plugin-sdd.json` files continue to work unchanged.
 
 ## Migration Plan
 
-### Updating `/design:plan` SKILL.md
+### Updating `/sdd:plan` SKILL.md
 
-1. **After step 5.6 (project grouping)**, add a new step 5.7: "Workspace enrichment". This step reads `.claude-plugin-design.json` `projects` configuration and enriches the newly created project:
+1. **After step 5.6 (project grouping)**, add a new step 5.7: "Workspace enrichment". This step reads `.claude-plugin-sdd.json` `projects` configuration and enriches the newly created project:
    - Set project description
    - Write project README (GitHub: project field; Gitea: project description)
    - Create iteration field with configured cycle length (GitHub only)
@@ -203,34 +203,34 @@ flowchart TD
 
 2. **Wrap label application** across all issue-creation steps with the try-then-create pattern. This is cross-cutting: it applies in steps 5.1 (epic creation), 5.2 (story creation), and 5.6 (project grouping) wherever labels are applied.
 
-3. **Read `.claude-plugin-design.json` `projects` keys** during step 4.1 (check saved preference) alongside existing `tracker` and `tracker_config` reads.
+3. **Read `.claude-plugin-sdd.json` `projects` keys** during step 4.1 (check saved preference) alongside existing `tracker` and `tracker_config` reads.
 
-### Updating `/design:organize` SKILL.md
+### Updating `/sdd:organize` SKILL.md
 
 1. **Add a messiness assessment step** between "Find existing issues" (current step 5) and "Create project groupings" (current step 7). The assessment scans the project for missing views, README, columns, iterations, dependencies, and labels.
 
 2. **Replace the direct project creation flow** with a three-tier prompt: the skill presents the assessment findings and asks the operator to choose (a), (b), or (c).
 
-3. **Tier (b)** executes the workspace enrichment steps from `/design:plan` on the existing project without touching any issues.
+3. **Tier (b)** executes the workspace enrichment steps from `/sdd:plan` on the existing project without touching any issues.
 
 4. **Tier (c)** executes tier (b) plus the existing organize logic (re-grouping issues, adding labels, creating dependencies, updating issue bodies).
 
-### Updating `/design:enrich` SKILL.md
+### Updating `/sdd:enrich` SKILL.md
 
-1. **Wrap label application** with the try-then-create pattern. When `/design:enrich` applies labels like `epic` or `story`, it should auto-create missing labels instead of failing.
+1. **Wrap label application** with the try-then-create pattern. When `/sdd:enrich` applies labels like `epic` or `story`, it should auto-create missing labels instead of failing.
 
 ### Cross-cutting: Auto-label creation
 
 The try-then-create label pattern must be added to every skill that applies labels:
-- `/design:plan` (step 5.1 epic label, step 5.2 story label, step 5.6 spec label)
-- `/design:organize` (step 7 when re-labeling in tier c)
-- `/design:enrich` (step 7 when updating issue labels)
-- `/design:work` (if it applies labels during worktree operations)
+- `/sdd:plan` (step 5.1 epic label, step 5.2 story label, step 5.6 spec label)
+- `/sdd:organize` (step 7 when re-labeling in tier c)
+- `/sdd:enrich` (step 7 when updating issue labels)
+- `/sdd:work` (if it applies labels during worktree operations)
 
 ## Open Questions
 
 - Should the project README include estimated effort or complexity per story (derived from requirement/scenario count)?
-- When `/design:organize` tier (c) re-groups issues, should it ask for confirmation per issue or batch all changes?
-- Should the "Sprint" iteration field name be configurable via `.claude-plugin-design.json`, or is a fixed name sufficient?
+- When `/sdd:organize` tier (c) re-groups issues, should it ask for confirmation per issue or batch all changes?
+- Should the "Sprint" iteration field name be configurable via `.claude-plugin-sdd.json`, or is a fixed name sufficient?
 - For GitHub Projects V2, should the skill attempt to set the "Board" view as the default view, or leave the "All Work" table view as default?
 - Should the auto-label creation pattern be extracted into a shared utility (e.g., a helper section in the SKILL.md template) to avoid duplicating the try-then-create logic across four skills?

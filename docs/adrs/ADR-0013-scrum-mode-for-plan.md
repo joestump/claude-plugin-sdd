@@ -4,17 +4,17 @@ date: 2026-02-28
 decision-makers: joestump
 ---
 
-# ADR-0013: Scrum Mode for `/design:plan` — Team-Groomed Sprint Planning
+# ADR-0013: Scrum Mode for `/sdd:plan` — Team-Groomed Sprint Planning
 
 ## Context and Problem Statement
 
-The current `/design:plan` skill creates a well-structured backlog from a spec, and `/design:organize` and `/design:enrich` add project structure and developer workflow metadata retroactively. However, these three skills require separate invocations, and none of them perform backlog grooming — the social, deliberative process of reviewing stories for completeness, estimating effort, identifying risks, proposing missing specs, and achieving team consensus on sprint readiness.
+The current `/sdd:plan` skill creates a well-structured backlog from a spec, and `/sdd:organize` and `/sdd:enrich` add project structure and developer workflow metadata retroactively. However, these three skills require separate invocations, and none of them perform backlog grooming — the social, deliberative process of reviewing stories for completeness, estimating effort, identifying risks, proposing missing specs, and achieving team consensus on sprint readiness.
 
 Real sprint planning is not just issue decomposition. It is a ceremony where product, engineering, and architecture perspectives collide. The plugin automates the mechanical steps (issue creation, project creation, branch naming) but skips the reasoning step that determines whether the backlog is even worth implementing.
 
 Three gaps remain:
 
-1. **No unified invocation**: Users must run `/design:plan`, then `/design:organize`, then `/design:enrich` in sequence. Each step requires a separate command even though they are logically coupled.
+1. **No unified invocation**: Users must run `/sdd:plan`, then `/sdd:organize`, then `/sdd:enrich` in sequence. Each step requires a separate command even though they are logically coupled.
 2. **No backlog review**: No skill evaluates whether planned stories are well-sized, spec-complete, technically sound, or correctly prioritized. Issues are created mechanically from spec requirements without human-style scrutiny.
 3. **No spec completeness enforcement**: OpenSpec artifacts may have `spec.md` without `design.md`, and tracker issues may reference no spec at all. There is no skill that audits and remedies these gaps during the planning phase.
 
@@ -22,7 +22,7 @@ How should the plugin provide a single-invocation, team-groomed sprint planning 
 
 ## Decision Drivers
 
-* **One-shot invocation**: Users should be able to run one command and get a fully groomed, organized, enriched backlog ready for a `/design:work` run
+* **One-shot invocation**: Users should be able to run one command and get a fully groomed, organized, enriched backlog ready for a `/sdd:work` run
 * **Deliberative grooming**: Stories should be reviewed by agents with distinct perspectives (product, engineering, architecture, skepticism) before being committed to the sprint backlog
 * **Spec completeness**: All issues entering the sprint must trace to a spec; all specs must have both `spec.md` and `design.md`; unspec'd work must be proposed as new specs rather than ignored
 * **Implied organize and enrich**: Project structure and developer workflow conventions should not require a separate invocation — they are the expected output of any planning run
@@ -30,13 +30,13 @@ How should the plugin provide a single-invocation, team-groomed sprint planning 
 
 ## Considered Options
 
-* **Option 1**: `--scrum` flag on `/design:plan` that orchestrates the full ceremony (plan + organize + enrich + groom) in a single multi-agent run
-* **Option 2**: A new standalone `/design:sprint` skill that wraps all three existing skills with a grooming layer
-* **Option 3**: A `--review` enhancement that adds grooming to the existing team review pattern in `/design:plan`
+* **Option 1**: `--scrum` flag on `/sdd:plan` that orchestrates the full ceremony (plan + organize + enrich + groom) in a single multi-agent run
+* **Option 2**: A new standalone `/sdd:sprint` skill that wraps all three existing skills with a grooming layer
+* **Option 3**: A `--review` enhancement that adds grooming to the existing team review pattern in `/sdd:plan`
 
 ## Decision Outcome
 
-Chosen option: "Option 1 — `--scrum` flag on `/design:plan`", because it keeps the invocation intuitive (`/design:plan [spec] --scrum` or `/design:plan --scrum` for whole-backlog grooming), extends rather than replaces the existing planning flow, and clearly communicates that this is a richer mode of sprint planning rather than a different skill entirely. The flag orchestrates: issue decomposition → spec completeness audit → backlog grooming by a multi-agent scrum team → project organization → developer workflow enrichment — all in one run.
+Chosen option: "Option 1 — `--scrum` flag on `/sdd:plan`", because it keeps the invocation intuitive (`/sdd:plan [spec] --scrum` or `/sdd:plan --scrum` for whole-backlog grooming), extends rather than replaces the existing planning flow, and clearly communicates that this is a richer mode of sprint planning rather than a different skill entirely. The flag orchestrates: issue decomposition → spec completeness audit → backlog grooming by a multi-agent scrum team → project organization → developer workflow enrichment — all in one run.
 
 ### Scrum Team Composition
 
@@ -55,7 +55,7 @@ Six agents participate in the ceremony:
 
 1. **Spec resolution**: Resolve the target spec (if provided) or scan all tracker issues for the project
 2. **Spec completeness audit**: For every spec referenced by any backlog issue, verify `spec.md` exists. If `design.md` is missing, generate it. For issues with no backing spec, generate a spec proposal (both `spec.md` and `design.md` as drafts).
-3. **Issue decomposition** (if `--scrum` is combined with a spec target): Run the standard `/design:plan` story-sizing logic (ADR-0011) to produce story-sized issues from requirements
+3. **Issue decomposition** (if `--scrum` is combined with a spec target): Run the standard `/sdd:plan` story-sizing logic (ADR-0011) to produce story-sized issues from requirements
 4. **Backlog grooming**: Spawn the scrum team. The Lead distributes stories to the team. Each agent reviews stories and submits asynchronous feedback:
    - PO: priority order, acceptance criteria completeness, user-value framing
    - Scrum Master: sprint-readiness, dependency ordering, story point estimate (XS/S/M/L/XL)
@@ -74,7 +74,7 @@ Six agents participate in the ceremony:
 * Good, because spec completeness is enforced at planning time: no unspec'd work enters the sprint without a proposed spec
 * Good, because Engineer B's grumpy pedantry provides a quality gate that catches weak requirements before they become bad PRs
 * Good, because organize and enrich are implied, eliminating the current three-step manual sequence
-* Bad, because a 6-agent team is expensive — `--scrum` runs will consume significantly more tokens than a standard `/design:plan` run
+* Bad, because a 6-agent team is expensive — `--scrum` runs will consume significantly more tokens than a standard `/sdd:plan` run
 * Bad, because consensus resolution adds non-determinism: two `--scrum` runs on the same spec may produce differently ordered backlogs depending on how Engineer B's dissent resolves
 * Bad, because generating missing `design.md` files during planning may produce shallow design documents that need further iteration
 * Neutral, because Engineer B's dissent may frustrate users who want fast planning — the flag is opt-in, preserving the existing fast path
@@ -83,8 +83,8 @@ Six agents participate in the ceremony:
 
 Implementation will be confirmed by:
 
-1. Running `/design:plan SPEC-XXXX --scrum` spawns 5 agents (PO, SM, Engineer A, Engineer B, Architect) and orchestrates a full grooming ceremony
-2. Running `/design:plan --scrum` (no spec) grooms the entire active backlog, not just one spec
+1. Running `/sdd:plan SPEC-XXXX --scrum` spawns 5 agents (PO, SM, Engineer A, Engineer B, Architect) and orchestrates a full grooming ceremony
+2. Running `/sdd:plan --scrum` (no spec) grooms the entire active backlog, not just one spec
 3. Every spec referenced by a backlog issue is checked for `design.md`; missing `design.md` files are generated as drafts
 4. Every issue with no backing spec produces a `spec.md` + `design.md` proposal in `docs/openspec/specs/`
 5. Engineer B provides at least one substantive dissenting opinion per ceremony (if there is nothing to push back on, Engineer B says so explicitly and explains why)
@@ -94,30 +94,30 @@ Implementation will be confirmed by:
 
 ## Pros and Cons of the Options
 
-### Option 1: `--scrum` Flag on `/design:plan`
+### Option 1: `--scrum` Flag on `/sdd:plan`
 
-Add a `--scrum` flag to the existing `/design:plan` skill. When set, the skill spawns a multi-agent scrum team, runs the full ceremony, and calls the organize and enrich steps as part of its execution rather than as separate commands.
+Add a `--scrum` flag to the existing `/sdd:plan` skill. When set, the skill spawns a multi-agent scrum team, runs the full ceremony, and calls the organize and enrich steps as part of its execution rather than as separate commands.
 
 * Good, because the invocation surface stays minimal — one skill, one flag, full ceremony
-* Good, because `--scrum` composes naturally with existing arguments: `/design:plan SPEC-XXXX --scrum`, `/design:plan --scrum --no-projects`, etc.
+* Good, because `--scrum` composes naturally with existing arguments: `/sdd:plan SPEC-XXXX --scrum`, `/sdd:plan --scrum --no-projects`, etc.
 * Good, because the organize and enrich steps run automatically, eliminating the three-command sequence
 * Good, because the flag name communicates that this is a ceremony, not just a faster planning run
 * Neutral, because the SKILL.md grows significantly to describe the ceremony flow, but it remains a single skill
 * Bad, because the skill now conditionally spawns up to 5 sub-agents, making it harder to reason about what a given invocation will do
 
-### Option 2: New `/design:sprint` Skill
+### Option 2: New `/sdd:sprint` Skill
 
-Create a standalone skill that wraps `/design:plan`, `/design:organize`, and `/design:enrich` with a grooming layer.
+Create a standalone skill that wraps `/sdd:plan`, `/sdd:organize`, and `/sdd:enrich` with a grooming layer.
 
-* Good, because it is clearly distinct from `/design:plan` — users know exactly what they are getting
+* Good, because it is clearly distinct from `/sdd:plan` — users know exactly what they are getting
 * Good, because the SKILL.md is a clean top-level orchestration description
 * Bad, because it adds a 16th skill to the plugin, increasing the command surface
 * Bad, because the name "sprint" implies time-boxing that the skill does not enforce (it is a planning ceremony, not a time-box manager)
-* Bad, because it duplicates planning logic already in `/design:plan`, requiring synchronization when planning behavior changes
+* Bad, because it duplicates planning logic already in `/sdd:plan`, requiring synchronization when planning behavior changes
 
 ### Option 3: `--review` Enhancement to Existing Team Mode
 
-Extend the existing `--review` flag behavior in `/design:plan` to include backlog grooming roles, making `--review` equivalent to the proposed `--scrum`.
+Extend the existing `--review` flag behavior in `/sdd:plan` to include backlog grooming roles, making `--review` equivalent to the proposed `--scrum`.
 
 * Good, because it reuses the established `--review` team pattern without adding a new flag
 * Bad, because `--review` currently spawns a planner + reviewer pair with 2 revision rounds — adding 4 more agents changes the semantics substantially
@@ -128,7 +128,7 @@ Extend the existing `--review` flag behavior in `/design:plan` to include backlo
 
 ```mermaid
 flowchart TD
-    A["/design:plan\n[spec] --scrum"] --> B["Resolve target\n(spec or full backlog)"]
+    A["/sdd:plan\n[spec] --scrum"] --> B["Resolve target\n(spec or full backlog)"]
 
     B --> C["Spec completeness audit"]
     C --> C1{"design.md\nmissing?"}

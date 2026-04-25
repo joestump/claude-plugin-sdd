@@ -5,11 +5,11 @@ import type * as Preset from '@docusaurus/preset-classic';
 // ============================================================
 // CONFIGURE THESE VALUES FOR YOUR PROJECT
 // ============================================================
-const PROJECT_TITLE = 'Claude Plugin: Design';
+const PROJECT_TITLE = 'Claude Plugin: Spec-Driven Development';
 const PROJECT_TAGLINE = 'Decide. Specify. Plan. Build. Validate.';
-const GITHUB_URL = 'https://github.com/joestump/claude-plugin-design';
+const GITHUB_URL = 'https://github.com/joestump/claude-plugin-sdd';
 const SITE_URL = 'https://joestump.github.io';
-const BASE_URL = '/claude-plugin-design/';
+const BASE_URL = '/claude-plugin-sdd/';
 // ============================================================
 
 const config: Config = {
@@ -126,7 +126,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright \u00A9 ${new Date().getFullYear()} Claude Plugin: Design. Built with Docusaurus.`,
+      copyright: `Copyright \u00A9 ${new Date().getFullYear()} Claude Plugin: Spec-Driven Development. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

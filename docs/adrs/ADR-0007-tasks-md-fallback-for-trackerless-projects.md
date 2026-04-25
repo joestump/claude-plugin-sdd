@@ -8,7 +8,7 @@ decision-makers: joestump
 
 ## Context and Problem Statement
 
-After creating a spec, the `/design:spec` skill offers sprint planning that breaks requirements into trackable work items. It detects available issue trackers (Beads, GitHub, Gitea) and creates issues in them. But when no tracker is available, the current fallback is to "output the sprint plan as a structured markdown table" — an ephemeral dump into the conversation that the user must manually act on. How should the design plugin provide durable, trackable task management for projects without an external issue tracker?
+After creating a spec, the `/sdd:spec` skill offers sprint planning that breaks requirements into trackable work items. It detects available issue trackers (Beads, GitHub, Gitea) and creates issues in them. But when no tracker is available, the current fallback is to "output the sprint plan as a structured markdown table" — an ephemeral dump into the conversation that the user must manually act on. How should the SDD plugin provide durable, trackable task management for projects without an external issue tracker?
 
 ## Decision Drivers
 
@@ -40,7 +40,7 @@ Chosen option: "Option A — Generate `tasks.md` as an openspec artifact", becau
 ### Confirmation
 
 Compliance is confirmed when:
-- The `/design:spec` skill's sprint planning step generates `tasks.md` in the spec directory when no tracker is detected
+- The `/sdd:spec` skill's sprint planning step generates `tasks.md` in the spec directory when no tracker is detected
 - The generated `tasks.md` follows the template format with numbered headings and checkbox items
 - An apply phase can parse `- [ ]` / `- [x]` lines to report completion percentage
 
@@ -81,7 +81,7 @@ Create a single project-wide `TASKS.md` file that aggregates tasks from all spec
 
 ```mermaid
 flowchart TD
-    A["/design:spec creates spec"] --> B["Sprint planning offered"]
+    A["/sdd:spec creates spec"] --> B["Sprint planning offered"]
     B --> C{"Detect tracker"}
     C -->|Beads found| D["Create Beads issues"]
     C -->|GitHub found| E["Create GitHub issues"]

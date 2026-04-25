@@ -1,4 +1,4 @@
-# UX Guide: New Skills for the Design Plugin
+# UX Guide: New Skills for the SDD Plugin
 
 This guide defines the user experience patterns for the four new skills introduced by [ADR-0001](adrs/ADR-0001-drift-introspection-skills.md) and [ADR-0002](adrs/ADR-0002-init-and-context-priming-skill.md). Developers implementing these skills MUST follow these conventions to maintain consistency with the existing plugin.
 
@@ -48,10 +48,10 @@ Argument hints use square brackets for optional arguments. Flags like `--review`
 
 | Skill | `argument-hint` | Examples |
 |-------|-----------------|----------|
-| `init` | (no arguments) | `/design:init` |
-| `prime` | `[topic]` | `/design:prime`, `/design:prime security`, `/design:prime api authentication` |
-| `check` | `[target]` | `/design:check`, `/design:check src/auth/`, `/design:check ADR-0001`, `/design:check SPEC-0001` |
-| `audit` | `[scope] [--review]` | `/design:audit`, `/design:audit security`, `/design:audit --review`, `/design:audit api --review` |
+| `init` | (no arguments) | `/sdd:init` |
+| `prime` | `[topic]` | `/sdd:prime`, `/sdd:prime security`, `/sdd:prime api authentication` |
+| `check` | `[target]` | `/sdd:check`, `/sdd:check src/auth/`, `/sdd:check ADR-0001`, `/sdd:check SPEC-0001` |
+| `audit` | `[scope] [--review]` | `/sdd:audit`, `/sdd:audit security`, `/sdd:audit --review`, `/sdd:audit api --review` |
 
 ### Argument Semantics
 
@@ -95,30 +95,30 @@ Both `check` and `audit` use a three-tier severity system for findings.
 
 ## 4. Output Formats
 
-### 4.1 `/design:init` Output
+### 4.1 `/sdd:init` Output
 
 Init produces a short confirmation report. No tables needed.
 
 ```
-## Design Plugin Initialized
+## SDD Plugin Initialized
 
 CLAUDE.md updated with architecture context.
 
 ### What was added:
 - Reference to `docs/adrs/` (Architecture Decision Records)
 - Reference to `docs/openspec/specs/` (OpenSpec Specifications)
-- Design plugin usage hints
+- SDD plugin usage hints
 
 ### Next steps:
-- Create your first ADR: `/design:adr [description]`
-- Create your first spec: `/design:spec [capability]`
-- Prime a session with context: `/design:prime [topic]`
+- Create your first ADR: `/sdd:adr [description]`
+- Create your first spec: `/sdd:spec [capability]`
+- Prime a session with context: `/sdd:prime [topic]`
 ```
 
 When CLAUDE.md already has the references (idempotent re-run):
 
 ```
-## Design Plugin Already Configured
+## SDD Plugin Already Configured
 
 CLAUDE.md already contains architecture context references. No changes made.
 
@@ -129,7 +129,7 @@ CLAUDE.md already contains architecture context references. No changes made.
 When CLAUDE.md does not exist and is being created:
 
 ```
-## Design Plugin Initialized
+## SDD Plugin Initialized
 
 Created CLAUDE.md with architecture context.
 
@@ -137,19 +137,19 @@ Created CLAUDE.md with architecture context.
 - New CLAUDE.md at project root
 - Reference to `docs/adrs/` (Architecture Decision Records)
 - Reference to `docs/openspec/specs/` (OpenSpec Specifications)
-- Design plugin usage hints
+- SDD plugin usage hints
 
 ### Next steps:
-- Create your first ADR: `/design:adr [description]`
-- Create your first spec: `/design:spec [capability]`
-- Prime a session with context: `/design:prime [topic]`
+- Create your first ADR: `/sdd:adr [description]`
+- Create your first spec: `/sdd:spec [capability]`
+- Prime a session with context: `/sdd:prime [topic]`
 ```
 
-### 4.2 `/design:prime` Output
+### 4.2 `/sdd:prime` Output
 
 Prime presents a structured context summary. The format depends on whether a topic filter is used.
 
-**Without topic filter** (`/design:prime`):
+**Without topic filter** (`/sdd:prime`):
 
 ```
 ## Architecture Context Loaded
@@ -172,12 +172,12 @@ Primed session with 3 ADRs and 2 specs.
 | SPEC-0002 | Auth Service | draft | 5 requirements, 9 scenarios |
 
 ### Quick Reference
-- Check for drift: `/design:check [target]`
-- Full audit: `/design:audit [scope]`
-- List all artifacts: `/design:list`
+- Check for drift: `/sdd:check [target]`
+- Full audit: `/sdd:audit [scope]`
+- List all artifacts: `/sdd:list`
 ```
 
-**With topic filter** (`/design:prime security`):
+**With topic filter** (`/sdd:prime security`):
 
 ```
 ## Architecture Context Loaded (filtered: "security")
@@ -210,7 +210,7 @@ Defines requirements for user authentication (login, logout, MFA), authorization
 - SPEC-0001: Web Dashboard
 ```
 
-### 4.3 `/design:check` Output — Findings Table
+### 4.3 `/sdd:check` Output — Findings Table
 
 Check produces a concise findings table. This is the standard findings format used by both `check` and the summary section of `audit`.
 
@@ -233,7 +233,7 @@ Checked 3 ADRs and 1 spec against src/auth/. Found 2 findings.
 
 **Suggested actions:**
 - Fix the MFA gap in login.ts to match SPEC-0002
-- Run `/design:audit src/auth/ --review` for a deeper analysis
+- Run `/sdd:audit src/auth/ --review` for a deeper analysis
 ```
 
 When no findings are found:
@@ -246,7 +246,7 @@ Checked 2 ADRs and 1 spec against src/auth/. No drift detected.
 All implementation in src/auth/ aligns with governing ADRs and specs.
 ```
 
-### 4.4 `/design:audit` Output — Audit Report
+### 4.4 `/sdd:audit` Output — Audit Report
 
 Audit produces a comprehensive, structured report organized by analysis type.
 
@@ -320,7 +320,7 @@ Total findings: 12 (3 critical, 5 warning, 4 info)
 2. [CRITICAL] Reduce dashboard poll interval to <= 10s per SPEC-0001
 3. [CRITICAL] Resolve token format conflict between ADR-0003 and SPEC-0002
 4. [WARNING] Refactor auth service to event-driven per ADR-0003 or update ADR
-5. [WARNING] Update ADR-0003 status to `accepted` via `/design:status ADR-0003 accepted`
+5. [WARNING] Update ADR-0003 status to `accepted` via `/sdd:status ADR-0003 accepted`
 6. [INFO] Consider creating specs for src/utils/ and src/dashboard/charts/
 ```
 
@@ -334,17 +334,17 @@ Every new skill MUST handle these edge cases with clear, actionable messages. Er
 
 | Condition | Skill(s) | Message |
 |-----------|----------|---------|
-| No ADRs exist | `prime`, `check`, `audit` | "No ADRs found in docs/adrs/. Create one with `/design:adr [description]`." |
-| No specs exist | `prime`, `check`, `audit` | "No specs found in docs/openspec/specs/. Create one with `/design:spec [capability]`." |
-| Neither ADRs nor specs exist | `prime`, `check`, `audit` | "No design artifacts found. Create an ADR with `/design:adr` or a spec with `/design:spec` first." |
-| `docs/adrs/` directory does not exist | `prime`, `check`, `audit` | "The docs/adrs/ directory does not exist. Run `/design:adr [description]` to create your first ADR." |
-| `docs/openspec/specs/` directory does not exist | `prime`, `check`, `audit` | "The docs/openspec/specs/ directory does not exist. Run `/design:spec [capability]` to create your first spec." |
-| Init not run (CLAUDE.md missing design references) | `prime` | "CLAUDE.md does not have design plugin references. Run `/design:init` first to set up your project, then re-run `/design:prime`." |
+| No ADRs exist | `prime`, `check`, `audit` | "No ADRs found in docs/adrs/. Create one with `/sdd:adr [description]`." |
+| No specs exist | `prime`, `check`, `audit` | "No specs found in docs/openspec/specs/. Create one with `/sdd:spec [capability]`." |
+| Neither ADRs nor specs exist | `prime`, `check`, `audit` | "No design artifacts found. Create an ADR with `/sdd:adr` or a spec with `/sdd:spec` first." |
+| `docs/adrs/` directory does not exist | `prime`, `check`, `audit` | "The docs/adrs/ directory does not exist. Run `/sdd:adr [description]` to create your first ADR." |
+| `docs/openspec/specs/` directory does not exist | `prime`, `check`, `audit` | "The docs/openspec/specs/ directory does not exist. Run `/sdd:spec [capability]` to create your first spec." |
+| Init not run (CLAUDE.md missing design references) | `prime` | "CLAUDE.md does not have SDD plugin references. Run `/sdd:init` first to set up your project, then re-run `/sdd:prime`." |
 | CLAUDE.md does not exist | `init` | Create it (do not error -- this is the expected first-run case). |
 | Target not found | `check` | "Target not found: `{target}`. Provide a valid file path, directory, ADR reference (ADR-XXXX), or SPEC reference (SPEC-XXXX)." |
-| Target is an ADR/SPEC reference that does not exist | `check` | "ADR-0005 not found in docs/adrs/. Run `/design:list adr` to see available ADRs." |
-| Topic matches nothing | `prime` | "No ADRs or specs matched the topic \"{topic}\". Try a broader term, or run `/design:prime` without a topic to see all artifacts." |
-| Scope matches nothing | `audit` | "No design artifacts or source files matched the scope \"{scope}\". Try a broader scope, or run `/design:audit` without a scope for a full project audit." |
+| Target is an ADR/SPEC reference that does not exist | `check` | "ADR-0005 not found in docs/adrs/. Run `/sdd:list adr` to see available ADRs." |
+| Topic matches nothing | `prime` | "No ADRs or specs matched the topic \"{topic}\". Try a broader term, or run `/sdd:prime` without a topic to see all artifacts." |
+| Scope matches nothing | `audit` | "No design artifacts or source files matched the scope \"{scope}\". Try a broader scope, or run `/sdd:audit` without a scope for a full project audit." |
 | No drift found | `check`, `audit` | "No drift detected. All implementation aligns with governing ADRs and specs." (See Section 4.3 for full format.) |
 
 ### 5.2 Error Message Format
@@ -356,7 +356,7 @@ Error messages follow a three-part pattern:
 
 Example:
 ```
-No ADRs found in docs/adrs/. Create one with `/design:adr [description]`.
+No ADRs found in docs/adrs/. Create one with `/sdd:adr [description]`.
 ```
 
 Not:
@@ -376,7 +376,7 @@ Pattern: `{Verb} {what it does}. Use when {trigger phrase 1}, {trigger phrase 2}
 
 | Skill | Description |
 |-------|-------------|
-| `init` | Set up CLAUDE.md with design plugin references for architecture-aware sessions. Use when the user installs the plugin, says "initialize design", or wants to configure CLAUDE.md for the design plugin. |
+| `init` | Set up CLAUDE.md with SDD plugin references for architecture-aware sessions. Use when the user installs the plugin, says "initialize design", or wants to configure CLAUDE.md for the SDD plugin. |
 | `prime` | Load ADR and spec context into the session for architecture-aware responses. Use when the user says "prime context", "load architecture", starts a new session, or wants Claude to know about existing decisions. |
 | `check` | Quick-check code against ADRs and specs for drift. Use when the user says "check for drift", "does this match the spec", or wants a fast alignment check on a specific file or directory. |
 | `audit` | Comprehensive audit of design artifact alignment across the project. Use when the user says "audit the architecture", "full drift report", or wants a thorough review of spec compliance and ADR adherence. |
@@ -395,11 +395,11 @@ When referencing ADRs and specs in output, always use the full identifier: `ADR-
 
 ### 6.5 Command Suggestions
 
-When suggesting commands to the user, always use inline code format with the full skill name: `` `/design:init` ``, `` `/design:check src/auth/` ``.
+When suggesting commands to the user, always use inline code format with the full skill name: `` `/sdd:init` ``, `` `/sdd:check src/auth/` ``.
 
 ---
 
-## 7. Topic Filtering (`/design:prime`)
+## 7. Topic Filtering (`/sdd:prime`)
 
 ### Semantic Matching
 
@@ -465,8 +465,8 @@ Suggestions appear as a bulleted list at the end of output, with the command in 
 ```
 ### Suggested actions:
 - Fix the MFA gap in login.ts to match SPEC-0002
-- Run `/design:audit src/auth/ --review` for a deeper analysis
-- Update ADR-0003 status with `/design:status ADR-0003 accepted`
+- Run `/sdd:audit src/auth/ --review` for a deeper analysis
+- Update ADR-0003 status with `/sdd:status ADR-0003 accepted`
 ```
 
 ---
@@ -486,9 +486,9 @@ Both `check` and `audit` use these categories for classifying findings. `check` 
 
 ### Note on `check` vs `audit` Scope
 
-`/design:check` is intentionally limited to the first three categories to keep it fast. It answers: "Does this code match what the design says?" It does NOT look for missing artifacts or internal spec issues.
+`/sdd:check` is intentionally limited to the first three categories to keep it fast. It answers: "Does this code match what the design says?" It does NOT look for missing artifacts or internal spec issues.
 
-`/design:audit` covers all six categories for a comprehensive view. It answers: "Is the project's design health good overall?"
+`/sdd:audit` covers all six categories for a comprehensive view. It answers: "Is the project's design health good overall?"
 
 ---
 

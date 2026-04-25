@@ -41,59 +41,59 @@ function SkillsSection() {
         </p>
         <div className={styles.skillGrid}>
           <div className={styles.skillCard}>
-            <code>/design:adr</code>
+            <code>/sdd:adr</code>
             <span>Create a new Architecture Decision Record</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:spec</code>
+            <code>/sdd:spec</code>
             <span>Create a new specification</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:plan</code>
+            <code>/sdd:plan</code>
             <span>Break specs into sprint issues</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:organize</code>
+            <code>/sdd:organize</code>
             <span>Group issues into tracker projects</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:enrich</code>
+            <code>/sdd:enrich</code>
             <span>Add branch/PR conventions to issues</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:work</code>
+            <code>/sdd:work</code>
             <span>Implement issues in parallel worktrees</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:check</code>
+            <code>/sdd:check</code>
             <span>Quick-check code for drift</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:audit</code>
+            <code>/sdd:audit</code>
             <span>Comprehensive alignment audit</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:discover</code>
+            <code>/sdd:discover</code>
             <span>Discover implicit architecture</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:docs</code>
+            <code>/sdd:docs</code>
             <span>Generate this documentation site</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:prime</code>
+            <code>/sdd:prime</code>
             <span>Load architecture context into session</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:init</code>
+            <code>/sdd:init</code>
             <span>Set up CLAUDE.md for the plugin</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:list</code>
+            <code>/sdd:list</code>
             <span>List all ADRs and specs with status</span>
           </div>
           <div className={styles.skillCard}>
-            <code>/design:status</code>
+            <code>/sdd:status</code>
             <span>Update the status of an ADR or spec</span>
           </div>
         </div>

@@ -154,7 +154,7 @@ ${badgeHeader}
 function transformAdrs(config) {
   const { adrsSource, adrsDest, baseUrl, pathPrefix = '', specMapping = {}, specEmojis = {} } = config;
 
-  console.log('  [sync-design-docs] Transforming ADRs...');
+  console.log('  [sync-spec-docs] Transforming ADRs...');
 
   if (!fs.existsSync(adrsSource)) {
     console.log('    No ADR directory found, skipping ADR transform');

@@ -19,10 +19,10 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
 
    **Cross-module aggregation**: When in aggregate mode (no `--module`, workspace detected), iterate over all discovered modules. For each module, resolve its artifact paths independently. Prefix every artifact reference in the output with the module name in square brackets: `[api] ADR-0001`, `[worker] SPEC-0003`. When `--module` is provided, scope to that single module — no prefix needed. When in single-module mode (no workspace), operate normally without prefixes.
 
-1. **Check if init has been run**: Read `CLAUDE.md` at the project root (or module root if `--module` is set) and check if it contains references to an ADR or spec directory. If CLAUDE.md does not exist or lacks design plugin references, output:
+1. **Check if init has been run**: Read `CLAUDE.md` at the project root (or module root if `--module` is set) and check if it contains references to an ADR or spec directory. If CLAUDE.md does not exist or lacks SDD plugin references, output:
 
    ```
-   CLAUDE.md does not have design plugin references. Run `/design:init` first to set up your project, then re-run `/design:prime`.
+   CLAUDE.md does not have SDD plugin references. Run `/sdd:init` first to set up your project, then re-run `/sdd:prime`.
    ```
 
    Then stop. Do NOT proceed with scanning.
@@ -50,20 +50,20 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
    - For example: topic "security" should match ADRs about authentication, authorization, encryption, or access control
    - If no artifacts match the topic, output:
      ```
-     No ADRs or specs matched the topic "{topic}". Try a broader term, or run `/design:prime` without a topic to see all artifacts.
+     No ADRs or specs matched the topic "{topic}". Try a broader term, or run `/sdd:prime` without a topic to see all artifacts.
      ```
 
 5. **Handle edge cases**:
-   - If `{adr-dir}` does not exist: "The `{adr-dir}` directory does not exist. Run `/design:adr [description]` to create your first ADR."
-   - If `{spec-dir}` does not exist: "The `{spec-dir}` directory does not exist. Run `/design:spec [capability]` to create your first spec."
-   - If neither directory has any artifacts: "No design artifacts found. Create an ADR with `/design:adr` or a spec with `/design:spec` first."
+   - If `{adr-dir}` does not exist: "The `{adr-dir}` directory does not exist. Run `/sdd:adr [description]` to create your first ADR."
+   - If `{spec-dir}` does not exist: "The `{spec-dir}` directory does not exist. Run `/sdd:spec [capability]` to create your first spec."
+   - If neither directory has any artifacts: "No design artifacts found. Create an ADR with `/sdd:adr` or a spec with `/sdd:spec` first."
    - If ADRs exist but no specs (or vice versa), present whichever exists and note the other is empty
 
 6. **Present results** using the appropriate output format below.
 
 ## Output
 
-### Without topic filter (`/design:prime`):
+### Without topic filter (`/sdd:prime`):
 
 ```
 ## Architecture Context Loaded
@@ -83,12 +83,12 @@ Primed session with {N} ADRs and {M} specs.
 | SPEC-0001 | {title} | {status} | {N} requirements, {M} scenarios |
 
 ### Quick Reference
-- Check for drift: `/design:check [target]`
-- Full audit: `/design:audit [scope]`
-- List all artifacts: `/design:list`
+- Check for drift: `/sdd:check [target]`
+- Full audit: `/sdd:audit [scope]`
+- List all artifacts: `/sdd:list`
 ```
 
-### Workspace aggregate mode (`/design:prime` in a multi-module project):
+### Workspace aggregate mode (`/sdd:prime` in a multi-module project):
 
 ```
 ## Architecture Context Loaded
@@ -110,13 +110,13 @@ Primed session with {N} ADRs and {M} specs across {K} modules.
 | [worker] | SPEC-0001 | {title} | {status} | {N} requirements, {M} scenarios |
 
 ### Quick Reference
-- Check for drift: `/design:check [target]`
-- Check single module: `/design:check --module api [target]`
-- Full audit: `/design:audit [scope]`
-- List all artifacts: `/design:list`
+- Check for drift: `/sdd:check [target]`
+- Check single module: `/sdd:check --module api [target]`
+- Full audit: `/sdd:audit [scope]`
+- List all artifacts: `/sdd:list`
 ```
 
-### With topic filter (`/design:prime {topic}`):
+### With topic filter (`/sdd:prime {topic}`):
 
 ```
 ## Architecture Context Loaded (filtered: "{topic}")

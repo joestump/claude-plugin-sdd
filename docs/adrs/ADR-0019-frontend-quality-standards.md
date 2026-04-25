@@ -8,7 +8,7 @@ decision-makers: joestump
 
 ## Context and Problem Statement
 
-A review of three production projects built with the design plugin (spotter, joe-links, claude-ops) found zero frontend tests, near-absent accessibility, rampant template code duplication, and unsafe CDN practices across all repositories. The plugin produces well-structured backends with strong traceability, but has no guardrails for frontend quality — the skills never prompt for accessibility requirements, never scaffold frontend tests, and never detect template-level code smells. How should the plugin enforce frontend quality standards without introducing standalone tooling that fragments the existing skill workflow?
+A review of three production projects built with the SDD plugin (spotter, joe-links, claude-ops) found zero frontend tests, near-absent accessibility, rampant template code duplication, and unsafe CDN practices across all repositories. The plugin produces well-structured backends with strong traceability, but has no guardrails for frontend quality — the skills never prompt for accessibility requirements, never scaffold frontend tests, and never detect template-level code smells. How should the plugin enforce frontend quality standards without introducing standalone tooling that fragments the existing skill workflow?
 
 ## Decision Drivers
 
@@ -23,8 +23,8 @@ A review of three production projects built with the design plugin (spotter, joe
 ## Considered Options
 
 * **Option 1**: Separate frontend linting tool (standalone CLI or external integration)
-* **Option 2**: Post-hoc accessibility audit skill (`/design:a11y-audit`)
-* **Option 3**: Integrate frontend quality standards into existing skills (`/design:spec`, `/design:plan`, `/design:check`)
+* **Option 2**: Post-hoc accessibility audit skill (`/sdd:a11y-audit`)
+* **Option 3**: Integrate frontend quality standards into existing skills (`/sdd:spec`, `/sdd:plan`, `/sdd:check`)
 
 ## Decision Outcome
 
@@ -34,22 +34,22 @@ Chosen option: "Option 3 — Integrate frontend quality standards into existing 
 
 | Skill | Frontend Quality Addition |
 |-------|--------------------------|
-| `/design:spec` | Injects mandatory "Accessibility Requirements" section for UI specs (WCAG 2.1 AA, ARIA landmarks, keyboard navigation, focus management for modals, `aria-live` for dynamic content, `aria-label` on icon-only controls) |
-| `/design:spec` | Injects "Responsive Design Requirements" section for UI specs (breakpoint coverage from the start, not as a retrofit) |
-| `/design:plan` | Creates companion test stories for every UI-touching spec (template render tests, JS unit tests, HTMX swap integration tests) |
-| `/design:check` | Detects template duplication (duplicate inline `<script>` blocks, same form structure in multiple templates, navigation rendered more than once, identical JS functions defined twice) |
-| `/design:check` | CDN audit (missing SRI `integrity` attributes, dev-only CDN URLs like `cdn.tailwindcss.com`, more than 1 JS interaction framework per project) |
-| `/design:check` | Flags `innerHTML` usage patterns as potential XSS vectors and maintainability concerns |
+| `/sdd:spec` | Injects mandatory "Accessibility Requirements" section for UI specs (WCAG 2.1 AA, ARIA landmarks, keyboard navigation, focus management for modals, `aria-live` for dynamic content, `aria-label` on icon-only controls) |
+| `/sdd:spec` | Injects "Responsive Design Requirements" section for UI specs (breakpoint coverage from the start, not as a retrofit) |
+| `/sdd:plan` | Creates companion test stories for every UI-touching spec (template render tests, JS unit tests, HTMX swap integration tests) |
+| `/sdd:check` | Detects template duplication (duplicate inline `<script>` blocks, same form structure in multiple templates, navigation rendered more than once, identical JS functions defined twice) |
+| `/sdd:check` | CDN audit (missing SRI `integrity` attributes, dev-only CDN URLs like `cdn.tailwindcss.com`, more than 1 JS interaction framework per project) |
+| `/sdd:check` | Flags `innerHTML` usage patterns as potential XSS vectors and maintainability concerns |
 
 ### Consequences
 
 * Good, because accessibility requirements are injected at spec time — before any code is written — preventing the pattern of zero ARIA attributes seen in all 3 repos
-* Good, because companion test stories in `/design:plan` ensure frontend tests are planned as first-class work items, not afterthoughts
-* Good, because template duplication detection in `/design:check` catches the exact patterns found in joe-links (duplicate JS functions) and claude-ops (duplicate navigation)
+* Good, because companion test stories in `/sdd:plan` ensure frontend tests are planned as first-class work items, not afterthoughts
+* Good, because template duplication detection in `/sdd:check` catches the exact patterns found in joe-links (duplicate JS functions) and claude-ops (duplicate navigation)
 * Good, because CDN audit catches both the missing SRI hashes (all 3 repos) and dev-only CDN usage (claude-ops Tailwind Play script)
 * Good, because no new skills or external tools are added — existing skills gain frontend awareness
 * Good, because the pattern mirrors ADR-0018's security integration, creating a consistent "quality by default" approach across security and frontend concerns
-* Bad, because `/design:spec` now injects two mandatory sections for UI specs (accessibility + responsive), which adds length to specs for simple UI changes
+* Bad, because `/sdd:spec` now injects two mandatory sections for UI specs (accessibility + responsive), which adds length to specs for simple UI changes
 * Bad, because companion test stories increase the total issue count per sprint, requiring teams to account for the additional testing workload
 * Neutral, because the `innerHTML` lint is a heuristic — some `innerHTML` usage is safe (e.g., sanitized server-rendered content), so findings require developer judgment
 
@@ -57,13 +57,13 @@ Chosen option: "Option 3 — Integrate frontend quality standards into existing 
 
 Implementation will be confirmed by:
 
-1. Running `/design:spec` for a UI-facing feature produces an "Accessibility Requirements" section with WCAG 2.1 AA, ARIA landmarks, keyboard navigation, and focus management requirements
-2. Running `/design:spec` for a UI-facing feature produces a "Responsive Design Requirements" section with breakpoint coverage
-3. Running `/design:plan` on a UI-touching spec creates companion test stories (template render, JS unit, integration) alongside feature stories
-4. Running `/design:check` on joe-links flags the duplicate JS function in `modal_form.html` and the 33 `innerHTML` occurrences
-5. Running `/design:check` on claude-ops flags the duplicate navigation rendering and the Tailwind CDN Play script
-6. Running `/design:check` on any repo flags CDN `<script>`/`<link>` tags missing `integrity` attributes
-7. Running `/design:check` on spotter flags the 3 competing JS frameworks (HTMX, Alpine.js, Hyperscript)
+1. Running `/sdd:spec` for a UI-facing feature produces an "Accessibility Requirements" section with WCAG 2.1 AA, ARIA landmarks, keyboard navigation, and focus management requirements
+2. Running `/sdd:spec` for a UI-facing feature produces a "Responsive Design Requirements" section with breakpoint coverage
+3. Running `/sdd:plan` on a UI-touching spec creates companion test stories (template render, JS unit, integration) alongside feature stories
+4. Running `/sdd:check` on joe-links flags the duplicate JS function in `modal_form.html` and the 33 `innerHTML` occurrences
+5. Running `/sdd:check` on claude-ops flags the duplicate navigation rendering and the Tailwind CDN Play script
+6. Running `/sdd:check` on any repo flags CDN `<script>`/`<link>` tags missing `integrity` attributes
+7. Running `/sdd:check` on spotter flags the 3 competing JS frameworks (HTMX, Alpine.js, Hyperscript)
 
 ## Pros and Cons of the Options
 
@@ -72,16 +72,16 @@ Implementation will be confirmed by:
 Run a standalone CLI tool (e.g., `axe-core`, `pa11y`, custom ESLint config) as a pre-commit or CI step that catches frontend quality issues.
 
 * Good, because dedicated linting tools have mature, well-tested rule sets for accessibility (axe-core has 80+ WCAG rules)
-* Good, because CI integration catches issues on every commit, not just when a developer remembers to run `/design:check`
+* Good, because CI integration catches issues on every commit, not just when a developer remembers to run `/sdd:check`
 * Good, because linting tools can auto-fix some issues (e.g., adding `alt` attributes, fixing ARIA roles)
 * Bad, because it introduces external dependencies that must be installed, configured, and maintained per project
 * Bad, because linting tools only catch issues after code is written — they cannot inject requirements at spec time or create test stories at planning time
-* Bad, because it fragments the quality workflow: security checks are in `/design:check` but frontend checks are in a separate tool
+* Bad, because it fragments the quality workflow: security checks are in `/sdd:check` but frontend checks are in a separate tool
 * Bad, because server-rendered template projects (Go `html/template`, Django, Rails) are poorly supported by most frontend linting tools that assume SPA architectures
 
-### Option 2: Post-Hoc Accessibility Audit Skill (`/design:a11y-audit`)
+### Option 2: Post-Hoc Accessibility Audit Skill (`/sdd:a11y-audit`)
 
-Create a new `/design:a11y-audit` skill that scans templates, CSS, and JS for accessibility issues and produces a remediation report.
+Create a new `/sdd:a11y-audit` skill that scans templates, CSS, and JS for accessibility issues and produces a remediation report.
 
 * Good, because it provides a comprehensive, focused audit of accessibility across the entire project
 * Good, because it could use browser-based testing (rendering templates and running axe-core) for higher accuracy than static analysis
@@ -92,12 +92,12 @@ Create a new `/design:a11y-audit` skill that scans templates, CSS, and JS for ac
 
 ### Option 3: Integrate Frontend Quality Standards into Existing Skills
 
-Enhance `/design:spec`, `/design:plan`, and `/design:check` with frontend-specific quality checks that mirror the security integration pattern from ADR-0018.
+Enhance `/sdd:spec`, `/sdd:plan`, and `/sdd:check` with frontend-specific quality checks that mirror the security integration pattern from ADR-0018.
 
 * Good, because it catches issues at three stages: spec authoring (prevention), sprint planning (test coverage), and code review (detection)
 * Good, because it follows the proven integration pattern from ADR-0018 — no new skills, no new tools, no new workflows to learn
-* Good, because `/design:check` already has the infrastructure for pattern-based code scanning — adding template and CDN patterns is incremental
-* Good, because companion test stories in `/design:plan` create accountability for frontend testing as planned work, not optional extras
+* Good, because `/sdd:check` already has the infrastructure for pattern-based code scanning — adding template and CDN patterns is incremental
+* Good, because companion test stories in `/sdd:plan` create accountability for frontend testing as planned work, not optional extras
 * Neutral, because static template analysis has lower accuracy than browser-based testing, but catches the majority of issues found in the 3 repos
 * Bad, because the spec and check skills grow in scope, which increases their SKILL.md complexity
 
@@ -105,7 +105,7 @@ Enhance `/design:spec`, `/design:plan`, and `/design:check` with frontend-specif
 
 ```mermaid
 flowchart TD
-    A["UI-facing feature request"] --> B["/design:spec"]
+    A["UI-facing feature request"] --> B["/sdd:spec"]
 
     subgraph "Spec-Time Prevention"
         B --> C["Inject 'Accessibility Requirements'\n(WCAG 2.1 AA, ARIA landmarks,\nkeyboard nav, focus management)"]
@@ -115,7 +115,7 @@ flowchart TD
     C --> E["Approved spec with\nfrontend quality sections"]
     D --> E
 
-    E --> F["/design:plan"]
+    E --> F["/sdd:plan"]
 
     subgraph "Plan-Time Test Coverage"
         F --> G["Feature stories\n(from spec requirements)"]
@@ -125,7 +125,7 @@ flowchart TD
     G --> I["Implementation"]
     H --> J["Test implementation"]
 
-    I --> K["/design:check"]
+    I --> K["/sdd:check"]
     J --> K
 
     subgraph "Check-Time Detection"
@@ -141,7 +141,7 @@ flowchart TD
 
 ## More Information
 
-- This ADR is the frontend counterpart to ADR-0018 (security-by-default). Together they establish a "quality by default" pattern where `/design:spec` injects mandatory sections, `/design:plan` creates companion stories, and `/design:check` detects violations.
+- This ADR is the frontend counterpart to ADR-0018 (security-by-default). Together they establish a "quality by default" pattern where `/sdd:spec` injects mandatory sections, `/sdd:plan` creates companion stories, and `/sdd:check` detects violations.
 - The evidence table in the Context section is drawn from a systematic review of spotter, joe-links, and claude-ops — the same three repos that informed ADR-0017 (parallel agent coordination) and ADR-0018 (security-by-default).
 - WCAG 2.1 AA was chosen as the accessibility target because it is the most widely adopted standard, required by law in many jurisdictions (ADA, EN 301 549, EAA), and achievable without specialized tooling.
 - The `innerHTML` lint deserves special attention: joe-links has 33 occurrences, many used for HTMX swap targets. Not all are dangerous, but the pattern should be flagged for review since `innerHTML` bypasses DOM sanitization and is a common XSS vector.

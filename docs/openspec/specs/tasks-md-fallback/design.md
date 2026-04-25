@@ -2,7 +2,7 @@
 
 ## Context
 
-The `/design:plan` skill (ADR-0008) detects issue trackers at runtime (see `references/shared-patterns.md` § "Tracker Detection"). When none are found, the fallback behavior generates a durable `tasks.md` artifact co-located with the spec's existing `spec.md` and `design.md`. Sprint planning was originally embedded in `/design:spec` but was extracted into a standalone `/design:plan` skill per ADR-0008. See ADR-0007, ADR-0008, and SPEC-0003.
+The `/sdd:plan` skill (ADR-0008) detects issue trackers at runtime (see `references/shared-patterns.md` § "Tracker Detection"). When none are found, the fallback behavior generates a durable `tasks.md` artifact co-located with the spec's existing `spec.md` and `design.md`. Sprint planning was originally embedded in `/sdd:spec` but was extracted into a standalone `/sdd:plan` skill per ADR-0008. See ADR-0007, ADR-0008, and SPEC-0003.
 
 ## Goals / Non-Goals
 
@@ -49,7 +49,7 @@ The `/design:plan` skill (ADR-0008) detects issue trackers at runtime (see `refe
 
 ```mermaid
 flowchart TD
-    A["Sprint planning<br/>(/design:plan step 6)"] --> B{"Detect trackers"}
+    A["Sprint planning<br/>(/sdd:plan step 6)"] --> B{"Detect trackers"}
 
     B -->|"Beads (.beads/ or bd)"| C["Create Beads issues"]
     B -->|"GitHub (MCP or gh)"| D["Create GitHub issues"]
@@ -73,18 +73,18 @@ flowchart TD
 
 ## Risks / Trade-offs
 
-- **Fragmented visibility**: Tasks scoped per-spec means no single view across all specs. Mitigation: `/design:list` or `/design:audit` could be extended to scan `tasks.md` files and aggregate status.
+- **Fragmented visibility**: Tasks scoped per-spec means no single view across all specs. Mitigation: `/sdd:list` or `/sdd:audit` could be extended to scan `tasks.md` files and aggregate status.
 - **Manual completion tracking**: Checkboxes must be toggled manually (or by an agent). Mitigation: an apply-phase skill could auto-mark tasks as it implements them.
-- **Staleness**: If the spec changes after `tasks.md` is generated, tasks may drift. Mitigation: `/design:check` could compare `tasks.md` against `spec.md` requirements.
+- **Staleness**: If the spec changes after `tasks.md` is generated, tasks may drift. Mitigation: `/sdd:check` could compare `tasks.md` against `spec.md` requirements.
 
 ## Migration Plan
 
-1. The `/design:plan` SKILL.md (step 6) implements the `tasks.md` generation fallback when no tracker is detected
+1. The `/sdd:plan` SKILL.md (step 6) implements the `tasks.md` generation fallback when no tracker is detected
 2. Template format and generation rules are documented in the plan skill's step 6
 3. No breaking changes — existing specs without `tasks.md` are unaffected
 
 ## Open Questions
 
-- Should `/design:check` validate `tasks.md` alignment with `spec.md` requirements?
-- Should `/design:list` include task completion percentages when `tasks.md` files exist?
-- Should the apply phase be a separate skill (`/design:apply`) or integrated into existing workflows?
+- Should `/sdd:check` validate `tasks.md` alignment with `spec.md` requirements?
+- Should `/sdd:list` include task completion percentages when `tasks.md` files exist?
+- Should the apply phase be a separate skill (`/sdd:apply`) or integrated into existing workflows?

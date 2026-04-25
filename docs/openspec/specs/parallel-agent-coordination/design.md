@@ -2,13 +2,13 @@
 
 ## Context
 
-The design plugin's `/design:work` skill spawns multiple agents to implement sprint stories in parallel using git worktrees. A review of three production projects (spotter, joe-links, claude-ops) revealed that uncoordinated parallel execution causes systemic failures: duplicate code, rebase churn, wasted PRs, and — in the worst case — conflict markers merged into main.
+The SDD plugin's `/sdd:work` skill spawns multiple agents to implement sprint stories in parallel using git worktrees. A review of three production projects (spotter, joe-links, claude-ops) revealed that uncoordinated parallel execution causes systemic failures: duplicate code, rebase churn, wasted PRs, and — in the worst case — conflict markers merged into main.
 
 The evidence is consistent across all three repos:
 
 - **spotter**: `nopHandler` struct implemented independently in two packages; LLM client code (`ChatRequest`/`ChatResponse`, `callOpenAI()`) duplicated across 4 packages (181 lines removed in cleanup PR 171); PR 144 required merge-conflict-resolution commits after 5 other PRs merged; `cmd/server/main.go` and `internal/config/config.go` were hotspot files touched by 60-70% of PRs.
 - **joe-links**: `PublicLink` struct created independently in PRs 112 and 114; `link_store.go` modified by 6 concurrent PRs; PRs 142-144 all closed without merging and recreated as 145-147 (100% wasted effort).
-- **claude-ops**: Conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) merged into `main` in `api_handlers.go`; `.claude-plugin-design.json` modified by all 7 parallel PRs (guaranteed conflicts); 78 concurrent PRs launched in one sprint.
+- **claude-ops**: Conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) merged into `main` in `api_handlers.go`; `.claude-plugin-sdd.json` modified by all 7 parallel PRs (guaranteed conflicts); 78 concurrent PRs launched in one sprint.
 
 Zero assignees, zero lifecycle labels, and zero machine-readable dependency signals were found across all three repos.
 
@@ -38,20 +38,20 @@ Governing: SPEC-0015, ADR-0017, ADR-0020.
 
 ### Foundation Detection via Static Requirement Analysis
 
-**Choice**: `/design:plan` performs static analysis of spec requirements to identify shared types and packages before decomposing into stories.
+**Choice**: `/sdd:plan` performs static analysis of spec requirements to identify shared types and packages before decomposing into stories.
 
 **Rationale**: The duplicate-code failures (spotter's `nopHandler`, joe-links' `PublicLink`) all share one root cause: multiple stories independently created the same abstraction because no story was responsible for creating it first. Foundation detection front-loads shared dependency creation into explicit, labeled stories that merge before feature work begins. This is cheaper than detecting duplicates during review (where one PR must be rewritten) or after merge (where cleanup PRs add noise).
 
 **Alternatives considered**:
 - **Post-hoc deduplication in review**: Catches duplicates too late; one agent's work is wasted. In spotter, PR 171 removed 181 lines of duplicate code that should never have been written.
-- **Shared code registry file**: Adds a coordination artifact that itself becomes a conflict source — the same problem as `.claude-plugin-design.json` in claude-ops.
+- **Shared code registry file**: Adds a coordination artifact that itself becomes a conflict source — the same problem as `.claude-plugin-sdd.json` in claude-ops.
 - **Agent-to-agent chat during implementation**: Requires synchronous coordination between parallel agents; defeats the purpose of parallelism and adds token cost with uncertain reliability.
 
 ### Hotspot Serialization Over Optimistic Parallelism
 
 **Choice**: Files modified by >50% of recent PRs are classified as hotspots; stories touching them are serialized.
 
-**Rationale**: In joe-links, `link_store.go` was modified by 6 concurrent PRs — every single one required rebase. In claude-ops, `.claude-plugin-design.json` was modified by all 7 PRs. Serializing stories that touch these files eliminates the rebase cascade at the cost of slightly longer wall-clock time for those stories. The tradeoff is favorable: 3 serial PRs that each merge cleanly beat 3 parallel PRs that each require 2 rebases.
+**Rationale**: In joe-links, `link_store.go` was modified by 6 concurrent PRs — every single one required rebase. In claude-ops, `.claude-plugin-sdd.json` was modified by all 7 PRs. Serializing stories that touch these files eliminates the rebase cascade at the cost of slightly longer wall-clock time for those stories. The tradeoff is favorable: 3 serial PRs that each merge cleanly beat 3 parallel PRs that each require 2 rebases.
 
 **Alternatives considered**:
 - **File locking**: Not supported by git; would require a custom coordination server.
@@ -78,7 +78,7 @@ Governing: SPEC-0015, ADR-0017, ADR-0020.
 **Alternatives considered**:
 - **Tracker-native status fields**: Not available on GitHub Issues or Gitea; would require tracker-specific branching logic.
 - **Comment-based status**: Machine-parseable but invisible in list views; requires reading each issue to determine state.
-- **External state file**: Same conflict problem as `.claude-plugin-design.json`.
+- **External state file**: Same conflict problem as `.claude-plugin-sdd.json`.
 
 ### Pre-Flight Manifest Injection
 
@@ -106,7 +106,7 @@ Governing: SPEC-0015, ADR-0017, ADR-0020.
 
 **Choice**: Feature PRs must not modify spec/ADR/config files; all design doc updates are batched into a single post-merge PR.
 
-**Rationale**: In claude-ops, `.claude-plugin-design.json` was modified by every single PR — guaranteed merge conflicts on every rebase. Spec and ADR files were similarly touched by 5-7 PRs simultaneously. The root cause is that each agent believed it was responsible for updating design docs. The fix is architectural: no feature agent touches design docs, and a single consolidation step handles all updates after feature work is complete. Governing comments (per ADR-0020) are the exception — they belong in the implementing PR because they annotate the code being written.
+**Rationale**: In claude-ops, `.claude-plugin-sdd.json` was modified by every single PR — guaranteed merge conflicts on every rebase. Spec and ADR files were similarly touched by 5-7 PRs simultaneously. The root cause is that each agent believed it was responsible for updating design docs. The fix is architectural: no feature agent touches design docs, and a single consolidation step handles all updates after feature work is complete. Governing comments (per ADR-0020) are the exception — they belong in the implementing PR because they annotate the code being written.
 
 **Alternatives considered**:
 - **Lock design doc files**: git does not support file-level locking; would require a coordination server.
@@ -120,7 +120,7 @@ Governing: SPEC-0015, ADR-0017, ADR-0020.
 ```mermaid
 flowchart TD
     subgraph "Layer 1: Dependency-Aware Planning"
-        PLAN["/design:plan"] --> FD["Foundation Detection"]
+        PLAN["/sdd:plan"] --> FD["Foundation Detection"]
         PLAN --> HA["Hotspot Analysis"]
         PLAN --> PL["Parallelism Limit"]
         FD --> DEP["Dependency Graph"]
@@ -129,7 +129,7 @@ flowchart TD
     end
 
     subgraph "Layer 2: Issue Lifecycle Signals"
-        WORK["/design:work"] --> LABELS["Label Management"]
+        WORK["/sdd:work"] --> LABELS["Label Management"]
         LABELS --> Q["queued"]
         LABELS --> IP["in-progress"]
         LABELS --> IR["in-review"]
@@ -160,7 +160,7 @@ flowchart TD
     end
 
     DEP --> WORK
-    WORK --> REVIEW["/design:review"]
+    WORK --> REVIEW["/sdd:review"]
     REVIEW --> CONFLICT["Conflict-Marker CI Gate"]
 ```
 
@@ -168,7 +168,7 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    participant P as /design:plan
+    participant P as /sdd:plan
     participant S as Spec Requirements
     participant G as Git History
     participant D as Dependency Graph
@@ -278,7 +278,7 @@ The algorithm:
 
 ### Conflict-Marker Gate
 
-The conflict-marker CI gate in `/design:review` is a pre-review check that runs before any code quality or spec compliance analysis:
+The conflict-marker CI gate in `/sdd:review` is a pre-review check that runs before any code quality or spec compliance analysis:
 
 1. Retrieve the full PR diff.
 2. Scan every file in the diff for the patterns: `<<<<<<<`, `=======` (7 consecutive equals signs at line start), `>>>>>>>`.
@@ -298,16 +298,16 @@ This is deliberately a hard gate with no override. Evidence: in claude-ops, conf
 
 ## Migration Plan
 
-1. **Phase 1 -- Plan skill update**: Add foundation detection, hotspot analysis, and parallelism cap to `/design:plan`. Existing sprint plans are unaffected; the new features only activate on subsequent `/design:plan` runs.
-2. **Phase 2 -- Work skill update**: Add lifecycle labels, pre-flight manifest injection, dependency enforcement, topological merge ordering, auto-rebase, design document isolation, and queue management to `/design:work`. Existing worktrees are unaffected; new work sessions use the updated coordination.
-3. **Phase 3 -- Review skill update**: Add conflict-marker CI gate to `/design:review`. This is additive and does not change existing review behavior for clean PRs.
+1. **Phase 1 -- Plan skill update**: Add foundation detection, hotspot analysis, and parallelism cap to `/sdd:plan`. Existing sprint plans are unaffected; the new features only activate on subsequent `/sdd:plan` runs.
+2. **Phase 2 -- Work skill update**: Add lifecycle labels, pre-flight manifest injection, dependency enforcement, topological merge ordering, auto-rebase, design document isolation, and queue management to `/sdd:work`. Existing worktrees are unaffected; new work sessions use the updated coordination.
+3. **Phase 3 -- Review skill update**: Add conflict-marker CI gate to `/sdd:review`. This is additive and does not change existing review behavior for clean PRs.
 4. **Phase 4 -- Shared patterns**: Add "Foundation Story Detection", "Pre-Flight PR Awareness", and "Topological Merge Ordering" patterns to `references/shared-patterns.md` for use by other skills.
 
-No data migration is required. Existing projects gain coordination features on the next `/design:plan` or `/design:work` invocation.
+No data migration is required. Existing projects gain coordination features on the next `/sdd:plan` or `/sdd:work` invocation.
 
 ## Open Questions
 
 - Should the pre-flight manifest be refreshed mid-implementation if a sibling PR merges, or is a one-time snapshot sufficient for v1?
 - Should hotspot analysis weight recent PRs more heavily than older ones (e.g., exponential decay), or is a flat window sufficient?
 - Should the topological sort incorporate PR review complexity (lines changed, number of files) as a secondary sort key, or is file-overlap sufficient?
-- Should `/design:work` emit a post-sprint coordination report summarizing: total rebases triggered, PRs queued due to dependencies, foundation stories created, and hotspot serialization events?
+- Should `/sdd:work` emit a post-sprint coordination report summarizing: total rebases triggered, PRs queued due to dependencies, foundation stories created, and hotspot serialization events?

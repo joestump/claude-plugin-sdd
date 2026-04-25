@@ -4,7 +4,7 @@
 
 The triage ceremony runs after the standard audit analysis (steps 4-8) completes. The raw audit findings are the input. The ceremony groups findings into functional themes, runs a 5-agent triage team, resolves disputes, and produces a triage report with remediation priorities.
 
-Note: These are the same 5 agent roles as the Grooming Ceremony (used by `/design:plan --scrum`), but with different responsibilities. In grooming, Engineer B challenges vague requirements. In triage, Engineer B challenges whether findings are genuine drift vs intentional evolution.
+Note: These are the same 5 agent roles as the Grooming Ceremony (used by `/sdd:plan --scrum`), but with different responsibilities. In grooming, Engineer B challenges vague requirements. In triage, Engineer B challenges whether findings are genuine drift vs intentional evolution.
 
 Tell the user after the standard audit completes: "Audit complete. Starting scrum triage — grouping findings into themes and running the triage team. Give me a few minutes."
 
@@ -43,7 +43,7 @@ Spawn five specialist agents with the following **verbatim personas**:
 > Challenge whether each finding is genuine drift or intentional evolution the spec hasn't caught up to. Articulate the architectural rationale — "looks intentional" is not sufficient. MUST object to deferred MUST/SHALL violations. Approve only with explicit one-sentence justification.
 
 **Architect**
-> For each disputed finding: is the ADR/spec still the correct source of truth? If Engineer B's evolution argument is sound, reclassify as "ARTIFACT UPDATE NEEDED" and suggest `/design:adr` or `/design:spec`. Verify governing comment requirements (per `references/shared-patterns.md` § "Governing Comment Format") in remediation acceptance criteria.
+> For each disputed finding: is the ADR/spec still the correct source of truth? If Engineer B's evolution argument is sound, reclassify as "ARTIFACT UPDATE NEEDED" and suggest `/sdd:adr` or `/sdd:spec`. Verify governing comment requirements (per `references/shared-patterns.md` § "Governing Comment Format") in remediation acceptance criteria.
 
 ## Phase 4: Collect and Resolve
 
@@ -101,7 +101,7 @@ These findings were reclassified by the Architect as artifacts that need updatin
 
 | Finding | Current Artifact | Suggested Action |
 |---------|-----------------|-----------------|
-| {finding description} | ADR-XXXX / SPEC-XXXX | `/design:adr {description}` / `/design:spec {capability}` |
+| {finding description} | ADR-XXXX / SPEC-XXXX | `/sdd:adr {description}` / `/sdd:spec {capability}` |
 
 ---
 
@@ -116,11 +116,11 @@ These findings were reclassified by the Architect as artifacts that need updatin
 ### Recommended Next Steps
 1. P1 themes: {list}
 2. Artifact updates needed: {list}
-3. Run `/design:plan --scrum` after updating artifacts to plan the remediation sprint
+3. Run `/sdd:plan --scrum` after updating artifacts to plan the remediation sprint
 ```
 
 ## Phase 6: Offer Issue Creation
 
 After the report, ask the user with `AskUserQuestion`: "Want me to create tracker issues for the P1 and P2 themes? I'll use your configured tracker and follow the standard issue format."
 
-If the user says yes, follow the tracker detection and issue creation flow from `/design:plan` steps 4-5. Each theme becomes one story issue with findings as the task checklist. P1 themes get priority label `p1`; P2 themes get `p2`.
+If the user says yes, follow the tracker detection and issue creation flow from `/sdd:plan` steps 4-5. Each theme becomes one story issue with findings as the task checklist. P1 themes get priority label `p1`; P2 themes get `p2`.

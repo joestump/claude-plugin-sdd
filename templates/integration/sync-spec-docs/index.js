@@ -1,5 +1,5 @@
 /**
- * sync-design-docs - Docusaurus Plugin
+ * sync-spec-docs - Docusaurus Plugin
  *
  * A build-time plugin that syncs ADRs and OpenSpec specifications from
  * the project's canonical source directories into the Docusaurus docs tree.
@@ -15,7 +15,7 @@
  * Usage in docusaurus.config.ts:
  *
  *   plugins: [
- *     ['./plugins/sync-design-docs', {
+ *     ['./plugins/sync-spec-docs', {
  *       projectRoot: '..',      // relative path from site dir to project root
  *       docsPath: 'docs',       // relative path from site dir to docs content directory
  *     }],
@@ -42,11 +42,11 @@ module.exports = function pluginSyncDesignDocs(context, options = {}) {
   const specsSource = path.join(projectRoot, 'docs', 'openspec', 'specs');
 
   return {
-    name: 'sync-design-docs',
+    name: 'sync-spec-docs',
 
     async loadContent() {
       if (!fs.existsSync(projectRoot)) {
-        console.warn(`[sync-design-docs] WARNING: projectRoot does not exist: ${projectRoot}`);
+        console.warn(`[sync-spec-docs] WARNING: projectRoot does not exist: ${projectRoot}`);
         console.warn('  Check the projectRoot option in your docusaurus.config');
         return;
       }
@@ -54,7 +54,7 @@ module.exports = function pluginSyncDesignDocs(context, options = {}) {
       const baseUrl = context.siteConfig.baseUrl.replace(/\/$/, '');
       const pathPrefix = '/architecture';
 
-      console.log('[sync-design-docs] Syncing design documents...');
+      console.log('[sync-spec-docs] Syncing design documents...');
       console.log(`  Project root: ${projectRoot}`);
       console.log(`  ADRs source: ${adrsSource}`);
       console.log(`  Specs source: ${specsSource}`);
@@ -95,7 +95,7 @@ module.exports = function pluginSyncDesignDocs(context, options = {}) {
         projectTitle: context.siteConfig.title,
       });
 
-      console.log('[sync-design-docs] Sync complete.');
+      console.log('[sync-spec-docs] Sync complete.');
     },
 
     getPathsToWatch() {

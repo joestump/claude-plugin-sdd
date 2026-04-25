@@ -2,14 +2,14 @@
 
 ## Context
 
-Sprint planning was previously embedded as step 8 of the `/design:spec` skill, which limited it to planning only during spec creation and supported only three trackers (Beads, GitHub, Gitea). Users with existing specs had no way to generate work items, and users with GitLab, Jira, or Linear were excluded. ADR-0008 decided to extract sprint planning into a standalone `/design:plan` skill with broader tracker support, preference persistence, and a clean separation from spec authoring. See ADR-0008 and SPEC-0007.
+Sprint planning was previously embedded as step 8 of the `/sdd:spec` skill, which limited it to planning only during spec creation and supported only three trackers (Beads, GitHub, Gitea). Users with existing specs had no way to generate work items, and users with GitLab, Jira, or Linear were excluded. ADR-0008 decided to extract sprint planning into a standalone `/sdd:plan` skill with broader tracker support, preference persistence, and a clean separation from spec authoring. See ADR-0008 and SPEC-0007.
 
 ## Goals / Non-Goals
 
 ### Goals
 - Enable sprint planning for any existing spec, not just newly created ones
 - Support six issue trackers (Beads, GitHub, GitLab, Gitea, Jira, Linear) with runtime detection
-- Persist tracker preferences and configuration to `.claude-plugin-design.json` to avoid repeated prompts
+- Persist tracker preferences and configuration to `.claude-plugin-sdd.json` to avoid repeated prompts
 - Decompose spec requirements into an epic/task/sub-task hierarchy with traceability
 - Fall back to `tasks.md` generation (SPEC-0006) when no tracker is available
 - Support `--review` mode for team-based plan review
@@ -18,22 +18,22 @@ Sprint planning was previously embedded as step 8 of the `/design:spec` skill, w
 - Include tracker-specific PR close keywords in issue bodies for auto-resolution on merge
 
 ### Non-Goals
-- Replacing or modifying the spec authoring workflow (`/design:spec`)
+- Replacing or modifying the spec authoring workflow (`/sdd:spec`)
 - Syncing issues back to spec artifacts when tracker state changes
 - Supporting tracker-specific features beyond issue creation (boards, sprints, labels)
 - Implementing `--gaps` or `--analyze` modes (documented as future considerations)
 - Tracking issue completion status from within the plugin
-- Retroactive issue organization and enrichment (separate `/design:organize` and `/design:enrich` skills per ADR-0009)
+- Retroactive issue organization and enrichment (separate `/sdd:organize` and `/sdd:enrich` skills per ADR-0009)
 
 ## Decisions
 
 ### Standalone skill over spec extension
 
-**Choice**: Create `/design:plan` as its own skill rather than extending `/design:spec` with a `--plan` flag.
+**Choice**: Create `/sdd:plan` as its own skill rather than extending `/sdd:spec` with a `--plan` flag.
 **Rationale**: Spec authoring and sprint planning are fundamentally different activities: one produces requirements and design documents, the other produces trackable work items. Coupling them forces users to invoke the spec workflow just to re-plan, and it bloats the spec skill's allowed-tools list with tracker-related tools. A standalone skill has a focused responsibility and can evolve independently.
 **Alternatives considered**:
-- Extend `/design:spec` with `--plan` flag: Overloads the spec skill; confusing argument semantics
-- Generic `/design:execute` skill: Too broad; bundles unrelated modes under a vague name
+- Extend `/sdd:spec` with `--plan` flag: Overloads the spec skill; confusing argument semantics
+- Generic `/sdd:execute` skill: Too broad; bundles unrelated modes under a vague name
 
 ### Runtime tracker detection via ToolSearch
 
@@ -43,9 +43,9 @@ Sprint planning was previously embedded as step 8 of the `/design:spec` skill, w
 - Static tracker configuration in plugin.json: Goes stale; cannot adapt to environment changes
 - Require user to specify tracker on every invocation: Adds friction; ignores detectable information
 
-### Preference persistence to `.claude-plugin-design.json`
+### Preference persistence to `.claude-plugin-sdd.json`
 
-**Choice**: Store tracker choice and configuration in a `.claude-plugin-design.json` file at the project root. The skill checks this file before running detection.
+**Choice**: Store tracker choice and configuration in a `.claude-plugin-sdd.json` file at the project root. The skill checks this file before running detection.
 **Rationale**: Most projects consistently use one tracker. Asking the user to confirm their tracker on every invocation is unnecessary friction. A project-root JSON file is version-controllable, shareable with teammates, and inspectable without special tooling. The merge-on-write approach (`tracker` and `tracker_config` keys only) avoids clobbering other potential keys.
 **Alternatives considered**:
 - In-memory preference (per-session): Lost between sessions; no benefit for returning users
@@ -76,12 +76,12 @@ Sprint planning was previously embedded as step 8 of the `/design:spec` skill, w
 **Alternatives considered**:
 - Always create a project: Too rigid; fails for trackers without project support
 - Never create a project: Misses a key organizational benefit that trackers provide
-- Single project per `/design:plan` run: Confusing when planning multiple specs; per-epic is more natural
+- Single project per `/sdd:plan` run: Confusing when planning multiple specs; per-epic is more natural
 
 ### Branch naming convention
 
-**Choice**: Use `feature/{issue-number}-{slug}` for tasks and `epic/{issue-number}-{slug}` for epics, with configurable prefixes via `--branch-prefix` or `.claude-plugin-design.json` `branches.prefix`.
-**Rationale**: Deterministic branch names eliminate the "what should I name this branch?" friction. The `feature/` and `epic/` prefixes follow Git Flow conventions that most teams already recognize. Including the issue number ensures traceability from branch to issue. The slug provides human-readable context. Configurability via `--branch-prefix` and `.claude-plugin-design.json` respects teams with established naming conventions.
+**Choice**: Use `feature/{issue-number}-{slug}` for tasks and `epic/{issue-number}-{slug}` for epics, with configurable prefixes via `--branch-prefix` or `.claude-plugin-sdd.json` `branches.prefix`.
+**Rationale**: Deterministic branch names eliminate the "what should I name this branch?" friction. The `feature/` and `epic/` prefixes follow Git Flow conventions that most teams already recognize. Including the issue number ensures traceability from branch to issue. The slug provides human-readable context. Configurability via `--branch-prefix` and `.claude-plugin-sdd.json` respects teams with established naming conventions.
 **Alternatives considered**:
 - Free-form branch names: No consistency; defeats the purpose of automation
 - Issue number only (e.g., `feature/42`): Lacks human-readable context when listing branches
@@ -98,17 +98,17 @@ Sprint planning was previously embedded as step 8 of the `/design:spec` skill, w
 
 ### Retroactive skills as separate commands
 
-**Choice**: Create `/design:organize` and `/design:enrich` as separate skills rather than adding retroactive modes to `/design:plan`.
-**Rationale**: Retroactive operations (grouping existing issues into projects, adding branch/PR metadata to existing issue bodies) operate on previously created issues, not on spec requirements. They require different user interactions (selecting which issues to update, handling conflicts with manually edited issue bodies) and different tool permissions. Combining them with `/design:plan` would violate the plugin's single-purpose skill convention and bloat the planning flow with conditional logic for forward vs. retroactive paths.
+**Choice**: Create `/sdd:organize` and `/sdd:enrich` as separate skills rather than adding retroactive modes to `/sdd:plan`.
+**Rationale**: Retroactive operations (grouping existing issues into projects, adding branch/PR metadata to existing issue bodies) operate on previously created issues, not on spec requirements. They require different user interactions (selecting which issues to update, handling conflicts with manually edited issue bodies) and different tool permissions. Combining them with `/sdd:plan` would violate the plugin's single-purpose skill convention and bloat the planning flow with conditional logic for forward vs. retroactive paths.
 **Alternatives considered**:
-- Add `--organize` and `--enrich` flags to `/design:plan`: Overloads the planning skill; confusing when combined with `--review`
-- Single `/design:workflow` skill: Too broad; bundles unrelated operations under a vague name (see ADR-0009 Option 3)
+- Add `--organize` and `--enrich` flags to `/sdd:plan`: Overloads the planning skill; confusing when combined with `--review`
+- Single `/sdd:workflow` skill: Too broad; bundles unrelated operations under a vague name (see ADR-0009 Option 3)
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A["/design:plan\n[spec] [flags]"] --> B{"Arguments\nprovided?"}
+    A["/sdd:plan\n[spec] [flags]"] --> B{"Arguments\nprovided?"}
 
     B -->|"SPEC-XXXX or name"| C["Resolve spec directory"]
     B -->|"No spec arg"| D["List specs via glob\nAskUserQuestion to choose"]
@@ -116,7 +116,7 @@ flowchart TD
 
     C --> E["Read spec.md + design.md"]
 
-    E --> F{"Check .claude-plugin-design.json"}
+    E --> F{"Check .claude-plugin-sdd.json"}
     F -->|"Saved tracker found"| G{"Tracker still\navailable?"}
     G -->|"Yes"| H["Use saved tracker\n+ config"]
     G -->|"No"| I["Warn user\nfall through"]
@@ -175,7 +175,7 @@ flowchart LR
         design["design.md\n(architecture)"]
     end
 
-    subgraph "/design:plan (Transform)"
+    subgraph "/sdd:plan (Transform)"
         read["Read & analyze"]
         decompose["Decompose into\nepic/task/sub-task"]
     end
@@ -208,13 +208,13 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    subgraph ".claude-plugin-design.json Lifecycle"
-        first["/design:plan\n(first run)"]
+    subgraph ".claude-plugin-sdd.json Lifecycle"
+        first["/sdd:plan\n(first run)"]
         detect["Detect tracker"]
         ask["Ask to save\npreference"]
-        write["Write .claude-plugin-design.json"]
-        second["/design:plan\n(subsequent run)"]
-        read_pref["Read .claude-plugin-design.json"]
+        write["Write .claude-plugin-sdd.json"]
+        second["/sdd:plan\n(subsequent run)"]
+        read_pref["Read .claude-plugin-sdd.json"]
         check["Verify tracker\nstill available"]
         use["Use saved\ntracker + config"]
     end
@@ -231,8 +231,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    subgraph ".claude-plugin-design.json Expanded Schema"
-        root[".claude-plugin-design.json"]
+    subgraph ".claude-plugin-sdd.json Expanded Schema"
+        root[".claude-plugin-sdd.json"]
         root --> tracker["tracker: 'github'"]
         root --> tracker_config["tracker_config:\n  owner: 'joestump'\n  repo: 'my-project'"]
         root --> branches["branches:\n  prefix: 'feature/'\n  (default, configurable)"]
@@ -243,7 +243,7 @@ flowchart TD
 ## Risks / Trade-offs
 
 - **Tracker API variability**: Each of the six trackers has different APIs, terminology (epic vs. initiative vs. project), and capabilities. Mitigation: the skill uses `ToolSearch` to discover available operations at runtime rather than assuming a fixed API; the SKILL.md provides tracker-specific guidance for config gathering.
-- **Stale preferences**: If a user switches trackers (e.g., migrates from GitHub to Jira), the saved preference in `.claude-plugin-design.json` will be wrong. Mitigation: the skill validates that the saved tracker is still available and warns + falls through to detection if not.
+- **Stale preferences**: If a user switches trackers (e.g., migrates from GitHub to Jira), the saved preference in `.claude-plugin-sdd.json` will be wrong. Mitigation: the skill validates that the saved tracker is still available and warns + falls through to detection if not.
 - **Over-decomposition**: Breaking every requirement into tasks and every complex requirement into sub-tasks could flood the tracker. Mitigation: sub-tasks are only created for requirements with 3+ scenarios; the review mode (`--review`) provides a check against over-decomposition.
 - **Spec drift**: If the spec changes after planning, the created issues may not reflect the current requirements. Mitigation: the skill does not track previously created issues; the proposed `--gaps` mode (future) would address this by comparing spec requirements against implementation and existing issues.
 - **MCP tool naming instability**: ToolSearch patterns like `mcp__*github*` depend on MCP server naming conventions that could change. Mitigation: CLI fallbacks (`gh`, `glab`, `bd`) provide a secondary detection path; patterns are broad enough to match common naming variations.
@@ -254,13 +254,13 @@ flowchart TD
 
 ## Migration Plan
 
-1. The `/design:spec` SKILL.md's step 8 (sprint planning) should be replaced with a note directing users to `/design:plan` for sprint planning after spec creation.
-2. No data migration is needed -- existing specs are fully compatible since `/design:plan` reads the same `spec.md` and `design.md` format.
+1. The `/sdd:spec` SKILL.md's step 8 (sprint planning) should be replaced with a note directing users to `/sdd:plan` for sprint planning after spec creation.
+2. No data migration is needed -- existing specs are fully compatible since `/sdd:plan` reads the same `spec.md` and `design.md` format.
 3. The `tasks.md` fallback behavior is unchanged from SPEC-0006; it now lives in the plan skill instead of the spec skill.
 
 ## Open Questions
 
-- Should `/design:plan` detect and skip requirements that already have corresponding issues in the tracker (idempotent re-planning)?
+- Should `/sdd:plan` detect and skip requirements that already have corresponding issues in the tracker (idempotent re-planning)?
 - Should the skill support partial planning (e.g., plan only requirements that match a filter or tag)?
 - When `--gaps` mode is implemented, should it compare against tracker issues, `tasks.md`, or both?
 - Should the planning report include estimated effort or complexity scores derived from the spec's scenario count?

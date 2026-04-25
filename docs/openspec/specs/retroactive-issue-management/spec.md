@@ -2,47 +2,47 @@
 
 ## Overview
 
-Two standalone skills for retroactively applying developer workflow conventions to existing tracker issues. `/design:organize` groups issues into tracker-native projects; `/design:enrich` appends branch naming and PR close-keyword sections to issue bodies. Both operate on issues previously created by `/design:plan` (or manually) for a given spec, without re-creating them. See ADR-0009.
+Two standalone skills for retroactively applying developer workflow conventions to existing tracker issues. `/sdd:organize` groups issues into tracker-native projects; `/sdd:enrich` appends branch naming and PR close-keyword sections to issue bodies. Both operate on issues previously created by `/sdd:plan` (or manually) for a given spec, without re-creating them. See ADR-0009.
 
 ## Requirements
 
 ### Requirement: Spec Resolution
 
-Both `/design:organize` and `/design:enrich` SHALL accept a spec identifier as their primary argument. The identifier MAY be a SPEC number (e.g., `SPEC-0003`) or a capability directory name (e.g., `web-dashboard`). Resolution MUST follow the same flow as `/design:plan` (SPEC-0007).
+Both `/sdd:organize` and `/sdd:enrich` SHALL accept a spec identifier as their primary argument. The identifier MAY be a SPEC number (e.g., `SPEC-0003`) or a capability directory name (e.g., `web-dashboard`). Resolution MUST follow the same flow as `/sdd:plan` (SPEC-0007).
 
 #### Scenario: Resolution by SPEC number
 
-- **WHEN** a user runs `/design:organize SPEC-0003` or `/design:enrich SPEC-0003`
+- **WHEN** a user runs `/sdd:organize SPEC-0003` or `/sdd:enrich SPEC-0003`
 - **THEN** the skill SHALL scan `docs/openspec/specs/*/spec.md` for a file whose title contains `SPEC-0003` and use the containing directory
 
 #### Scenario: Resolution by capability name
 
-- **WHEN** a user runs `/design:organize web-dashboard` or `/design:enrich web-dashboard`
+- **WHEN** a user runs `/sdd:organize web-dashboard` or `/sdd:enrich web-dashboard`
 - **THEN** the skill SHALL look for `docs/openspec/specs/web-dashboard/spec.md` and use that directory
 
 #### Scenario: No argument provided
 
-- **WHEN** a user runs `/design:organize` or `/design:enrich` with no spec identifier (ignoring flags)
+- **WHEN** a user runs `/sdd:organize` or `/sdd:enrich` with no spec identifier (ignoring flags)
 - **THEN** the skill SHALL list all available specs by globbing `docs/openspec/specs/*/spec.md`, reading each title, and using `AskUserQuestion` to let the user choose
 
 #### Scenario: Spec not found
 
 - **WHEN** the provided identifier does not match any existing spec
-- **THEN** the skill SHALL inform the user and suggest running `/design:spec` to create one
+- **THEN** the skill SHALL inform the user and suggest running `/sdd:spec` to create one
 
 ### Requirement: Tracker Detection
 
-Both skills SHALL detect the user's issue tracker using the same detection flow as `/design:plan` (SPEC-0007, Requirement: Tracker Detection). Both skills MUST check `.claude-plugin-design.json` for a saved tracker preference before running detection.
+Both skills SHALL detect the user's issue tracker using the same detection flow as `/sdd:plan` (SPEC-0007, Requirement: Tracker Detection). Both skills MUST check `.claude-plugin-sdd.json` for a saved tracker preference before running detection.
 
 #### Scenario: Saved preference available
 
-- **WHEN** `.claude-plugin-design.json` exists with a `"tracker"` key and the tracker is still available
+- **WHEN** `.claude-plugin-sdd.json` exists with a `"tracker"` key and the tracker is still available
 - **THEN** the skill SHALL use the saved tracker and configuration directly without prompting
 
 #### Scenario: No tracker detected
 
 - **WHEN** no tracker is detected
-- **THEN** the skill SHALL inform the user that a tracker is required for retroactive management and suggest running `/design:plan` with `tasks.md` fallback instead
+- **THEN** the skill SHALL inform the user that a tracker is required for retroactive management and suggest running `/sdd:plan` with `tasks.md` fallback instead
 
 ### Requirement: Issue Discovery
 
@@ -60,13 +60,13 @@ Both skills SHALL search the detected tracker for existing issues that reference
 
 #### Scenario: Beads tracker
 
-- **WHEN** the tracker is Beads and the skill is `/design:organize`
+- **WHEN** the tracker is Beads and the skill is `/sdd:organize`
 - **THEN** the skill SHALL inform the user that Beads epics are the native grouping mechanism and no project creation is needed, then exit gracefully
 
 #### Scenario: No issues found
 
 - **WHEN** no issues referencing the spec are found in the tracker
-- **THEN** the skill SHALL inform the user and suggest running `/design:plan` first to create issues
+- **THEN** the skill SHALL inform the user and suggest running `/sdd:plan` first to create issues
 
 ### Requirement: Epic vs. Task Classification
 
@@ -89,21 +89,21 @@ Both skills SHALL classify discovered issues as either epics or tasks based on i
 
 ### Requirement: Project Grouping (organize)
 
-The `/design:organize` skill SHALL create tracker-native projects and add discovered issues to them. The skill MUST NOT modify issue content -- it SHALL only create projects and manage project membership.
+The `/sdd:organize` skill SHALL create tracker-native projects and add discovered issues to them. The skill MUST NOT modify issue content -- it SHALL only create projects and manage project membership.
 
 #### Scenario: Default per-epic grouping
 
-- **WHEN** a user runs `/design:organize SPEC-XXXX` without `--project`
+- **WHEN** a user runs `/sdd:organize SPEC-XXXX` without `--project`
 - **THEN** the skill SHALL create one tracker-native project per discovered epic, named after the epic, and add the epic and its associated tasks to that project
 
 #### Scenario: Single combined project
 
-- **WHEN** a user runs `/design:organize SPEC-XXXX --project "Q1 Sprint"`
+- **WHEN** a user runs `/sdd:organize SPEC-XXXX --project "Q1 Sprint"`
 - **THEN** the skill SHALL create a single project named "Q1 Sprint" and add all discovered issues (epics and tasks) to it
 
 #### Scenario: Cached project IDs
 
-- **WHEN** `.claude-plugin-design.json` contains a `projects.project_ids` entry for the target spec
+- **WHEN** `.claude-plugin-sdd.json` contains a `projects.project_ids` entry for the target spec
 - **THEN** the skill SHALL reuse the existing project instead of creating a new one and SHALL add any newly discovered issues to it
 
 #### Scenario: Tracker without project support
@@ -118,12 +118,12 @@ The `/design:organize` skill SHALL create tracker-native projects and add discov
 
 #### Scenario: Idempotent execution
 
-- **WHEN** `/design:organize` is run multiple times for the same spec
+- **WHEN** `/sdd:organize` is run multiple times for the same spec
 - **THEN** the skill SHALL skip creating projects that already exist and SHALL only add issues not yet in the project
 
 ### Requirement: Branch Enrichment (enrich)
 
-The `/design:enrich` skill SHALL append a `### Branch` section to issue bodies that do not already have one. The branch name MUST follow the pattern `{prefix}/{issue-number}-{slug}`.
+The `/sdd:enrich` skill SHALL append a `### Branch` section to issue bodies that do not already have one. The branch name MUST follow the pattern `{prefix}/{issue-number}-{slug}`.
 
 #### Scenario: Task branch naming
 
@@ -137,7 +137,7 @@ The `/design:enrich` skill SHALL append a `### Branch` section to issue bodies t
 
 #### Scenario: Custom branch prefix
 
-- **WHEN** the user passes `--branch-prefix hotfix` or `.claude-plugin-design.json` contains `branches.prefix: "hotfix"`
+- **WHEN** the user passes `--branch-prefix hotfix` or `.claude-plugin-sdd.json` contains `branches.prefix: "hotfix"`
 - **THEN** the skill SHALL use `hotfix` as the prefix instead of `feature` for task branches
 
 #### Scenario: Branch section already exists
@@ -147,12 +147,12 @@ The `/design:enrich` skill SHALL append a `### Branch` section to issue bodies t
 
 #### Scenario: Branches disabled in config
 
-- **WHEN** `.claude-plugin-design.json` contains `branches.enabled: false`
+- **WHEN** `.claude-plugin-sdd.json` contains `branches.enabled: false`
 - **THEN** the skill SHALL skip `### Branch` sections entirely and inform the user
 
 ### Requirement: PR Convention Enrichment (enrich)
 
-The `/design:enrich` skill SHALL append a `### PR Convention` section to issue bodies that do not already have one. The section MUST contain the tracker-specific close keyword.
+The `/sdd:enrich` skill SHALL append a `### PR Convention` section to issue bodies that do not already have one. The section MUST contain the tracker-specific close keyword.
 
 #### Scenario: GitHub/Gitea PR convention
 
@@ -181,7 +181,7 @@ The `/design:enrich` skill SHALL append a `### PR Convention` section to issue b
 
 #### Scenario: PR conventions disabled in config
 
-- **WHEN** `.claude-plugin-design.json` contains `pr_conventions.enabled: false`
+- **WHEN** `.claude-plugin-sdd.json` contains `pr_conventions.enabled: false`
 - **THEN** the skill SHALL skip `### PR Convention` sections entirely and inform the user
 
 ### Requirement: Slug Derivation
@@ -200,7 +200,7 @@ Both skills SHALL derive branch slugs from issue titles using a deterministic ke
 
 #### Scenario: Long titles
 
-- **WHEN** an issue title produces a slug longer than 50 characters (or `branches.slug_max_length` from `.claude-plugin-design.json`)
+- **WHEN** an issue title produces a slug longer than 50 characters (or `branches.slug_max_length` from `.claude-plugin-sdd.json`)
 - **THEN** the slug SHALL be truncated to the maximum length and trailing hyphens SHALL be stripped
 
 ### Requirement: Dry Run Mode
@@ -209,31 +209,31 @@ Both skills SHALL support a `--dry-run` flag that previews changes without modif
 
 #### Scenario: Organize dry run
 
-- **WHEN** a user runs `/design:organize SPEC-XXXX --dry-run`
+- **WHEN** a user runs `/sdd:organize SPEC-XXXX --dry-run`
 - **THEN** the skill SHALL list the projects that would be created, which issues would be added to each project, and whether any cached project IDs would be reused, without creating or modifying anything
 
 #### Scenario: Enrich dry run
 
-- **WHEN** a user runs `/design:enrich SPEC-XXXX --dry-run`
+- **WHEN** a user runs `/sdd:enrich SPEC-XXXX --dry-run`
 - **THEN** the skill SHALL show the exact `### Branch` and `### PR Convention` content that would be appended to each issue, indicate which issues would be skipped (already enriched), without modifying any issue bodies
 
 ### Requirement: Configuration Persistence
 
-Both skills SHALL read from `.claude-plugin-design.json` for saved configuration. The `/design:organize` skill SHALL offer to save project IDs after successful creation. Neither skill SHALL overwrite existing `.claude-plugin-design.json` keys when writing.
+Both skills SHALL read from `.claude-plugin-sdd.json` for saved configuration. The `/sdd:organize` skill SHALL offer to save project IDs after successful creation. Neither skill SHALL overwrite existing `.claude-plugin-sdd.json` keys when writing.
 
 #### Scenario: Organize saves project IDs
 
-- **WHEN** `/design:organize` creates new projects
-- **THEN** the skill SHALL offer to save the project IDs to `.claude-plugin-design.json` under `projects.project_ids` keyed by spec number
+- **WHEN** `/sdd:organize` creates new projects
+- **THEN** the skill SHALL offer to save the project IDs to `.claude-plugin-sdd.json` under `projects.project_ids` keyed by spec number
 
 #### Scenario: Enrich reads branch config
 
-- **WHEN** `/design:enrich` runs
-- **THEN** the skill SHALL read `.claude-plugin-design.json` sections `branches` and `pr_conventions` for saved preferences (prefix, slug_max_length, close_keyword, ref_keyword) and apply them
+- **WHEN** `/sdd:enrich` runs
+- **THEN** the skill SHALL read `.claude-plugin-sdd.json` sections `branches` and `pr_conventions` for saved preferences (prefix, slug_max_length, close_keyword, ref_keyword) and apply them
 
-#### Scenario: Merging with existing .claude-plugin-design.json
+#### Scenario: Merging with existing .claude-plugin-sdd.json
 
-- **WHEN** `.claude-plugin-design.json` already exists with other keys
+- **WHEN** `.claude-plugin-sdd.json` already exists with other keys
 - **THEN** the skill SHALL merge without overwriting the entire file
 
 ### Requirement: Error Handling and Resilience
@@ -256,10 +256,10 @@ Both skills SHALL produce a summary report after execution.
 
 #### Scenario: Organize report
 
-- **WHEN** `/design:organize` completes
-- **THEN** the skill SHALL report: number of projects created (or reused), number of issues organized into projects, any failures with issue numbers, and whether `.claude-plugin-design.json` was updated
+- **WHEN** `/sdd:organize` completes
+- **THEN** the skill SHALL report: number of projects created (or reused), number of issues organized into projects, any failures with issue numbers, and whether `.claude-plugin-sdd.json` was updated
 
 #### Scenario: Enrich report
 
-- **WHEN** `/design:enrich` completes
+- **WHEN** `/sdd:enrich` completes
 - **THEN** the skill SHALL report: number of issues enriched (with breakdown of `### Branch` vs `### PR Convention`), number of issues skipped (already had sections), and any failures with issue numbers and error details

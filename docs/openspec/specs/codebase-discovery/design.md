@@ -2,12 +2,12 @@
 
 ## Context
 
-The design plugin assumes users start by writing ADRs and specs, then build code that conforms to them. In practice, most teams adopt the plugin on projects that already have significant codebases with implicit architectural decisions embedded in dependency choices, code structure, and configuration. There is no way to bootstrap a design artifact library from existing code. This capability adds `/design:discover` to reverse-engineer what the code implies and suggest artifacts the user can selectively create. See ADR-0005 for the full decision rationale.
+The SDD plugin assumes users start by writing ADRs and specs, then build code that conforms to them. In practice, most teams adopt the plugin on projects that already have significant codebases with implicit architectural decisions embedded in dependency choices, code structure, and configuration. There is no way to bootstrap a design artifact library from existing code. This capability adds `/sdd:discover` to reverse-engineer what the code implies and suggest artifacts the user can selectively create. See ADR-0005 for the full decision rationale.
 
 ## Goals / Non-Goals
 
 ### Goals
-- Enable existing projects to adopt the design plugin without starting from scratch
+- Enable existing projects to adopt the SDD plugin without starting from scratch
 - Identify implicit architectural decisions across dependencies, patterns, structure, and infrastructure
 - Identify subsystem boundaries worthy of formal specification
 - Produce actionable suggestions with evidence and ready-to-use commands
@@ -25,18 +25,18 @@ The design plugin assumes users start by writing ADRs and specs, then build code
 ### Suggestion-only output over auto-generation
 
 **Choice**: The skill produces a report of suggestions; it does not create any files.
-**Rationale**: Auto-generating artifacts removes user agency and risks polluting the artifact directories with low-quality drafts. The suggestion approach lets users evaluate each recommendation and decide what's worth formalizing. This aligns with the plugin's existing pattern where creation skills (`/design:adr`, `/design:spec`) are the only file-writing entry points.
+**Rationale**: Auto-generating artifacts removes user agency and risks polluting the artifact directories with low-quality drafts. The suggestion approach lets users evaluate each recommendation and decide what's worth formalizing. This aligns with the plugin's existing pattern where creation skills (`/sdd:adr`, `/sdd:spec`) are the only file-writing entry points.
 **Alternatives considered**:
 - Auto-generate draft ADRs/specs with `proposed`/`draft` status: Removes user control; cleanup burden if suggestions are wrong
 - Interactive mode asking per-suggestion: Slows down the process; better to present everything and let the user choose
 
 ### Single skill over split or audit extension
 
-**Choice**: A single `/design:discover` skill rather than splitting into ADR/spec discovery or extending `/design:audit`.
+**Choice**: A single `/sdd:discover` skill rather than splitting into ADR/spec discovery or extending `/sdd:audit`.
 **Rationale**: Decision discovery and spec boundary discovery draw on the same codebase exploration -- understanding the auth system reveals both "chose JWT" (ADR) and "auth API boundary" (spec). Extending audit would overload a skill with a fundamentally different purpose (validation vs. discovery).
 **Alternatives considered**:
-- Two skills (`/design:discover:adrs`, `/design:discover:specs`): Redundant analysis; introduces unused sub-namespace pattern
-- `--discover` flag on `/design:audit`: Conflates validation with discovery; different output formats needed
+- Two skills (`/sdd:discover:adrs`, `/sdd:discover:specs`): Redundant analysis; introduces unused sub-namespace pattern
+- `--discover` flag on `/sdd:audit`: Conflates validation with discovery; different output formats needed
 
 ### Parallel exploration for large codebases
 
@@ -65,7 +65,7 @@ flowchart TB
         codebase["Project Codebase"]
     end
 
-    subgraph "/design:discover"
+    subgraph "/sdd:discover"
         parse["Parse scope\nargument"]
         load_existing["Load existing\nADRs & specs"]
 
@@ -89,8 +89,8 @@ flowchart TB
     end
 
     subgraph "User Action (manual)"
-        adr_cmd["/design:adr\n{description}"]
-        spec_cmd["/design:spec\n{capability}"]
+        adr_cmd["/sdd:adr\n{description}"]
+        spec_cmd["/sdd:spec\n{capability}"]
     end
 
     scope --> parse

@@ -1,6 +1,6 @@
 {
   "extraKnownMarketplaces": {
-    "claude-plugin-design": {
+    "claude-plugin-sdd": {
       "source": {
         "source": "directory",
         "path": "."
@@ -8,6 +8,6 @@
     }
   },
   "enabledPlugins": {
-    "design@claude-plugin-design": true
+    "sdd@claude-plugin-sdd": true
   }
 }

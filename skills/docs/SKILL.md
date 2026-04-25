@@ -58,24 +58,24 @@ Each module's artifacts are transformed independently and placed under a module-
 - Check if Node.js is installed. If not, tell the user: "Node.js is required to run the docs site. Please install it from https://nodejs.org/ and re-run this command." and stop.
 - Check if `{adr-dir}` has any ADR `.md` files
 - Check if `{spec-dir}` has any spec directories (containing `spec.md`). Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
-- If NEITHER has content, tell the user: "No ADRs or specs found. Create some first with `/design:adr` or `/design:spec`, then re-run `/design:docs`." and stop.
+- If NEITHER has content, tell the user: "No ADRs or specs found. Create some first with `/sdd:adr` or `/sdd:spec`, then re-run `/sdd:docs`." and stop.
 - If only one has content, proceed but note which is empty (e.g., "No specs found yet -- the docs site will only include ADRs for now.")
 
 ### Step 2: Detect Existing Docusaurus Site and Upgrade State
 
 #### 2.1: Check for upgrade manifest
 
-Check if `.design-docs.json` exists at the project root.
+Check if `.sdd-docs.json` exists at the project root.
 
-**If `.design-docs.json` exists:**
+**If `.sdd-docs.json` exists:**
 - Read and parse the manifest
 - Check if the `siteDir` referenced in the manifest still exists on disk
   - **If siteDir exists** → enter **Upgrade Mode** (Step 3C). Skip Steps 2.2 and 2.3.
-  - **If siteDir is missing** → warn the user: "Found `.design-docs.json` but the site directory `{siteDir}` no longer exists." Use `AskUserQuestion` to offer:
+  - **If siteDir is missing** → warn the user: "Found `.sdd-docs.json` but the site directory `{siteDir}` no longer exists." Use `AskUserQuestion` to offer:
     - "Re-scaffold a new docs site" → proceed with **Scaffold Mode** (Step 3A)
     - "Cancel" → stop
 
-**If `.design-docs.json` does NOT exist**, continue to Step 2.2.
+**If `.sdd-docs.json` does NOT exist**, continue to Step 2.2.
 
 #### 2.2: Scan for existing Docusaurus sites
 
@@ -87,10 +87,10 @@ find . -maxdepth 2 -name 'docusaurus.config.*' -not -path './docs-site/*' -not -
 
 #### 2.3: Choose mode
 
-**If an existing docs site directory is detected** (`docs-site/` exists or an integration site was found in 2.2) **but no `.design-docs.json`**:
-- Warn: "Upgrade tracking unavailable — `.design-docs.json` not found."
+**If an existing docs site directory is detected** (`docs-site/` exists or an integration site was found in 2.2) **but no `.sdd-docs.json`**:
+- Warn: "Upgrade tracking unavailable — `.sdd-docs.json` not found."
 - Use `AskUserQuestion` to offer:
-  - "Create manifest from current state" → compute SHA-256 checksums of all managed files in the existing site, write `.design-docs.json` using the current state as baseline, then enter **Upgrade Mode** (Step 3C)
+  - "Create manifest from current state" → compute SHA-256 checksums of all managed files in the existing site, write `.sdd-docs.json` using the current state as baseline, then enter **Upgrade Mode** (Step 3C)
   - "Continue without upgrade tracking" → proceed to mode selection below
   - "Cancel" → stop
 
@@ -126,9 +126,9 @@ Runs after Step 3A or 3B to establish upgrade tracking.
 
 **Determine managed files** based on mode:
 - **Scaffold**: files in `docs-site/scripts/`, `docs-site/src/components/`, `docs-site/src/css/`, `docs-site/src/theme/`
-- **Integration**: files in `{site}/plugins/sync-design-docs/`, `{site}/src/components/design-docs/`, `{site}/src/css/design-docs.css`, `{site}/src/theme/MDXComponents.tsx` (if created/modified)
+- **Integration**: files in `{site}/plugins/sync-spec-docs/`, `{site}/src/components/design-docs/`, `{site}/src/css/design-docs.css`, `{site}/src/theme/MDXComponents.tsx` (if created/modified)
 
-Compute SHA-256 checksum for each file (`shasum -a 256 {file-path}`), then write `.design-docs.json`:
+Compute SHA-256 checksum for each file (`shasum -a 256 {file-path}`), then write `.sdd-docs.json`:
 
 ```json
 {
@@ -143,7 +143,7 @@ Compute SHA-256 checksum for each file (`shasum -a 256 {file-path}`), then write
 }
 ```
 
-Tell the user: "Created `.design-docs.json` with {N} tracked files. Future runs of `/design:docs` will detect changes and offer upgrades."
+Tell the user: "Created `.sdd-docs.json` with {N} tracked files. Future runs of `/sdd:docs` will detect changes and offer upgrades."
 
 ---
 
@@ -161,7 +161,7 @@ The templates directory contains production-ready versions of all files. The `cp
 - `build-spec-mapping.js` -- Scans specs for SPEC ID prefixes and generates mapping JSON
 - `generate-index.js` -- Creates the landing page (index.mdx) with links to ADRs and specs sections with counts
 
-### Integration Mode Templates (`templates/integration/sync-design-docs/`)
+### Integration Mode Templates (`templates/integration/sync-spec-docs/`)
 
 A self-contained Docusaurus plugin with adapted transform scripts.
 
@@ -203,7 +203,7 @@ Used by both modes. In scaffold mode, they live at `docs-site/src/components/`. 
 - In integration mode, NEVER overwrite the existing site's `docusaurus.config.ts` wholesale -- only add the plugin entry and CSS import
 - In integration mode, ALWAYS namespace components under `design-docs/` to avoid collisions with existing components
 - In integration mode, generated files go to `{site}/docs/architecture/` -- this directory is gitignored and regenerated on every build
-- Always create `.design-docs.json` after a fresh scaffold or integration install (Step 4)
+- Always create `.sdd-docs.json` after a fresh scaffold or integration install (Step 4)
 - Never delete or skip manifest creation -- it is required for upgrade tracking
 - During upgrades (Step 3C), always ask before overwriting user-modified files
 - The manifest `files` object uses project-root-relative paths as keys

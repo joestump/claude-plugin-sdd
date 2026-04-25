@@ -1,15 +1,15 @@
 # Upgrade Mode (Step 3C)
 
-Entered when `.design-docs.json` exists and the referenced `siteDir` is present on disk. Updates an existing docs installation to the latest plugin templates while preserving user customizations.
+Entered when `.sdd-docs.json` exists and the referenced `siteDir` is present on disk. Updates an existing docs installation to the latest plugin templates while preserving user customizations.
 
-Read the manifest from `.design-docs.json`. Let `{mode}` be the manifest's `mode` field (`"scaffold"` or `"integration"`), and `{site}` be the resolved `siteDir`.
+Read the manifest from `.sdd-docs.json`. Let `{mode}` be the manifest's `mode` field (`"scaffold"` or `"integration"`), and `{site}` be the resolved `siteDir`.
 
 ## 3C.1: Determine template source paths
 
 Based on the manifest's `mode`:
 
 - **Scaffold**: template root is `{plugin-path}/templates/docusaurus/`
-- **Integration**: template root is `{plugin-path}/templates/integration/sync-design-docs/` for plugin files, and `{plugin-path}/templates/docusaurus/src/components/` for shared components
+- **Integration**: template root is `{plugin-path}/templates/integration/sync-spec-docs/` for plugin files, and `{plugin-path}/templates/docusaurus/src/components/` for shared components
 
 ## 3C.2: Process each managed file
 
@@ -31,13 +31,13 @@ For entries where `managed` is `false`, skip entirely.
 Check for files in the current plugin templates that are NOT listed in the manifest:
 
 - For **scaffold**: scan `templates/docusaurus/scripts/`, `templates/docusaurus/src/components/`, `templates/docusaurus/src/css/`, `templates/docusaurus/src/theme/`
-- For **integration**: scan `templates/integration/sync-design-docs/`, `templates/docusaurus/src/components/`
+- For **integration**: scan `templates/integration/sync-spec-docs/`, `templates/docusaurus/src/components/`
 
 For each new file: install it to the appropriate location and add to the manifest with `managed: true` and its SHA-256 checksum.
 
 ## 3C.4: Update the manifest
 
-Write the updated `.design-docs.json`:
+Write the updated `.sdd-docs.json`:
 - Set `version` to the current plugin version from `.claude-plugin/plugin.json`
 - Set `updatedAt` to the current ISO timestamp
 - Update all `checksum` values to reflect the current on-disk state

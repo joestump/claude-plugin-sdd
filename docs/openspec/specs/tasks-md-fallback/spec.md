@@ -2,13 +2,13 @@
 
 ## Overview
 
-When no external issue tracker (Beads, GitHub, Gitea, GitLab, Jira, Linear) is available during sprint planning, the `/design:plan` skill SHALL generate a `tasks.md` file as an openspec artifact co-located with `spec.md` and `design.md`. This provides durable, machine-parseable task tracking without requiring external tooling. See ADR-0007 and ADR-0008.
+When no external issue tracker (Beads, GitHub, Gitea, GitLab, Jira, Linear) is available during sprint planning, the `/sdd:plan` skill SHALL generate a `tasks.md` file as an openspec artifact co-located with `spec.md` and `design.md`. This provides durable, machine-parseable task tracking without requiring external tooling. See ADR-0007 and ADR-0008.
 
 ## Requirements
 
 ### Requirement: Tracker Detection Fallback
 
-The `/design:plan` skill MUST detect available issue trackers (see `references/shared-patterns.md` § "Tracker Detection"). When no tracker is detected, the skill SHALL generate a `tasks.md` file instead of printing an ephemeral markdown table to the conversation.
+The `/sdd:plan` skill MUST detect available issue trackers (see `references/shared-patterns.md` § "Tracker Detection"). When no tracker is detected, the skill SHALL generate a `tasks.md` file instead of printing an ephemeral markdown table to the conversation.
 
 #### Scenario: No tracker available
 

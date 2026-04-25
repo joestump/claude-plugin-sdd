@@ -2,7 +2,7 @@
 
 ## Context
 
-The design plugin needed standard formats for recording architectural decisions and formal specifications before any other capabilities could be built. Without standardized formats, teams would produce inconsistent documents that are hard to cross-reference, review, and maintain. This capability establishes MADR for ADRs, OpenSpec for specifications, and four core skills for artifact lifecycle management. See ADR-0003 for the full decision rationale.
+The SDD plugin needed standard formats for recording architectural decisions and formal specifications before any other capabilities could be built. Without standardized formats, teams would produce inconsistent documents that are hard to cross-reference, review, and maintain. This capability establishes MADR for ADRs, OpenSpec for specifications, and four core skills for artifact lifecycle management. See ADR-0003 for the full decision rationale.
 
 ## Goals / Non-Goals
 
@@ -40,7 +40,7 @@ The design plugin needed standard formats for recording architectural decisions 
 
 ### Four core skills
 
-**Choice**: `/design:adr`, `/design:spec`, `/design:list`, and `/design:status` as the foundational skill set.
+**Choice**: `/sdd:adr`, `/sdd:spec`, `/sdd:list`, and `/sdd:status` as the foundational skill set.
 **Rationale**: Covers creation, discovery, and lifecycle management -- the minimal complete set for artifact management.
 **Alternatives considered**:
 - Fewer skills (combine list + status): Different operations with different risk profiles (read-only vs. file modification)
@@ -49,7 +49,7 @@ The design plugin needed standard formats for recording architectural decisions 
 ### Scenario heading level at ####
 
 **Choice**: Scenarios use exactly `####` (h4) headings in spec.md.
-**Rationale**: This specific level enables downstream tooling (the `/design:docs` Docusaurus generator) to reliably parse and render scenarios with RequirementBox components. Using `###` or bullets would cause silent failures.
+**Rationale**: This specific level enables downstream tooling (the `/sdd:docs` Docusaurus generator) to reliably parse and render scenarios with RequirementBox components. Using `###` or bullets would cause silent failures.
 **Alternatives considered**:
 - `###` headings: Conflicts with requirement headings at the same level
 - Bullet-list scenarios: Not parseable by the transform pipeline
@@ -59,13 +59,13 @@ The design plugin needed standard formats for recording architectural decisions 
 ```mermaid
 flowchart TB
     subgraph "Creation Skills"
-        adr_skill["/design:adr\n[description] [--review]"]
-        spec_skill["/design:spec\n[capability] [--review]"]
+        adr_skill["/sdd:adr\n[description] [--review]"]
+        spec_skill["/sdd:spec\n[capability] [--review]"]
     end
 
     subgraph "Management Skills"
-        list_skill["/design:list\n[adr|spec|all]"]
-        status_skill["/design:status\n[ID] [new-status]"]
+        list_skill["/sdd:list\n[adr|spec|all]"]
+        status_skill["/sdd:status\n[ID] [new-status]"]
     end
 
     subgraph "ADR Artifacts (MADR)"
@@ -115,10 +115,10 @@ flowchart TB
 ## Risks / Trade-offs
 
 - **Template overhead**: MADR's full template can feel heavyweight for trivial decisions. Mitigation: accept that documentation overhead is the price of consistency.
-- **Paired-file drift**: spec.md and design.md in the same capability can drift from each other. Mitigation: `/design:check` and `/design:audit` (ADR-0001) detect this.
+- **Paired-file drift**: spec.md and design.md in the same capability can drift from each other. Mitigation: `/sdd:check` and `/sdd:audit` (ADR-0001) detect this.
 - **Format lock-in**: Adopting MADR and OpenSpec means accepting their conventions. Mitigation: both formats are extensible (e.g., added mandatory Architecture Diagram section to MADR).
 
 ## Open Questions
 
-- Should `/design:status` support batch updates (e.g., deprecate all ADRs related to a superseded capability)?
+- Should `/sdd:status` support batch updates (e.g., deprecate all ADRs related to a superseded capability)?
 - Should the plugin enforce a minimum set of MADR sections or allow authors to skip optional ones?

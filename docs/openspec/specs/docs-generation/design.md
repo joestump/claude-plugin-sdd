@@ -2,7 +2,7 @@
 
 ## Context
 
-Teams accumulate ADRs and specs as markdown files in the repository. These lack discoverability -- no search, no cross-referencing, no visual distinction for RFC 2119 keywords, and no way to share with stakeholders who don't use Git. This capability adds `/design:docs` to generate Docusaurus documentation from design artifacts, supporting both standalone scaffolding and integration into existing Docusaurus sites, with manifest-based upgrades and separate spec/design pages. See ADR-0004 for the original scaffolding decision and ADR-0006 for integration mode, upgrade lifecycle, and spec/design separation.
+Teams accumulate ADRs and specs as markdown files in the repository. These lack discoverability -- no search, no cross-referencing, no visual distinction for RFC 2119 keywords, and no way to share with stakeholders who don't use Git. This capability adds `/sdd:docs` to generate Docusaurus documentation from design artifacts, supporting both standalone scaffolding and integration into existing Docusaurus sites, with manifest-based upgrades and separate spec/design pages. See ADR-0004 for the original scaffolding decision and ADR-0006 for integration mode, upgrade lifecycle, and spec/design separation.
 
 ## Goals / Non-Goals
 
@@ -65,7 +65,7 @@ Teams accumulate ADRs and specs as markdown files in the repository. These lack 
 
 ### Build-time Docusaurus plugin for integration mode (ADR-0006)
 
-**Choice**: Integration mode installs a self-contained Docusaurus plugin (`sync-design-docs`) that runs transforms during the `loadContent()` lifecycle phase and watches source files via `getPathsToWatch()`.
+**Choice**: Integration mode installs a self-contained Docusaurus plugin (`sync-spec-docs`) that runs transforms during the `loadContent()` lifecycle phase and watches source files via `getPathsToWatch()`.
 **Rationale**: `loadContent()` is the standard Docusaurus hook for generating content before the build. The plugin is self-contained with its own transform scripts (parameterized for the existing site's paths), requiring no modifications to the existing site's build pipeline beyond registering the plugin.
 **Alternatives considered**:
 - Pre-build script: Requires users to modify their build commands; not integrated with Docusaurus HMR
@@ -81,7 +81,7 @@ Teams accumulate ADRs and specs as markdown files in the repository. These lack 
 
 ### Manifest-based upgrade with checksum tracking (ADR-0006)
 
-**Choice**: Create a `.design-docs.json` manifest at the project root tracking plugin version, mode, site directory, and SHA-256 checksums of all managed files. On re-run, compare checksums to classify files as unchanged (safe to replace), modified (show diff and ask), or missing (re-create).
+**Choice**: Create a `.sdd-docs.json` manifest at the project root tracking plugin version, mode, site directory, and SHA-256 checksums of all managed files. On re-run, compare checksums to classify files as unchanged (safe to replace), modified (show diff and ask), or missing (re-create).
 **Rationale**: Checksums precisely detect user customizations without requiring git operations. Works in any environment (CI, restricted shells). The manifest is a single inspectable JSON file.
 **Alternatives considered**:
 - Git-based diffing against version tags: Requires plugin as a git repo at upgrade time; can't distinguish user changes from plugin changes without a common ancestor
@@ -116,20 +116,20 @@ Teams accumulate ADRs and specs as markdown files in the repository. These lack 
 
 ```mermaid
 flowchart TD
-    start["/design:docs"] --> preflight["Pre-flight checks\n(Node.js, artifacts)"]
+    start["/sdd:docs"] --> preflight["Pre-flight checks\n(Node.js, artifacts)"]
     preflight --> scan["Scan for existing\ndocusaurus.config.*"]
     scan --> found{Existing site?}
     found -->|Yes| ask["Ask: Integrate\nor Scaffold?"]
-    found -->|No| manifest_s{.design-docs.json?}
-    ask -->|Integrate| manifest_i{.design-docs.json?}
+    found -->|No| manifest_s{.sdd-docs.json?}
+    ask -->|Integrate| manifest_i{.sdd-docs.json?}
     ask -->|Scaffold| manifest_s
     manifest_s -->|Yes| upgrade_s["Upgrade (scaffold)"]
     manifest_s -->|No| scaffold["Scaffold Mode"]
     manifest_i -->|Yes| upgrade_i["Upgrade (integration)"]
     manifest_i -->|No| integrate["Integration Mode"]
-    scaffold --> manifest["Write .design-docs.json"]
+    scaffold --> manifest["Write .sdd-docs.json"]
     integrate --> manifest
-    upgrade_s --> manifest_u["Update .design-docs.json"]
+    upgrade_s --> manifest_u["Update .sdd-docs.json"]
     upgrade_i --> manifest_u
 ```
 
@@ -194,7 +194,7 @@ flowchart LR
         specs["docs/openspec/specs/\n*/spec.md + design.md"]
     end
 
-    subgraph "Plugin ({site}/plugins/sync-design-docs/)"
+    subgraph "Plugin ({site}/plugins/sync-spec-docs/)"
         plugin["index.js\nloadContent()\ngetPathsToWatch()"]
         lib_adr["lib/transform-adrs.js"]
         lib_spec["lib/transform-openspecs.js"]
@@ -233,7 +233,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    start["Upgrade triggered"] --> read["Read .design-docs.json"]
+    start["Upgrade triggered"] --> read["Read .sdd-docs.json"]
     read --> each["For each managed file"]
     each --> opt{"managed == true?"}
     opt -->|No| skip_out["Skip (opted out)"]
@@ -262,7 +262,7 @@ flowchart TD
 - **Heavy node_modules**: Docusaurus sites have large dependency trees. Mitigation: acceptable trade-off for the rich component model.
 - **Transform pipeline maintenance**: 5 scripts must be kept in sync as ADR/spec formats evolve. Mitigation: shared utilities in `transform-utils.js` reduce duplication.
 - **Dual-mode surface area**: Two modes (scaffold and integration) double the testing and documentation burden. Mitigation: both modes share the same transform pipeline; integration mode reuses scaffold mode's scripts with parameterized paths.
-- **Manifest deletion**: If `.design-docs.json` is deleted, upgrade tracking is lost. Mitigation: the skill detects this case and offers to re-create the manifest by checksumming existing files.
+- **Manifest deletion**: If `.sdd-docs.json` is deleted, upgrade tracking is lost. Mitigation: the skill detects this case and offers to re-create the manifest by checksumming existing files.
 - **URL structure change**: Separating spec/design into directory-per-spec changes URLs from `/specs/{name}` to `/specs/{name}/spec` and `/specs/{name}/design`. Mitigation: this is a one-time breaking change documented in ADR-0006; existing bookmarks will need updating.
 - **Integration transform sync**: Integration mode's parameterized transform scripts must stay in sync with scaffold mode's `__dirname`-relative scripts. Mitigation: the integration templates are shipped alongside the scaffold templates and tested together.
 

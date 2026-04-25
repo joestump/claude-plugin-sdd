@@ -2,7 +2,7 @@
 
 ---
 name: review
-description: Review and merge PRs produced by /design:work using reviewer-responder agent pairs. Use when the user says "review PRs", "review the spec PRs", or wants automated spec-aware code review.
+description: Review and merge PRs produced by /sdd:work using reviewer-responder agent pairs. Use when the user says "review PRs", "review the spec PRs", or wants automated spec-aware code review.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion, ToolSearch
 argument-hint: [SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run] [--module <name>]
 ---
@@ -11,7 +11,7 @@ argument-hint: [SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run] [-
 
 # Review and Merge PRs
 
-You are reviewing PRs produced by `/design:work` using reviewer-responder agent pairs. Each pair processes PRs through exactly one review-response round: the reviewer checks the diff against spec acceptance criteria, the responder addresses feedback, and the reviewer re-evaluates. Approved PRs are merged; unresolved PRs are left with comments for human follow-up. See ADR-0010 and SPEC-0009.
+You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pairs. Each pair processes PRs through exactly one review-response round: the reviewer checks the diff against spec acceptance criteria, the responder addresses feedback, and the reviewer re-evaluates. Approved PRs are merged; unresolved PRs are left with comments for human follow-up. See ADR-0010 and SPEC-0009.
 
 ## Process
 
@@ -32,14 +32,14 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
    - `--dry-run`: Preview which PRs would be reviewed without taking any action. Default: off.
    - `--module <name>`: Resolve artifact paths relative to the named module. Default: none.
 
-2. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`, but only GitHub, GitLab, and Gitea are supported (PR/MR capability required). If the saved tracker is Beads, Jira, or Linear, inform the user that `/design:review` requires a tracker with PR support.
+2. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`, but only GitHub, GitLab, and Gitea are supported (PR/MR capability required). If the saved tracker is Beads, Jira, or Linear, inform the user that `/sdd:review` requires a tracker with PR support.
 
 3. **Discover target PRs**: Search the tracker for open PRs matching the target.
    - **GitHub**: `gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url --limit 50` or `gh pr view {number} --json number,title,headRefName,body,url` for explicit PR numbers.
    - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to list pull requests.
    - **GitLab**: Use MCP tools or `glab mr list --search "SPEC-XXXX"`.
 
-   If no open PRs are found, inform the user and suggest running `/design:work` to create PRs from planned issues.
+   If no open PRs are found, inform the user and suggest running `/sdd:work` to create PRs from planned issues.
 
 3a. **Conflict-marker CI gate** (Governing: ADR-0017, SPEC-0015 REQ "Conflict-Marker CI Gate"):
 
@@ -81,12 +81,12 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
    - If no governing spec can be inferred (e.g., PRs specified by number with no spec reference), proceed with general code review only and note in the report that spec compliance could not be verified.
    - This context will be sent to all reviewer agents.
 
-5. **Read review config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `#### Review` subsection from the `### Design Plugin Configuration` section in CLAUDE.md. Defaults: `Max Pairs`=2, `Merge Strategy`="squash", `Auto Cleanup`=false. CLI flags override: `--pairs N` overrides `Max Pairs`, `--no-merge` prevents merging.
+5. **Read review config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `#### Review` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Max Pairs`=2, `Merge Strategy`="squash", `Auto Cleanup`=false. CLI flags override: `--pairs N` overrides `Max Pairs`, `--no-merge` prevents merging.
 
 6. **Dry-run gate**: If `--dry-run` is set, output a preview table and stop:
 
    ```
-   ## Dry Run: /design:review SPEC-0003
+   ## Dry Run: /sdd:review SPEC-0003
 
    Would review {N} PRs using {pair-count} reviewer-responder pairs.
 
@@ -149,7 +149,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
     For PRs that received `REQUEST_CHANGES`, the responder addresses feedback:
 
     **Responder steps:**
-    1. **Locate or create worktree**: Check if a worktree from `/design:work` still exists at `.claude/worktrees/{branch-name}`. If so, reuse it (run `git pull` first). If not, create a new one: `git worktree add .claude/worktrees/{branch-name} {branch-name}`.
+    1. **Locate or create worktree**: Check if a worktree from `/sdd:work` still exists at `.claude/worktrees/{branch-name}`. If so, reuse it (run `git pull` first). If not, create a new one: `git worktree add .claude/worktrees/{branch-name} {branch-name}`.
     2. Read each review comment from the tracker API.
     3. Make the requested code changes in the worktree.
     4. Commit with a descriptive message and push to the PR branch.
@@ -224,8 +224,8 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
 
     ### Next Steps
     - Review unresolved PR #103 and address remaining feedback
-    - Run `/design:check` to verify implementation alignment
-    - Run `/design:audit` for comprehensive drift analysis
+    - Run `/sdd:check` to verify implementation alignment
+    - Run `/sdd:audit` for comprehensive drift analysis
     ```
 
 ## Error Handling
@@ -235,7 +235,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
 | Single PR review fails (API error) | Log failure, skip that PR, continue with remaining PRs |
 | Merge conflict on merge | Report conflict, leave PR unmerged for human resolution |
 | `TeamCreate` fails | Fall back to single-agent sequential mode |
-| No open PRs found | Suggest `/design:work` to create PRs |
+| No open PRs found | Suggest `/sdd:work` to create PRs |
 | No tracker detected | Error: tracker with PR/MR support is required |
 | Responder cannot resolve feedback | Reply explaining why, report to lead, leave for human |
 | Push fails during response | Responder reports error, PR skipped for that round |
@@ -255,7 +255,7 @@ You are reviewing PRs produced by `/design:work` using reviewer-responder agent 
 - MUST limit to exactly one review-response round per PR — no unbounded iteration (Governing: ADR-0010)
 - Reviewers MUST reference spec acceptance criteria in their reviews — not just style (Governing: SPEC-0009 REQ "Review Protocol")
 - Reviewers MUST NOT raise stylistic concerns that are not spec-relevant
-- Responders MUST reuse existing worktrees from `/design:work` when available (Governing: SPEC-0009 REQ "Response Protocol")
+- Responders MUST reuse existing worktrees from `/sdd:work` when available (Governing: SPEC-0009 REQ "Response Protocol")
 - Responders MUST reply to each review comment with how it was addressed
 - MUST only merge PRs that have been approved by the reviewer
 - MUST NOT merge PRs when `--no-merge` is set

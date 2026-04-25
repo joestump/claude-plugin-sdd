@@ -2,7 +2,7 @@
 
 ## Context
 
-The `/design:audit` skill produces a comprehensive findings table across six drift categories. On a mature project, this table can contain 30–80 rows sorted by severity within category — accurate, but not actionable. A developer looking at the output must mentally re-cluster findings into themes, estimate effort, and decide what to fix first before any work can begin. This cognitive overhead is the problem this capability solves.
+The `/sdd:audit` skill produces a comprehensive findings table across six drift categories. On a mature project, this table can contain 30–80 rows sorted by severity within category — accurate, but not actionable. A developer looking at the output must mentally re-cluster findings into themes, estimate effort, and decide what to fix first before any work can begin. This cognitive overhead is the problem this capability solves.
 
 The audit scrum mode layers a triage ceremony on top of the existing audit analysis. The ceremony takes raw findings as input and produces a prioritized remediation roadmap with themes, priority tiers, effort estimates, and a clear distinction between "fix the code" and "update the artifact" resolutions.
 
@@ -16,7 +16,7 @@ Governing: SPEC-0013, ADR-0014, ADR-0001.
 - Provide a legitimate challenge mechanism for false positives and intentional evolution
 - Distinguish code-fix findings from artifact-update findings before work begins
 - Preserve the ADRs/specs-as-source-of-truth principle with a narrow, justified escape hatch
-- Keep the ceremony mechanics consistent with `/design:plan --scrum` (ADR-0013, SPEC-0012)
+- Keep the ceremony mechanics consistent with `/sdd:plan --scrum` (ADR-0013, SPEC-0012)
 
 ### Non-Goals
 
@@ -27,16 +27,16 @@ Governing: SPEC-0013, ADR-0014, ADR-0001.
 
 ## Decisions
 
-### `--scrum` Flag vs. New `/design:triage` Skill
+### `--scrum` Flag vs. New `/sdd:triage` Skill
 
-**Choice**: `--scrum` flag on the existing `/design:audit` skill
+**Choice**: `--scrum` flag on the existing `/sdd:audit` skill
 
-**Rationale**: Consistent with ADR-0013's choice for `/design:plan`. The triage ceremony is a richer mode of drift auditing, not a separate operation. It composes naturally with scope arguments, requires the full audit context (findings, file locations, spec text) that would be expensive to re-read if triage were a separate skill, and keeps the plugin's command surface at 15 skills.
+**Rationale**: Consistent with ADR-0013's choice for `/sdd:plan`. The triage ceremony is a richer mode of drift auditing, not a separate operation. It composes naturally with scope arguments, requires the full audit context (findings, file locations, spec text) that would be expensive to re-read if triage were a separate skill, and keeps the plugin's command surface at 15 skills.
 
 **Alternatives considered**:
-- `/design:triage`: Adds a 16th skill, requires serializing and re-reading audit output, makes the audit report format a contract between two skills
+- `/sdd:triage`: Adds a 16th skill, requires serializing and re-reading audit output, makes the audit report format a contract between two skills
 - Extend `--review`: Breaking change to established review semantics (drafter + reviewer, 2 rounds)
-- `/design:prioritize`: Same problems as `/design:triage`; too narrow a name for a full triage ceremony
+- `/sdd:prioritize`: Same problems as `/sdd:triage`; too narrow a name for a full triage ceremony
 
 ### Artifacts as Source of Truth with Escape Hatch
 
@@ -90,7 +90,7 @@ sequenceDiagram
     participant EB as Engineer B
     participant AR as Architect
 
-    U->>L: /design:audit [scope] --scrum
+    U->>L: /sdd:audit [scope] --scrum
     L->>L: Phase 1: Standard audit analysis (6 categories)
     note over L: Raw findings: CRITICAL/WARNING/INFO per category
 
@@ -149,7 +149,7 @@ flowchart TD
     EB -->|"No dispute"| CODE["Code fix finding\nAdd to remediation backlog"]
     EB -->|"Disputes: claims intentional evolution"| AR{"Architect evaluates"}
     AR -->|"Code is wrong"| CODE
-    AR -->|"Artifact is stale"| ART["Artifact update finding\nAdd to artifact update queue\nSuggest /design:adr or /design:spec"]
+    AR -->|"Artifact is stale"| ART["Artifact update finding\nAdd to artifact update queue\nSuggest /sdd:adr or /sdd:spec"]
 
     LOW --> PO_DEFER{"PO accepts as\nnot-yet-binding?"}
     PO_DEFER -->|"Yes"| INFO["Lower-priority finding\nP3 or accepted-for-now"]
@@ -167,11 +167,11 @@ The `--scrum` implementation in `skills/audit/SKILL.md` MUST:
 5. Handle EB disputes as a synchronous lead-mediated exchange with the Architect
 6. Handle PO MUST-deferral proposals as a documented exception with mandatory justification
 7. Emit the triage report with all required sections (theme summary table, per-theme details, artifact update queue, accepted-for-now list)
-8. Use `AskUserQuestion` to offer tracker issue creation after the report; if accepted, follow the tracker detection flow from `/design:plan` steps 4–5
+8. Use `AskUserQuestion` to offer tracker issue creation after the report; if accepted, follow the tracker detection flow from `/sdd:plan` steps 4–5
 
 ## Risks / Trade-offs
 
-- **Token cost** → Full project audit + six-agent triage on a mature codebase is expensive. Mitigation: scope argument narrows both the audit and triage (`/design:audit auth --scrum`); `--scrum` is opt-in.
+- **Token cost** → Full project audit + six-agent triage on a mature codebase is expensive. Mitigation: scope argument narrows both the audit and triage (`/sdd:audit auth --scrum`); `--scrum` is opt-in.
 - **Theme subjectivity** → Two runs may produce different theme boundaries. Mitigation: themes are named for functional areas, and the Lead applies consistent grouping heuristics; the report shows which findings are in each theme so discrepancies are visible.
 - **Engineer B persona drift** → Without verbatim instructions, an agent playing Engineer B may drift toward approval. Mitigation: SKILL.md MUST include verbatim persona with explicit instructions that dismissing a finding requires a stronger justification than accepting it.
 - **Architect bottleneck** → If Engineer B disputes many findings, the Architect must evaluate each one sequentially. Mitigation: disputes are batched and evaluated in one Architect turn after all EB feedback is collected.

@@ -202,7 +202,7 @@ function transformOpenspecs(config) {
     specEmojis = {},
   } = config;
 
-  console.log('  [sync-design-docs] Transforming OpenSpecs...');
+  console.log('  [sync-spec-docs] Transforming OpenSpecs...');
 
   if (!fs.existsSync(specsSource)) {
     console.log('    No specs directory found, skipping OpenSpec transform');

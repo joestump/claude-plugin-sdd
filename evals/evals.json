@@ -4,7 +4,7 @@
     {
       "id": 1,
       "skill": "plan",
-      "prompt": "Plan a sprint from SPEC-0015 for the claude-plugin-design repo. Use GitHub issues. The repo is joestump/claude-plugin-design.",
+      "prompt": "Plan a sprint from SPEC-0015 for the claude-plugin-sdd repo. Use GitHub issues. The repo is joestump/claude-plugin-sdd.",
       "expected_output": "Creates an epic issue and 3-4 story issues in GitHub with requirement checklists, branch naming, PR conventions, foundation story detection, hotspot analysis, and a dependency graph.",
       "assertions": [
         {
@@ -52,7 +52,7 @@
           "type": "structural"
         },
         {
-          "text": "Report suggests /design:prime before starting implementation",
+          "text": "Report suggests /sdd:prime before starting implementation",
           "type": "content"
         }
       ],
@@ -64,7 +64,7 @@
     {
       "id": 2,
       "skill": "plan",
-      "prompt": "Break down SPEC-0016 into GitHub issues for joestump/claude-plugin-design. Use --no-branches and --no-projects flags.",
+      "prompt": "Break down SPEC-0016 into GitHub issues for joestump/claude-plugin-sdd. Use --no-branches and --no-projects flags.",
       "expected_output": "Creates epic and story issues without ### Branch, ### PR Convention sections, and without creating a GitHub Project.",
       "assertions": [
         {
@@ -116,7 +116,7 @@
     {
       "id": 3,
       "skill": "plan",
-      "prompt": "Plan a sprint from SPEC-0012 with --scrum flag. Use GitHub issues for joestump/claude-plugin-design.",
+      "prompt": "Plan a sprint from SPEC-0012 with --scrum flag. Use GitHub issues for joestump/claude-plugin-sdd.",
       "expected_output": "Runs full scrum ceremony: spec completeness audit, issue decomposition, 5-agent grooming team, dissent resolution, automatic organize, automatic enrich, and sprint report.",
       "assertions": [
         {
@@ -156,7 +156,7 @@
           "type": "content"
         },
         {
-          "text": "Sprint report recommends /design:work and /design:prime as next steps",
+          "text": "Sprint report recommends /sdd:work and /sdd:prime as next steps",
           "type": "content"
         }
       ],
@@ -168,15 +168,15 @@
     {
       "id": 4,
       "skill": "plan",
-      "prompt": "Plan a sprint from SPEC-9999 for joestump/claude-plugin-design using GitHub issues.",
-      "expected_output": "Reports that the spec cannot be found and suggests creating one with /design:spec.",
+      "prompt": "Plan a sprint from SPEC-9999 for joestump/claude-plugin-sdd using GitHub issues.",
+      "expected_output": "Reports that the spec cannot be found and suggests creating one with /sdd:spec.",
       "assertions": [
         {
           "text": "Error message indicates SPEC-9999 was not found or does not exist",
           "type": "content"
         },
         {
-          "text": "Suggests /design:spec to create a new specification",
+          "text": "Suggests /sdd:spec to create a new specification",
           "type": "content"
         },
         {
@@ -193,7 +193,7 @@
     {
       "id": 5,
       "skill": "work",
-      "prompt": "Work on SPEC-0015 issues for joestump/claude-plugin-design. Use --max-agents 2.",
+      "prompt": "Work on SPEC-0015 issues for joestump/claude-plugin-sdd. Use --max-agents 2.",
       "expected_output": "Discovers open issues for SPEC-0015, creates worktrees, dispatches up to 2 parallel workers with sibling PR manifest, implements issues, creates PRs with lifecycle label transitions.",
       "assertions": [
         {
@@ -253,7 +253,7 @@
     {
       "id": 6,
       "skill": "work",
-      "prompt": "Run /design:work --dry-run for SPEC-0010 in joestump/claude-plugin-design.",
+      "prompt": "Run /sdd:work --dry-run for SPEC-0010 in joestump/claude-plugin-sdd.",
       "expected_output": "Outputs a preview table of what would happen without creating worktrees, branches, or PRs.",
       "assertions": [
         {
@@ -298,11 +298,11 @@
     {
       "id": 7,
       "skill": "work",
-      "prompt": "Implement issues 42 43 44 for joestump/claude-plugin-design. The CLAUDE.md has max-parallel-agents set to 3.",
+      "prompt": "Implement issues 42 43 44 for joestump/claude-plugin-sdd. The CLAUDE.md has max-parallel-agents set to 3.",
       "expected_output": "Picks up the 3 specific issues, creates worktrees, dispatches workers respecting the CLAUDE.md parallelism config, validates protected paths, and creates PRs.",
       "assertions": [
         {
-          "text": "CLAUDE.md read for ## Design Plugin Configuration section to resolve max-parallel-agents",
+          "text": "CLAUDE.md read for ## SDD Configuration section to resolve max-parallel-agents",
           "type": "structural"
         },
         {
@@ -310,7 +310,7 @@
           "type": "structural"
         },
         {
-          "text": "Workers validate diff against protected paths (spec-dir, adr-dir, CLAUDE.md, .claude-plugin-design.json) before staging",
+          "text": "Workers validate diff against protected paths (spec-dir, adr-dir, CLAUDE.md, .claude-plugin-sdd.json) before staging",
           "type": "structural"
         },
         {
@@ -343,7 +343,7 @@
     {
       "id": 8,
       "skill": "work",
-      "prompt": "Run /design:work with no arguments for joestump/claude-plugin-design.",
+      "prompt": "Run /sdd:work with no arguments for joestump/claude-plugin-sdd.",
       "expected_output": "Reviews the full backlog, proposes a batch of issues biased toward unblocking work, and asks the user to approve before starting.",
       "assertions": [
         {
@@ -351,7 +351,7 @@
           "type": "structural"
         },
         {
-          "text": "Issues without ### Branch sections skipped with suggestion to run /design:enrich",
+          "text": "Issues without ### Branch sections skipped with suggestion to run /sdd:enrich",
           "type": "content"
         },
         {
@@ -380,7 +380,7 @@
     {
       "id": 9,
       "skill": "review",
-      "prompt": "Review PRs for SPEC-0009 in joestump/claude-plugin-design. Use 2 reviewer-responder pairs.",
+      "prompt": "Review PRs for SPEC-0009 in joestump/claude-plugin-sdd. Use 2 reviewer-responder pairs.",
       "expected_output": "Discovers open PRs for SPEC-0009, runs conflict-marker CI gate, creates reviewer-responder pairs, reviews against spec acceptance criteria, and merges approved PRs.",
       "assertions": [
         {
@@ -436,7 +436,7 @@
     {
       "id": 10,
       "skill": "review",
-      "prompt": "Review PRs 101 102 103 for joestump/claude-plugin-design with --dry-run.",
+      "prompt": "Review PRs 101 102 103 for joestump/claude-plugin-sdd with --dry-run.",
       "expected_output": "Outputs a preview table showing which PRs would be reviewed and by which pair, without submitting any reviews or merging.",
       "assertions": [
         {
@@ -473,7 +473,7 @@
     {
       "id": 11,
       "skill": "review",
-      "prompt": "Review PRs for SPEC-0015 in joestump/claude-plugin-design with --no-merge. Assume PR #201 has conflict markers in its diff.",
+      "prompt": "Review PRs for SPEC-0015 in joestump/claude-plugin-sdd with --no-merge. Assume PR #201 has conflict markers in its diff.",
       "expected_output": "PR #201 rejected immediately by the conflict-marker CI gate with REQUEST_CHANGES. Other PRs reviewed normally but not merged due to --no-merge.",
       "assertions": [
         {
@@ -517,7 +517,7 @@
     {
       "id": 12,
       "skill": "audit",
-      "prompt": "Run a full project audit on joestump/claude-plugin-design with no scope filter.",
+      "prompt": "Run a full project audit on joestump/claude-plugin-sdd with no scope filter.",
       "expected_output": "Comprehensive audit across all six drift categories with structured report, severity assignments, and recommended actions.",
       "assertions": [
         {
@@ -574,7 +574,7 @@
     {
       "id": 13,
       "skill": "audit",
-      "prompt": "Audit the architecture of joestump/claude-plugin-design with --scrum flag. Focus on the security topic.",
+      "prompt": "Audit the architecture of joestump/claude-plugin-sdd with --scrum flag. Focus on the security topic.",
       "expected_output": "Runs standard audit analysis scoped to security, then enters scrum triage ceremony with 5-agent team for prioritization and dispute resolution.",
       "assertions": [
         {
@@ -615,15 +615,15 @@
     {
       "id": 14,
       "skill": "audit",
-      "prompt": "Run /design:audit on an empty project directory that has no docs/adrs/ or docs/openspec/specs/ directories.",
+      "prompt": "Run /sdd:audit on an empty project directory that has no docs/adrs/ or docs/openspec/specs/ directories.",
       "expected_output": "Reports that no design artifacts were found and suggests creating ADRs or specs.",
       "assertions": [
         {
-          "text": "Message indicates docs/adrs/ directory does not exist, suggests /design:adr",
+          "text": "Message indicates docs/adrs/ directory does not exist, suggests /sdd:adr",
           "type": "content"
         },
         {
-          "text": "Message indicates docs/openspec/specs/ directory does not exist, suggests /design:spec",
+          "text": "Message indicates docs/openspec/specs/ directory does not exist, suggests /sdd:spec",
           "type": "content"
         },
         {
@@ -644,15 +644,15 @@
     {
       "id": 15,
       "skill": "review",
-      "prompt": "Review PRs for SPEC-0003 in joestump/claude-plugin-design. No open PRs exist for this spec.",
-      "expected_output": "Informs the user that no open PRs were found and suggests running /design:work to create them.",
+      "prompt": "Review PRs for SPEC-0003 in joestump/claude-plugin-sdd. No open PRs exist for this spec.",
+      "expected_output": "Informs the user that no open PRs were found and suggests running /sdd:work to create them.",
       "assertions": [
         {
           "text": "Message indicates no open PRs were found matching SPEC-0003",
           "type": "content"
         },
         {
-          "text": "Suggests running /design:work to create PRs from planned issues",
+          "text": "Suggests running /sdd:work to create PRs from planned issues",
           "type": "content"
         },
         {
@@ -903,18 +903,18 @@
       "id": 105,
       "skill": "check",
       "prompt": "Check this project for drift. There are no ADRs or specs yet.",
-      "expected_output": "Reports that no design artifacts were found and suggests creating them. Does NOT proceed with analysis. Suggests using /design:adr or /design:spec to create first artifacts.",
+      "expected_output": "Reports that no design artifacts were found and suggests creating them. Does NOT proceed with analysis. Suggests using /sdd:adr or /sdd:spec to create first artifacts.",
       "assertions": [
         {
           "text": "Output reports 'No design artifacts found' (or equivalent message when neither ADR nor spec directories exist)",
           "type": "content"
         },
         {
-          "text": "Output suggests '/design:adr' to create first ADR",
+          "text": "Output suggests '/sdd:adr' to create first ADR",
           "type": "content"
         },
         {
-          "text": "Output suggests '/design:spec' to create first spec",
+          "text": "Output suggests '/sdd:spec' to create first spec",
           "type": "content"
         },
         {
@@ -947,11 +947,11 @@
           "type": "content"
         },
         {
-          "text": "Every ADR suggestion includes a copy-paste-ready '/design:adr' command in the Command column",
+          "text": "Every ADR suggestion includes a copy-paste-ready '/sdd:adr' command in the Command column",
           "type": "content"
         },
         {
-          "text": "Every spec suggestion includes a copy-paste-ready '/design:spec' command in the Command column",
+          "text": "Every spec suggestion includes a copy-paste-ready '/sdd:spec' command in the Command column",
           "type": "content"
         },
         {
@@ -1002,7 +1002,7 @@
       "id": 108,
       "skill": "docs",
       "prompt": "Generate a documentation site for our project. We have ADRs in docs/adrs/ and specs in docs/openspec/specs/.",
-      "expected_output": "Runs pre-flight checks (Node.js, ADR/spec existence), detects no existing Docusaurus site, proceeds with scaffold mode. Creates docs-site/ directory from templates/docusaurus/, customizes package.json and docusaurus.config.ts, runs npm install, creates .design-docs.json manifest with tracked files and SHA-256 checksums, and updates .claudeignore.",
+      "expected_output": "Runs pre-flight checks (Node.js, ADR/spec existence), detects no existing Docusaurus site, proceeds with scaffold mode. Creates docs-site/ directory from templates/docusaurus/, customizes package.json and docusaurus.config.ts, runs npm install, creates .sdd-docs.json manifest with tracked files and SHA-256 checksums, and updates .claudeignore.",
       "assertions": [
         {
           "text": "Pre-flight check verifies Node.js is installed",
@@ -1029,7 +1029,7 @@
           "type": "behavioral"
         },
         {
-          "text": ".design-docs.json manifest created at project root with version, mode ('scaffold'), siteDir, createdAt, updatedAt, and files object",
+          "text": ".sdd-docs.json manifest created at project root with version, mode ('scaffold'), siteDir, createdAt, updatedAt, and files object",
           "type": "structural"
         },
         {
@@ -1051,14 +1051,14 @@
       "id": 109,
       "skill": "docs",
       "prompt": "Generate docs for our project. We just initialized it yesterday -- no ADRs or specs yet.",
-      "expected_output": "Pre-flight check detects no ADR or spec content. Reports that no artifacts were found and suggests creating some with /design:adr or /design:spec. Does NOT proceed with site generation.",
+      "expected_output": "Pre-flight check detects no ADR or spec content. Reports that no artifacts were found and suggests creating some with /sdd:adr or /sdd:spec. Does NOT proceed with site generation.",
       "assertions": [
         {
           "text": "Output reports no ADRs or specs found",
           "type": "content"
         },
         {
-          "text": "Output suggests '/design:adr' or '/design:spec' to create first artifacts",
+          "text": "Output suggests '/sdd:adr' or '/sdd:spec' to create first artifacts",
           "type": "content"
         },
         {
@@ -1066,7 +1066,7 @@
           "type": "structural"
         },
         {
-          "text": "Does NOT create .design-docs.json",
+          "text": "Does NOT create .sdd-docs.json",
           "type": "structural"
         },
         {
@@ -1107,7 +1107,7 @@
           "type": "content"
         },
         {
-          "text": "Suggests next step: /design:spec",
+          "text": "Suggests next step: /sdd:spec",
           "type": "behavioral"
         }
       ],
@@ -1149,11 +1149,11 @@
     {
       "id": 202,
       "skill": "init",
-      "prompt": "/design:init",
+      "prompt": "/sdd:init",
       "expected_output": "Creates CLAUDE.md with architecture context, detects .gitmodules for workspace setup, offers permission auto-configuration",
       "assertions": [
         {
-          "text": "Checks for .claude-plugin-design.json migration before main init flow",
+          "text": "Checks for .claude-plugin-sdd.json migration before main init flow",
           "type": "behavioral"
         },
         {
@@ -1177,7 +1177,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Outputs next steps mentioning /design:adr, /design:spec, and /design:prime",
+          "text": "Outputs next steps mentioning /sdd:adr, /sdd:spec, and /sdd:prime",
           "type": "content"
         }
       ],
@@ -1186,7 +1186,7 @@
     {
       "id": 203,
       "skill": "init",
-      "prompt": "/design:init",
+      "prompt": "/sdd:init",
       "expected_output": "Detects already-configured CLAUDE.md and reports no changes needed (idempotent re-run)",
       "assertions": [
         {
@@ -1209,18 +1209,18 @@
       "files": [
         {
           "path": "CLAUDE.md",
-          "content": "## Architecture Context\n\nThis project uses the [design plugin](https://github.com/joestump/claude-plugin-design) for architecture governance.\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+          "content": "## Architecture Context\n\nThis project uses the [SDD plugin](https://github.com/joestump/claude-plugin-sdd) for architecture governance.\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
         }
       ]
     },
     {
       "id": 204,
       "skill": "prime",
-      "prompt": "/design:prime authentication",
+      "prompt": "/sdd:prime authentication",
       "expected_output": "Loads architecture context filtered by 'authentication' topic, showing only semantically relevant ADRs and specs",
       "assertions": [
         {
-          "text": "Checks CLAUDE.md for design plugin references before scanning",
+          "text": "Checks CLAUDE.md for SDD plugin references before scanning",
           "type": "behavioral"
         },
         {
@@ -1266,15 +1266,15 @@
     {
       "id": 205,
       "skill": "prime",
-      "prompt": "/design:prime",
-      "expected_output": "Detects missing design plugin references in CLAUDE.md and instructs user to run /design:init first",
+      "prompt": "/sdd:prime",
+      "expected_output": "Detects missing SDD plugin references in CLAUDE.md and instructs user to run /sdd:init first",
       "assertions": [
         {
           "text": "Reads CLAUDE.md (or detects it doesn't exist)",
           "type": "behavioral"
         },
         {
-          "text": "Output tells user to run /design:init first",
+          "text": "Output tells user to run /sdd:init first",
           "type": "content"
         },
         {
@@ -1296,7 +1296,7 @@
     {
       "id": 206,
       "skill": "list",
-      "prompt": "/design:list spec",
+      "prompt": "/sdd:list spec",
       "expected_output": "Lists only specs (not ADRs) with status, date, and title in a formatted table",
       "assertions": [
         {
@@ -1338,7 +1338,7 @@
     {
       "id": 207,
       "skill": "list",
-      "prompt": "/design:list",
+      "prompt": "/sdd:list",
       "expected_output": "Reports no ADRs or specs found and suggests creating them",
       "assertions": [
         {
@@ -1346,11 +1346,11 @@
           "type": "behavioral"
         },
         {
-          "text": "Output states no ADRs found and suggests /design:adr",
+          "text": "Output states no ADRs found and suggests /sdd:adr",
           "type": "content"
         },
         {
-          "text": "Output states no specs found and suggests /design:spec",
+          "text": "Output states no specs found and suggests /sdd:spec",
           "type": "content"
         },
         {
@@ -1372,7 +1372,7 @@
     {
       "id": 208,
       "skill": "status",
-      "prompt": "/design:status ADR-0003 accepted",
+      "prompt": "/sdd:status ADR-0003 accepted",
       "expected_output": "Updates ADR-0003 YAML frontmatter status from proposed to accepted",
       "assertions": [
         {
@@ -1410,7 +1410,7 @@
     {
       "id": 209,
       "skill": "status",
-      "prompt": "/design:status",
+      "prompt": "/sdd:status",
       "expected_output": "Lists available ADRs and specs with current statuses, then prompts user to choose which to update",
       "assertions": [
         {
@@ -1483,7 +1483,7 @@
       "files": [
         {
           "path": "CLAUDE.md",
-          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### Design Plugin Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n\n#### Projects\n- **Default Mode**: per-epic\n- **Views**: All Work, Board, Roadmap\n- **Columns**: Todo, In Progress, In Review, Done\n- **Iteration Weeks**: 2\n"
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### SDD Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n\n#### Projects\n- **Default Mode**: per-epic\n- **Views**: All Work, Board, Roadmap\n- **Columns**: Todo, In Progress, In Review, Done\n- **Iteration Weeks**: 2\n"
         },
         {
           "path": "docs/openspec/specs/notification-service/spec.md",
@@ -1543,7 +1543,7 @@
           "type": "behavioral"
         },
         {
-          "text": "Reads Branch Conventions and PR Conventions from CLAUDE.md ### Design Plugin Configuration",
+          "text": "Reads Branch Conventions and PR Conventions from CLAUDE.md ### SDD Configuration",
           "type": "behavioral"
         },
         {
@@ -1574,7 +1574,7 @@
       "files": [
         {
           "path": "CLAUDE.md",
-          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### Design Plugin Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n\n#### Branch Conventions\n- **Enabled**: true\n- **Prefix**: feature\n- **Epic Prefix**: epic\n- **Slug Max Length**: 50\n\n#### PR Conventions\n- **Enabled**: true\n- **Close Keyword**: Closes\n- **Ref Keyword**: Part of\n- **Include Spec Reference**: true\n"
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### SDD Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n\n#### Branch Conventions\n- **Enabled**: true\n- **Prefix**: feature\n- **Epic Prefix**: epic\n- **Slug Max Length**: 50\n\n#### PR Conventions\n- **Enabled**: true\n- **Close Keyword**: Closes\n- **Ref Keyword**: Part of\n- **Include Spec Reference**: true\n"
         },
         {
           "path": "docs/openspec/specs/notification-service/spec.md",
@@ -1624,7 +1624,7 @@
       "files": [
         {
           "path": "CLAUDE.md",
-          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### Design Plugin Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n"
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n### SDD Configuration\n\n#### Tracker\n- **Type**: github\n- **Owner**: myorg\n- **Repo**: myproject\n"
         },
         {
           "path": "docs/openspec/specs/api-gateway/spec.md",

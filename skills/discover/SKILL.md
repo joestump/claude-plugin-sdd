@@ -91,8 +91,8 @@ Existing artifacts: {A} ADRs, {B} specs (excluded from suggestions).
 
 | # | Confidence | Decision | Evidence | Command |
 |---|------------|----------|----------|---------|
-| 1 | High | {short decision title} | {key evidence: files, deps, config} | `/design:adr {description}` |
-| 2 | Medium | {short decision title} | {key evidence} | `/design:adr {description}` |
+| 1 | High | {short decision title} | {key evidence: files, deps, config} | `/sdd:adr {description}` |
+| 2 | Medium | {short decision title} | {key evidence} | `/sdd:adr {description}` |
 
 {For each suggestion, add a brief paragraph below the table:}
 
@@ -104,8 +104,8 @@ Evidence: `{file1}`, `{file2}`, `{config entry}`
 
 | # | Confidence | Subsystem | Boundary | Command |
 |---|------------|-----------|----------|---------|
-| 1 | High | {subsystem name} | {files/dirs that define it} | `/design:spec {capability}` |
-| 2 | Medium | {subsystem name} | {files/dirs} | `/design:spec {capability}` |
+| 1 | High | {subsystem name} | {files/dirs that define it} | `/sdd:spec {capability}` |
+| 2 | Medium | {subsystem name} | {files/dirs} | `/sdd:spec {capability}` |
 
 {For each suggestion, add a brief paragraph below the table:}
 
@@ -126,11 +126,11 @@ Pick the suggestions you want to formalize:
 
 {For each high-confidence suggestion, repeat the command:}
 ```
-/design:adr {description}
-/design:spec {capability}
+/sdd:adr {description}
+/sdd:spec {capability}
 ```
 
-Or prime your session with existing context first: `/design:prime`
+Or prime your session with existing context first: `/sdd:prime`
 ```
 
 ### Empty Results
@@ -146,11 +146,11 @@ No implicit architectural decisions or spec-worthy subsystems were identified.
 This may indicate:
 - The project is very small or early-stage
 - The codebase uses highly conventional patterns that don't require explicit documentation
-- A narrower scope might reveal more specific patterns: `/design:discover src/`
+- A narrower scope might reveal more specific patterns: `/sdd:discover src/`
 
 ### Next Steps
-- Create your first ADR manually: `/design:adr [description]`
-- Create your first spec manually: `/design:spec [capability]`
+- Create your first ADR manually: `/sdd:adr [description]`
+- Create your first spec manually: `/sdd:spec [capability]`
 ```
 
 ## Rules
@@ -161,7 +161,7 @@ This may indicate:
 - Suggestions MUST NOT be based on speculation or assumptions about code that was not read
 - MUST read existing ADRs and specs before producing suggestions to avoid duplicating already-documented decisions
 - MUST include a confidence level (High, Medium, Low) for every suggestion
-- MUST include a ready-to-use `/design:adr` or `/design:spec` command for every suggestion
+- MUST include a ready-to-use `/sdd:adr` or `/sdd:spec` command for every suggestion
 - The Command column MUST contain a complete, copy-paste-ready command with a descriptive argument
 - Sort suggestions by confidence (High first, then Medium, then Low) within each section
 - If the scope argument points to a nonexistent path, report the error and stop -- do NOT fall back to full-project analysis

@@ -2,27 +2,27 @@
 
 ## Overview
 
-A `--scrum` flag for `/design:plan` that orchestrates a complete, team-groomed sprint planning ceremony in a single invocation. The ceremony combines spec completeness auditing, issue decomposition, multi-agent backlog grooming, project organization, and developer workflow enrichment — eliminating the current three-step manual sequence (`/design:plan` → `/design:organize` → `/design:enrich`). See ADR-0013.
+A `--scrum` flag for `/sdd:plan` that orchestrates a complete, team-groomed sprint planning ceremony in a single invocation. The ceremony combines spec completeness auditing, issue decomposition, multi-agent backlog grooming, project organization, and developer workflow enrichment — eliminating the current three-step manual sequence (`/sdd:plan` → `/sdd:organize` → `/sdd:enrich`). See ADR-0013.
 
 ## Requirements
 
 ### Requirement: Single-Invocation Ceremony Flag
 
-The `/design:plan` skill MUST accept a `--scrum` flag that activates scrum mode. When `--scrum` is provided, the skill SHALL execute the full ceremony sequence (spec completeness audit → issue decomposition → grooming → organize → enrich) and produce a sprint report without requiring additional commands from the user. The `--scrum` flag MUST compose with existing arguments: `/design:plan SPEC-XXXX --scrum` (single spec) and `/design:plan --scrum` (full backlog) SHALL both be valid invocations.
+The `/sdd:plan` skill MUST accept a `--scrum` flag that activates scrum mode. When `--scrum` is provided, the skill SHALL execute the full ceremony sequence (spec completeness audit → issue decomposition → grooming → organize → enrich) and produce a sprint report without requiring additional commands from the user. The `--scrum` flag MUST compose with existing arguments: `/sdd:plan SPEC-XXXX --scrum` (single spec) and `/sdd:plan --scrum` (full backlog) SHALL both be valid invocations.
 
 #### Scenario: Single-spec scrum mode
 
-- **WHEN** the user runs `/design:plan SPEC-0003 --scrum`
+- **WHEN** the user runs `/sdd:plan SPEC-0003 --scrum`
 - **THEN** the skill performs the full ceremony for SPEC-0003 and delivers a complete sprint backlog with projects, branch names, and PR keywords in one run
 
 #### Scenario: Full-backlog scrum mode
 
-- **WHEN** the user runs `/design:plan --scrum` with no spec argument
+- **WHEN** the user runs `/sdd:plan --scrum` with no spec argument
 - **THEN** the skill grooms all active backlog issues across all specs in the tracker and delivers a groomed, organized, enriched full backlog
 
 #### Scenario: Flag composition with existing options
 
-- **WHEN** the user runs `/design:plan SPEC-XXXX --scrum --no-projects`
+- **WHEN** the user runs `/sdd:plan SPEC-XXXX --scrum --no-projects`
 - **THEN** the scrum ceremony runs but project creation is skipped, respecting the `--no-projects` opt-out
 
 ### Requirement: Scrum Team Composition
@@ -136,7 +136,7 @@ Users who have set `--no-projects` or `--no-branches` flags MUST have those opt-
 
 #### Scenario: Opt-outs respected
 
-- **WHEN** the user ran `/design:plan --scrum --no-projects`
+- **WHEN** the user ran `/sdd:plan --scrum --no-projects`
 - **THEN** the organize step skips project creation but still generates the sprint report
 
 ### Requirement: Sprint Report

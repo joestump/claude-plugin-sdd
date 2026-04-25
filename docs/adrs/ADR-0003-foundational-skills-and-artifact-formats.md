@@ -40,15 +40,15 @@ What formats should the plugin adopt for ADRs and specifications, and what core 
 
 ## Decision Outcome
 
-Chosen option: "MADR for ADRs and OpenSpec with paired spec.md + design.md for specifications", because MADR provides a widely adopted, well-structured template that guides authors through context, options, and consequences, while OpenSpec's paired-document approach cleanly separates requirements from design rationale. These two formats are complemented by four core skills: `/design:adr` and `/design:spec` for artifact creation (with optional `--review` for team-based drafting), `/design:list` for discovery, and `/design:status` for lifecycle management.
+Chosen option: "MADR for ADRs and OpenSpec with paired spec.md + design.md for specifications", because MADR provides a widely adopted, well-structured template that guides authors through context, options, and consequences, while OpenSpec's paired-document approach cleanly separates requirements from design rationale. These two formats are complemented by four core skills: `/sdd:adr` and `/sdd:spec` for artifact creation (with optional `--review` for team-based drafting), `/sdd:list` for discovery, and `/sdd:status` for lifecycle management.
 
 ### Consequences
 
 * Good, because MADR's structured sections (Context, Decision Drivers, Considered Options, Pros and Cons) prevent incomplete decision records and encourage authors to articulate alternatives
 * Good, because OpenSpec's paired spec.md + design.md separates "what" from "how", allowing requirements and design to evolve independently and be reviewed by different stakeholders
-* Good, because RFC 2119 keywords in spec.md enable unambiguous normative statements that downstream skills (`/design:check`, `/design:audit`) can verify against code
-* Good, because `/design:list` and `/design:status` provide lifecycle management without requiring users to manually edit YAML frontmatter or remember file paths
-* Good, because the `--review` flag on `/design:adr` and `/design:spec` reuses a consistent team pattern (drafter + architect, max 2 revision rounds) across both creation skills
+* Good, because RFC 2119 keywords in spec.md enable unambiguous normative statements that downstream skills (`/sdd:check`, `/sdd:audit`) can verify against code
+* Good, because `/sdd:list` and `/sdd:status` provide lifecycle management without requiring users to manually edit YAML frontmatter or remember file paths
+* Good, because the `--review` flag on `/sdd:adr` and `/sdd:spec` reuses a consistent team pattern (drafter + architect, max 2 revision rounds) across both creation skills
 * Bad, because MADR's structured template adds overhead for trivial decisions that could be captured in a sentence
 * Bad, because the paired spec.md + design.md requires authors to maintain two files per specification, increasing the surface area for drift between them
 * Neutral, because adopting established formats means accepting their conventions even where a custom format might be a slightly better fit for this plugin's specific workflow
@@ -71,7 +71,7 @@ Implementation will be confirmed by:
 
 * Good, because it is the most widely adopted ADR format with extensive community documentation and examples
 * Good, because the structured sections (Decision Drivers, Considered Options, Pros and Cons) guide authors toward completeness rather than relying on discipline
-* Good, because YAML frontmatter supports machine-readable metadata (status, date, decision-makers) that enables tooling like `/design:list` and `/design:status`
+* Good, because YAML frontmatter supports machine-readable metadata (status, date, decision-makers) that enables tooling like `/sdd:list` and `/sdd:status`
 * Good, because the format is extensible -- the plugin adds an Architecture Diagram section with Mermaid support without breaking MADR compatibility
 * Neutral, because MADR 3.0 made some sections optional (Confirmation, More Information) that previous versions required, giving authors flexibility
 * Bad, because the full template has many sections, which can feel heavyweight for simple decisions
@@ -98,7 +98,7 @@ Michael Nygard's original ADR format from his 2011 blog post includes Title, Sta
 
 ### ADR Format: Custom Format
 
-A plugin-specific ADR template designed from scratch to fit the exact needs of the design plugin workflow.
+A plugin-specific ADR template designed from scratch to fit the exact needs of the SDD plugin workflow.
 
 * Good, because every section would be tailored to the plugin's specific requirements (e.g., mandatory Mermaid diagrams, review mode metadata)
 * Good, because there would be no constraints from an external format's conventions
@@ -152,13 +152,13 @@ A plugin-specific specification template designed from scratch.
 ```mermaid
 flowchart TB
     subgraph "Core Creation Skills"
-        adr["/design:adr\n[description] [--review]"]
-        spec["/design:spec\n[capability] [--review]"]
+        adr["/sdd:adr\n[description] [--review]"]
+        spec["/sdd:spec\n[capability] [--review]"]
     end
 
     subgraph "Lifecycle Management Skills"
-        list["/design:list\n[adr|spec|all]"]
-        status["/design:status\n[ID] [new status]"]
+        list["/sdd:list\n[adr|spec|all]"]
+        status["/sdd:status\n[ID] [new status]"]
     end
 
     subgraph "ADR Artifacts (MADR Format)"
@@ -206,9 +206,9 @@ flowchart TB
 
 ## More Information
 
-* This ADR documents the foundational decisions that were made when the design plugin was first created. The MADR and OpenSpec format choices, along with the four core skills, form the base on which all subsequent plugin capabilities are built.
-* [ADR-0001](ADR-0001-drift-introspection-skills.md) added `/design:check` and `/design:audit` skills that depend on the artifact formats defined here -- they read MADR and OpenSpec documents to detect drift between design artifacts and code.
-* [ADR-0002](ADR-0002-init-and-context-priming-skill.md) added `/design:init` and `/design:prime` skills that depend on the directory conventions defined here -- they reference `docs/adrs/` and `docs/openspec/specs/` for initialization and context priming.
+* This ADR documents the foundational decisions that were made when the SDD plugin was first created. The MADR and OpenSpec format choices, along with the four core skills, form the base on which all subsequent plugin capabilities are built.
+* [ADR-0001](ADR-0001-drift-introspection-skills.md) added `/sdd:check` and `/sdd:audit` skills that depend on the artifact formats defined here -- they read MADR and OpenSpec documents to detect drift between design artifacts and code.
+* [ADR-0002](ADR-0002-init-and-context-priming-skill.md) added `/sdd:init` and `/sdd:prime` skills that depend on the directory conventions defined here -- they reference `docs/adrs/` and `docs/openspec/specs/` for initialization and context priming.
 * The MADR template used by this plugin extends the standard MADR 3.0 format with a mandatory Architecture Diagram section requiring Mermaid diagrams. This was a deliberate choice to ensure every decision record includes a visual representation of the architecture or decision flow.
-* The OpenSpec scenario format uses `####` headings (not `###` or bullet lists) with WHEN/THEN structure. This specific heading level was chosen to enable downstream tooling such as the `/design:docs` Docusaurus generator to reliably parse and render scenarios with requirement box components.
-* The `/design:list` skill is intentionally read-only (allowed-tools: Read, Glob, Grep) to ensure it never accidentally modifies artifacts. Similarly, `/design:status` is limited to editing YAML frontmatter and will not alter document content.
+* The OpenSpec scenario format uses `####` headings (not `###` or bullet lists) with WHEN/THEN structure. This specific heading level was chosen to enable downstream tooling such as the `/sdd:docs` Docusaurus generator to reliably parse and render scenarios with requirement box components.
+* The `/sdd:list` skill is intentionally read-only (allowed-tools: Read, Glob, Grep) to ensure it never accidentally modifies artifacts. Similarly, `/sdd:status` is limited to editing YAML frontmatter and will not alter document content.

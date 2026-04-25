@@ -48,7 +48,7 @@ When creating a new spec from scratch, both files are created together — align
 
 7. **Summarize** what happened (files created, spec documented, review outcome).
 
-8. **Suggest sprint planning**: After the spec is written, suggest: "To break this spec into trackable issues, run `/design:plan SPEC-XXXX`."
+8. **Suggest sprint planning**: After the spec is written, suggest: "To break this spec into trackable issues, run `/sdd:plan SPEC-XXXX`."
 
 9. **CLAUDE.md integration**: Check if this is the first spec (i.e., `{spec-dir}` was just created or contains only this new directory). If so:
    - Check if a `CLAUDE.md` exists at the module root (or project root for single-module projects)

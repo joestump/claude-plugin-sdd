@@ -6,17 +6,17 @@ sidebar_position: 3
 
 # Sprint Planning
 
-The design plugin offers two modes for turning specs into actionable work: a
+The SDD plugin offers two modes for turning specs into actionable work: a
 **standard** mode that creates story-sized issues directly, and a **scrum** mode
 that runs a full team-groomed ceremony before committing to the backlog.
 
 ## Standard Planning
 
-After writing a spec, break it into trackable issues with `/design:plan`:
+After writing a spec, break it into trackable issues with `/sdd:plan`:
 
 ```
-/design:plan authentication-service
-/design:plan SPEC-0003
+/sdd:plan authentication-service
+/sdd:plan SPEC-0003
 ```
 
 The planner groups your requirements into **3–4 story-sized issues** by functional
@@ -26,7 +26,7 @@ task checklist that traces every requirement back to its story.
 The pipeline runs automatically:
 
 1. **Detects your tracker** — checks for Beads, GitHub, GitLab, Gitea, Jira, and Linear.
-   Saves your choice to `.claude-plugin-design.json` so you're never asked again.
+   Saves your choice to `.claude-plugin-sdd.json` so you're never asked again.
 2. **Creates an epic and stories** — one epic per spec, 3–4 stories per functional area
    (Setup, Core Logic, Validation, Extensions) with requirement checklists.
 3. **Enriches projects** — creates a tracker-native project with description and README,
@@ -50,8 +50,8 @@ When you want a team to challenge and refine the backlog before committing,
 add `--scrum`:
 
 ```
-/design:plan SPEC-0003 --scrum
-/design:plan --scrum            # groom full backlog
+/sdd:plan SPEC-0003 --scrum
+/sdd:plan --scrum            # groom full backlog
 ```
 
 `--scrum` runs a complete sprint planning ceremony, then automatically handles
@@ -65,7 +65,7 @@ Use scrum mode when:
 - Requirements touch multiple teams or have unclear boundaries
 - You want a high-bar review before committing to sprint commitments
 - Some work appears unspec'd (existing issues without a backing spec)
-- You haven't run `/design:audit` recently and want freshness validation
+- You haven't run `/sdd:audit` recently and want freshness validation
 
 ### The ceremony
 
@@ -76,7 +76,7 @@ Before any grooming begins, the planner audits every spec in scope:
 - If a spec has `spec.md` but is missing `design.md`, the design document is
   generated automatically.
 - If existing tracker issues reference work that has no backing spec, the planner
-  produces **spec proposals** — ready-to-use `/design:spec` commands for each
+  produces **spec proposals** — ready-to-use `/sdd:spec` commands for each
   unspec'd area.
 
 This ensures the team grooms against complete, consistent artifacts.
@@ -121,7 +121,7 @@ After grooming, organize and enrich run automatically:
 - Issues are grouped into tracker-native projects
 - Branch naming and PR conventions are added to every issue body
 
-No need to run `/design:organize` or `/design:enrich` separately.
+No need to run `/sdd:organize` or `/sdd:enrich` separately.
 
 #### Phase 6: Sprint report
 
@@ -141,17 +141,17 @@ The ceremony closes with a sprint report:
 - Story #45: Device Grant — requires SPEC-0003 to clarify device_code TTL
 
 ### Spec Proposals 📋
-- Unspec'd: Rate Limiting — run `/design:spec Rate Limiting` to formalize
+- Unspec'd: Rate Limiting — run `/sdd:spec Rate Limiting` to formalize
 ```
 
 ## Retroactive Enrichment
 
-Already have issues from a previous `/design:plan` run? Use these to catch up
+Already have issues from a previous `/sdd:plan` run? Use these to catch up
 without re-creating issues:
 
 ```
-/design:organize SPEC-0003     # group into projects
-/design:enrich SPEC-0003       # add branch names and PR conventions
+/sdd:organize SPEC-0003     # group into projects
+/sdd:enrich SPEC-0003       # add branch names and PR conventions
 ```
 
 Both commands are idempotent — they skip anything that already exists or already
@@ -163,15 +163,15 @@ After implementation, use drift detection to check alignment. For a full
 project-wide audit:
 
 ```
-/design:audit
+/sdd:audit
 ```
 
 For large projects, the raw findings table can be overwhelming. Add `--scrum`
 to replace it with a prioritized remediation roadmap:
 
 ```
-/design:audit --scrum
-/design:audit auth --scrum    # scoped to auth domain
+/sdd:audit --scrum
+/sdd:audit auth --scrum    # scoped to auth domain
 ```
 
 ### How audit triage works
@@ -252,19 +252,19 @@ Here's the complete flow from decision to validated implementation:
 
 ```
 # 1. Record the decision
-/design:adr Add WebSocket-based notifications --review
+/sdd:adr Add WebSocket-based notifications --review
 
 # 2. Write the spec
-/design:spec Notification Service
+/sdd:spec Notification Service
 
 # 3. Plan with team grooming
-/design:plan SPEC-0004 --scrum
+/sdd:plan SPEC-0004 --scrum
 
 # 4. Prime and build
-/design:prime notifications
-/design:work
+/sdd:prime notifications
+/sdd:work
 
 # 5. Validate
-/design:check src/notifications/
-/design:audit --scrum
+/sdd:check src/notifications/
+/sdd:audit --scrum
 ```

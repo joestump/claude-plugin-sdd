@@ -38,7 +38,7 @@ You are breaking down an existing specification into trackable work items (epics
 
    **If `--scrum` is set, skip to the Scrum Mode section after completing step 1. Do not proceed through steps 2–8 in sequence — scrum mode orchestrates them internally.**
 
-2. **Read the spec**: Read both `{spec-dir}/{capability-name}/spec.md` and `{spec-dir}/{capability-name}/design.md` to understand the full scope of requirements, scenarios, and architecture. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation". If either spec.md or design.md is missing, error and suggest `/design:spec`.
+2. **Read the spec**: Read both `{spec-dir}/{capability-name}/spec.md` and `{spec-dir}/{capability-name}/design.md` to understand the full scope of requirements, scenarios, and architecture. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation". If either spec.md or design.md is missing, error and suggest `/sdd:spec`.
 
 3. **Choose drafting mode**: Check if `$ARGUMENTS` contains `--review`.
 
@@ -71,7 +71,7 @@ Tell the user: "Starting scrum ceremony. This will audit spec completeness, deco
 Before spawning the grooming team, audit every spec referenced by any in-scope issue:
 
 1. For each referenced spec, check if `{spec-dir}/{name}/design.md` exists alongside `spec.md`.
-2. If `design.md` is **missing**, generate a draft `design.md` co-located with `spec.md`. Use the design.md template from `/design:spec`. Set frontmatter `status: draft`. Log: "Generated draft design.md for {spec-name}."
+2. If `design.md` is **missing**, generate a draft `design.md` co-located with `spec.md`. Use the design.md template from `/sdd:spec`. Set frontmatter `status: draft`. Log: "Generated draft design.md for {spec-name}."
 3. If a tracker issue has **no backing spec**, generate both `{spec-dir}/{issue-slug}/spec.md` and `design.md` as drafts (status: draft), deriving the capability name from the issue title. Log: "Generated draft spec proposal for issue #{n}: {title}."
 4. After all drafts are generated, report the audit results: pass count, missing design.md count, unspec'd issue count, and file paths of generated drafts.
 
@@ -154,13 +154,13 @@ Ordered for implementation (dependencies respected):
 ...
 
 ### Next Steps
-- Run `/design:work` to begin parallel implementation
-- Run `/design:prime` before implementation sessions to load architecture context
+- Run `/sdd:work` to begin parallel implementation
+- Run `/sdd:prime` before implementation sessions to load architecture context
 ```
 
 ---
 
-4. **Detect the issue tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Read the `### Design Plugin Configuration` section from CLAUDE.md for tracker type, tracker-specific config (GitHub/Gitea/GitLab: Owner/Repo, Jira: Project Key, Linear: Team ID, Beads: no extra config), plus Branch Conventions, PR Conventions, and Projects settings used in steps 5–7. When the user selects a tracker for the first time, offer to save the configuration to the `### Design Plugin Configuration` section in CLAUDE.md.
+4. **Detect the issue tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Read the `### SDD Configuration` section from CLAUDE.md for tracker type, tracker-specific config (GitHub/Gitea/GitLab: Owner/Repo, Jira: Project Key, Linear: Team ID, Beads: no extra config), plus Branch Conventions, PR Conventions, and Projects settings used in steps 5–7. When the user selects a tracker for the first time, offer to save the configuration to the `### SDD Configuration` section in CLAUDE.md.
 
 5. **Create issues in the detected tracker**:
 
@@ -331,7 +331,7 @@ Ordered for implementation (dependencies respected):
 
    **5.4: Set up dependencies between stories.** Where stories have logical ordering (e.g., setup before core logic, core before extensions), set up dependency relationships between story issues using the tracker's native features. If using Beads, use `bd dep add`.
 
-   **5.5: Gather tracker-specific config.** If the tracker requires configuration not already saved (e.g., repo owner/name for GitHub, project key for Jira), use `AskUserQuestion` to ask the user. Offer to save the config to the `### Design Plugin Configuration` section in CLAUDE.md.
+   **5.5: Gather tracker-specific config.** If the tracker requires configuration not already saved (e.g., repo owner/name for GitHub, project key for Jira), use `AskUserQuestion` to ask the user. Offer to save the config to the `### SDD Configuration` section in CLAUDE.md.
 
    **5.6: Project grouping.** Unless `--no-projects` is set:
    - **Default (per-epic)**: For each epic, create a tracker-native project and add the epic and its child stories:
@@ -423,7 +423,7 @@ Ordered for implementation (dependencies respected):
    - Whether branch naming conventions were included in issue bodies (or "skipped" if `--no-branches`)
    - Whether PR conventions were included in issue bodies (or "skipped" if `--no-branches`)
    - Where the user can find them
-   - Suggest `/design:prime` before starting implementation so agents have architecture context
+   - Suggest `/sdd:prime` before starting implementation so agents have architecture context
 
    **Example dependency graph output:**
    ```
@@ -459,7 +459,7 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - Coupled requirements (same files, shared data structures) MUST be placed in the same story (Governing: SPEC-0010 REQ "Grouping Heuristics")
 - MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
 - MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
-- MUST offer to save tracker preference to the `### Design Plugin Configuration` section in CLAUDE.md when a tracker is selected for the first time
+- MUST offer to save tracker preference to the `### SDD Configuration` section in CLAUDE.md when a tracker is selected for the first time
 - When writing config to CLAUDE.md, preserve existing keys — only update changed sections
 - Dependency ordering between stories SHOULD reflect logical implementation order, not spec document order
 - Project grouping failures MUST NOT prevent issue creation
@@ -473,8 +473,8 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - MUST enrich projects after creation with descriptions, READMEs, views, iterations (GitHub) or milestones, columns, dependencies (Gitea) (Governing: SPEC-0011, ADR-0012)
 - Enrichment failures MUST be skipped and reported, never fail the entire operation (Governing: SPEC-0011 REQ "Graceful Degradation")
 - CLAUDE.md `Projects > Views`, `Projects > Columns`, `Projects > Iteration Weeks` are all optional with sensible defaults — do NOT overwrite existing keys when they are absent
-- Story issues MUST be consumable by `/design:work` and `/design:review` — they use the same `### Branch` and `### PR Convention` structural sections (Governing: SPEC-0010 REQ "Downstream Compatibility")
-- When `--scrum` is set, organize and enrich MUST run automatically after grooming — NEVER require the user to run `/design:organize` or `/design:enrich` separately (Governing: SPEC-0012 REQ "Automatic Organize and Enrich")
+- Story issues MUST be consumable by `/sdd:work` and `/sdd:review` — they use the same `### Branch` and `### PR Convention` structural sections (Governing: SPEC-0010 REQ "Downstream Compatibility")
+- When `--scrum` is set, organize and enrich MUST run automatically after grooming — NEVER require the user to run `/sdd:organize` or `/sdd:enrich` separately (Governing: SPEC-0012 REQ "Automatic Organize and Enrich")
 - Stories that involve HTTP endpoints MUST include a `## Security Checklist` section with authentication, input validation, output encoding, rate limiting, and body size limit items (Governing: ADR-0018, SPEC-0016 REQ "Security Checklist in Issues")
 - The security checklist MUST NOT be added to stories that do not involve HTTP endpoints (DB migrations, background jobs, CLI commands, library refactoring, etc.) (Governing: SPEC-0016 REQ "Security Checklist in Issues")
 - The security checklist MUST be placed after `## Acceptance Criteria` and before `### Branch` / `### PR Convention` sections
@@ -497,4 +497,4 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - MUST analyze recent git history (last 50 commits or 30 days, whichever is larger) for hotspot files modified by >50% of recent PRs (Governing: SPEC-0015 REQ "Hotspot Analysis", ADR-0017 Layer 1)
 - Stories touching hotspot files MUST be serialized, not parallelized
 - MUST report detected hotspots with file path and percentage of recent PRs that touched them
-- The hotspot threshold (default 50%) SHOULD be read from CLAUDE.md `## Design Plugin Configuration` if present
+- The hotspot threshold (default 50%) SHOULD be read from CLAUDE.md `## SDD Configuration` if present

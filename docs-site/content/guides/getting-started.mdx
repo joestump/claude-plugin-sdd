@@ -6,7 +6,7 @@ sidebar_position: 0
 
 # Getting Started
 
-The design plugin brings architecture governance to Claude Code. It lets you record decisions as ADRs, formalize them into specifications, plan sprints, implement issues in parallel, and validate that your code stays aligned with your architecture -- all without leaving the CLI.
+The SDD plugin brings architecture governance to Claude Code. It lets you record decisions as ADRs, formalize them into specifications, plan sprints, implement issues in parallel, and validate that your code stays aligned with your architecture -- all without leaving the CLI.
 
 ## Installation
 
@@ -15,20 +15,20 @@ Add the plugin to your project's `.claude/settings.json`:
 ```json
 {
   "extraKnownMarketplaces": {
-    "claude-plugin-design": {
+    "claude-plugin-sdd": {
       "source": {
         "source": "github",
-        "repo": "joestump/claude-plugin-design"
+        "repo": "joestump/claude-plugin-sdd"
       }
     }
   },
   "enabledPlugins": {
-    "design@claude-plugin-design": true
+    "design@claude-plugin-sdd": true
   }
 }
 ```
 
-Then restart Claude Code. All 15 skills will be available as `/design:*` commands.
+Then restart Claude Code. All 15 skills will be available as `/sdd:*` commands.
 
 ## Quick Start
 
@@ -37,7 +37,7 @@ Walk through the simplest useful workflow: create an ADR, then a spec, plan a sp
 ### 1. Initialize the plugin
 
 ```
-/design:init
+/sdd:init
 ```
 
 This sets up your project's `CLAUDE.md` with an Architecture Context section that references `docs/adrs/` and `docs/openspec/specs/`. It also adds a skills reference table so future sessions know what commands are available. Safe to re-run -- it won't duplicate content.
@@ -45,7 +45,7 @@ This sets up your project's `CLAUDE.md` with an Architecture Context section tha
 ### 2. Record your first decision
 
 ```
-/design:adr We need to choose between REST and GraphQL for our API
+/sdd:adr We need to choose between REST and GraphQL for our API
 ```
 
 This creates an ADR in `docs/adrs/` using [MADR](https://adr.github.io/madr/) format. The ADR captures the context, options considered, decision outcome, and consequences. It includes a Mermaid architecture diagram and uses sequential numbering (`ADR-0001`, `ADR-0002`, etc.).
@@ -53,7 +53,7 @@ This creates an ADR in `docs/adrs/` using [MADR](https://adr.github.io/madr/) fo
 ### 3. Formalize into a specification
 
 ```
-/design:spec api-layer
+/sdd:spec api-layer
 ```
 
 This creates a paired `spec.md` and `design.md` in `docs/openspec/specs/api-layer/`. The spec uses [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) language (MUST, SHALL, MAY) to define requirements, while the design document captures architecture diagrams and implementation details. These two files are always kept in sync -- when one changes, the other is reviewed for alignment.
@@ -61,7 +61,7 @@ This creates a paired `spec.md` and `design.md` in `docs/openspec/specs/api-laye
 ### 4. Plan your sprint
 
 ```
-/design:plan SPEC-0001
+/sdd:plan SPEC-0001
 ```
 
 This breaks your spec into trackable issues in your issue tracker (GitHub, GitLab, Gitea, Jira, Linear, or Beads). It creates an epic for the spec with story-sized issues grouped by functional area, each with acceptance criteria that reference specific spec requirements. Branch naming conventions and PR templates are added to each issue automatically.
@@ -69,12 +69,12 @@ This breaks your spec into trackable issues in your issue tracker (GitHub, GitLa
 ### 5. Implement and validate
 
 ```
-/design:work SPEC-0001
-/design:review SPEC-0001
-/design:check src/
+/sdd:work SPEC-0001
+/sdd:review SPEC-0001
+/sdd:check src/
 ```
 
-`/design:work` picks up the open issues and implements them in parallel using git worktrees -- each issue gets its own isolated branch and a worker agent that reads the spec, writes code, runs tests, and opens a PR. `/design:review` then pairs reviewer and responder agents to check each PR against the spec's acceptance criteria and merge approved work. Finally, `/design:check` verifies that the implementation hasn't drifted from your ADRs and specs.
+`/sdd:work` picks up the open issues and implements them in parallel using git worktrees -- each issue gets its own isolated branch and a worker agent that reads the spec, writes code, runs tests, and opens a PR. `/sdd:review` then pairs reviewer and responder agents to check each PR against the spec's acceptance criteria and merge approved work. Finally, `/sdd:check` verifies that the implementation hasn't drifted from your ADRs and specs.
 
 ## What's Next
 

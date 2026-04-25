@@ -2,9 +2,9 @@
 
 ## Context
 
-The design plugin produces well-structured, thoroughly documented codebases with strong traceability from architectural decisions to implementation. However, a review of three production projects (spotter, joe-links, claude-ops) revealed that the plugin has no guardrails for security, frontend quality, or governing comment hygiene. The result: claude-ops shipped an unauthenticated dashboard, all three repos have zero frontend tests, accessibility is near-absent, and governing comments have become so verbose they hurt readability and cause merge conflicts.
+The SDD plugin produces well-structured, thoroughly documented codebases with strong traceability from architectural decisions to implementation. However, a review of three production projects (spotter, joe-links, claude-ops) revealed that the plugin has no guardrails for security, frontend quality, or governing comment hygiene. The result: claude-ops shipped an unauthenticated dashboard, all three repos have zero frontend tests, accessibility is near-absent, and governing comments have become so verbose they hurt readability and cause merge conflicts.
 
-This capability weaves security defaults, code quality checks, frontend quality standards, and governing comment reform into the existing skill pipeline — `/design:spec`, `/design:plan`, `/design:check`, and `/design:init` — rather than introducing standalone skills. The approach mirrors the plugin's core design principle: make good practices the path of least resistance by integrating them into the workflows developers already use.
+This capability weaves security defaults, code quality checks, frontend quality standards, and governing comment reform into the existing skill pipeline — `/sdd:spec`, `/sdd:plan`, `/sdd:check`, and `/sdd:init` — rather than introducing standalone skills. The approach mirrors the plugin's core design principle: make good practices the path of least resistance by integrating them into the workflows developers already use.
 
 Governing: ADR-0018 (Security-by-Default), ADR-0019 (Frontend Quality Standards), ADR-0020 (Governing Comment Reform), SPEC-0016.
 
@@ -14,10 +14,10 @@ Governing: ADR-0018 (Security-by-Default), ADR-0019 (Frontend Quality Standards)
 
 - Ensure every web-facing spec includes security requirements (authentication, rate limiting, headers, body limits, CSRF, redirect validation) from day one
 - Make authentication the default for all endpoints; force explicit justification for public endpoints
-- Detect dangerous code patterns (unbounded body reads, innerHTML, missing SRI, unauthenticated routes) during `/design:check`
+- Detect dangerous code patterns (unbounded body reads, innerHTML, missing SRI, unauthenticated routes) during `/sdd:check`
 - Inject accessibility requirements into every UI-facing spec (WCAG 2.1 AA, ARIA, keyboard navigation, focus management)
-- Create companion frontend test stories automatically during `/design:plan`
-- Detect template quality issues (duplication, dev-only CDN, framework sprawl) during `/design:check`
+- Create companion frontend test stories automatically during `/sdd:plan`
+- Detect template quality issues (duplication, dev-only CDN, framework sprawl) during `/sdd:check`
 - Reform governing comments to file-level blocks, eliminating per-line annotation density and retroactive batching
 - Apply Go-specific quality guidelines (structured logging, error handling, concurrency safety) when a `go.mod` is detected
 
@@ -33,13 +33,13 @@ Governing: ADR-0018 (Security-by-Default), ADR-0019 (Frontend Quality Standards)
 
 ### Integration into Existing Skills vs. New Skills
 
-**Choice**: Inject security and quality checks into `/design:spec`, `/design:plan`, `/design:check`, and `/design:init` rather than creating `/design:security`, `/design:a11y`, or `/design:quality` skills.
+**Choice**: Inject security and quality checks into `/sdd:spec`, `/sdd:plan`, `/sdd:check`, and `/sdd:init` rather than creating `/sdd:security`, `/sdd:a11y`, or `/sdd:quality` skills.
 
-**Rationale**: Security is not a separate phase — it is a cross-cutting quality attribute that must be present at specification, planning, and verification time. A standalone `/design:security` skill requires developers to remember to invoke it, which is the exact failure mode that led to claude-ops shipping an unauthenticated dashboard. Integration ensures coverage without opt-in.
+**Rationale**: Security is not a separate phase — it is a cross-cutting quality attribute that must be present at specification, planning, and verification time. A standalone `/sdd:security` skill requires developers to remember to invoke it, which is the exact failure mode that led to claude-ops shipping an unauthenticated dashboard. Integration ensures coverage without opt-in.
 
 **Alternatives considered**:
-- Separate `/design:security` skill: Adds a 16th skill, requires developers to remember to invoke it, creates a false separation between "building" and "securing"
-- Post-hoc audit only (extend `/design:audit`): Catches issues after implementation — the same retrofit pattern that cost spotter 3 dedicated security issues (#94, #101, #107)
+- Separate `/sdd:security` skill: Adds a 16th skill, requires developers to remember to invoke it, creates a false separation between "building" and "securing"
+- Post-hoc audit only (extend `/sdd:audit`): Catches issues after implementation — the same retrofit pattern that cost spotter 3 dedicated security issues (#94, #101, #107)
 - Security checklist in CLAUDE.md: Advisory only; compliance is voluntary; no verification that the checklist was followed
 
 ### Text-Based Pattern Matching for Lint
@@ -73,13 +73,13 @@ Governing: ADR-0018 (Security-by-Default), ADR-0019 (Frontend Quality Standards)
 **Alternatives considered**:
 - Keep per-line annotations: Proven to produce unreadable files (spotter) and conflict-prone retroactive campaigns (claude-ops)
 - External traceability matrix: Loses co-location; line numbers go stale with every edit; a single matrix file is an even worse merge conflict hotspot
-- Remove governing comments entirely: Loses code-level traceability; `/design:check` and `/design:audit` lose their primary signal for verifying implementation alignment
+- Remove governing comments entirely: Loses code-level traceability; `/sdd:check` and `/sdd:audit` lose their primary signal for verifying implementation alignment
 
 ### Go-Specific Quality as Conditional Injection
 
 **Choice**: Go quality guidelines are injected only when `go.mod` is detected, making them conditional on project technology.
 
-**Rationale**: The three reviewed projects are all Go, but the plugin supports any language. Go-specific guidelines (slog, %w wrapping, sentinel errors, context propagation) should not appear in Python or TypeScript specs. Detection via `go.mod` is simple, reliable, and extends the same pattern that `/design:spec` uses to detect web-facing vs. non-web specs.
+**Rationale**: The three reviewed projects are all Go, but the plugin supports any language. Go-specific guidelines (slog, %w wrapping, sentinel errors, context propagation) should not appear in Python or TypeScript specs. Detection via `go.mod` is simple, reliable, and extends the same pattern that `/sdd:spec` uses to detect web-facing vs. non-web specs.
 
 **Alternatives considered**:
 - Always include Go guidelines: Irrelevant noise for non-Go projects
@@ -92,7 +92,7 @@ Governing: ADR-0018 (Security-by-Default), ADR-0019 (Frontend Quality Standards)
 
 ```mermaid
 flowchart TD
-    subgraph "Spec Time — /design:spec"
+    subgraph "Spec Time — /sdd:spec"
         S1["Detect project characteristics"]
         S1 --> S2{"Web-facing?"}
         S2 -->|Yes| S3["Inject Security Requirements section\n(auth, rate limit, headers, body limits,\nCSRF, redirect validation)"]
@@ -111,7 +111,7 @@ flowchart TD
         S11 -->|No| S13["No concurrency section"]
     end
 
-    subgraph "Plan Time — /design:plan"
+    subgraph "Plan Time — /sdd:plan"
         P1["Analyze spec requirements"]
         P1 --> P2{"HTTP endpoints\nin stories?"}
         P2 -->|Yes| P3["Add security checklist\nto endpoint issues"]
@@ -126,7 +126,7 @@ flowchart TD
         P8 -->|No| P10["No CI story"]
     end
 
-    subgraph "Check Time — /design:check"
+    subgraph "Check Time — /sdd:check"
         C1["Scan source files"]
         C1 --> C2["Security lint patterns\n(ReadAll, template.HTML, Redirect,\nauth middleware, innerHTML, CDN SRI)"]
         C1 --> C3["Template quality patterns\n(duplicate scripts, duplicate forms,\nduplicate nav, dev CDN, framework count)"]
@@ -136,7 +136,7 @@ flowchart TD
         C4 --> C7["Comment reform suggestions"]
     end
 
-    subgraph "Init Time — /design:init"
+    subgraph "Init Time — /sdd:init"
         I1{"Go project?"}
         I1 -->|Yes| I2["Suggest structured logging ADR\n(slog over log.Printf)"]
         I1 -->|No| I3["No Go-specific suggestions"]
@@ -215,7 +215,7 @@ Rules for the block:
 
 The check skill flags files exceeding 5 inline governing comments as candidates for consolidation to the file-level format.
 
-### Conditional Section Injection Logic in /design:spec
+### Conditional Section Injection Logic in /sdd:spec
 
 The spec skill determines which sections to inject based on capability characteristics detected from the user's description, referenced ADRs, and codebase analysis:
 
@@ -234,7 +234,7 @@ The detection is intentionally broad — it is better to inject a section that t
 - **False positives in lint patterns** -> Text-based matching will flag safe usages (e.g., `io.ReadAll` on an already-bounded body, `innerHTML` with pre-sanitized content). Mitigation: findings are for human review with remediation suggestions, not automated blocking. Projects can add suppression comments (e.g., `// nosec: body already bounded by MaxBytesReader`).
 - **Companion test stories increase sprint volume** -> Creating test stories for every UI-touching feature adds 30-50% more issues per sprint. Mitigation: test stories are estimated at half the effort of feature stories; they can be batched or deprioritized by the team if capacity is limited.
 - **Go-specific guidelines may not cover all Go patterns** -> The initial set (slog, %w, sentinel errors, context propagation) addresses findings from three repos but is not exhaustive. Mitigation: the pattern set is additive — new patterns can be added in future spec revisions without breaking existing behavior.
-- **Governing comment migration is organic, not enforced** -> Existing files with per-line comments will coexist with files using the new format until they are naturally modified. Mitigation: `/design:check` flags files with high inline comment density, providing a nudge without forcing retroactive cleanup campaigns.
+- **Governing comment migration is organic, not enforced** -> Existing files with per-line comments will coexist with files using the new format until they are naturally modified. Mitigation: `/sdd:check` flags files with high inline comment density, providing a nudge without forcing retroactive cleanup campaigns.
 
 ## Migration Plan
 
@@ -251,7 +251,7 @@ No breaking changes to existing specs, ADRs, or project configurations. Existing
 
 ## Open Questions
 
-- Should `/design:check` support a `// nosec` or `// lint:ignore` comment convention for suppressing specific lint findings, and if so, should the convention be standardized across security and template quality patterns?
+- Should `/sdd:check` support a `// nosec` or `// lint:ignore` comment convention for suppressing specific lint findings, and if so, should the convention be standardized across security and template quality patterns?
 - Should the Go quality guidelines extend to other languages (e.g., Python type hints, TypeScript strict mode) in a future spec revision, or should language-specific quality be a separate per-language spec?
 - Should companion test stories be mandatory (MUST) or recommended (SHOULD) — the current spec uses MUST, but teams with limited capacity may want to defer frontend tests in early sprints?
 - Should the security section injection detect the specific web framework in use (Gin, Echo, Chi, net/http) and tailor the security requirements to framework-specific patterns (e.g., Gin middleware vs. net/http middleware wrapping)?

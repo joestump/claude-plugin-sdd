@@ -2,7 +2,7 @@
 
 ## Context
 
-The design plugin has 15 skills and zero test coverage. A major v3.0 overhaul added config migration, workspace mode, security injection, worker protocols, and parallel coordination — all untested. The skill-creator plugin provides a complete eval framework (run_eval.py, grader, aggregate_benchmark.py, generate_review.py) that has never been applied to this plugin. The existing CI pipeline uses `claude-code-action` for PR code review but has no skill-level testing.
+The SDD plugin has 15 skills and zero test coverage. A major v3.0 overhaul added config migration, workspace mode, security injection, worker protocols, and parallel coordination — all untested. The skill-creator plugin provides a complete eval framework (run_eval.py, grader, aggregate_benchmark.py, generate_review.py) that has never been applied to this plugin. The existing CI pipeline uses `claude-code-action` for PR code review but has no skill-level testing.
 
 See ADR-0021 (Skill Evaluation and CI Testing Framework).
 

@@ -1,17 +1,17 @@
 {
-  "name": "claude-plugin-design",
+  "name": "claude-plugin-sdd",
   "owner": {
     "name": "Joe Stump",
     "url": "https://github.com/joestump"
   },
   "plugins": [
     {
-      "name": "design",
+      "name": "sdd",
       "source": {
         "source": "github",
-        "repo": "joestump/claude-plugin-design"
+        "repo": "joestump/claude-plugin-sdd"
       },
-      "description": "Architecture Decision Records (MADR), specifications, and Docusaurus documentation generation."
+      "description": "Spec-Driven Development: ADRs, specifications, and Docusaurus documentation generation."
     }
   ]
 }

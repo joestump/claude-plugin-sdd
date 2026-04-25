@@ -8,15 +8,15 @@ decision-makers: joestump
 
 ## Context and Problem Statement
 
-Every skill in the design plugin hardcodes `docs/adrs/` and `docs/openspec/specs/` relative to a single project root. Users want to use a top-level project with git submodules where each submodule maintains its own ADRs and specs (e.g., a platform repo with `service-a/`, `service-b/`, and `shared-lib/` submodules, each with independent architectural decisions). Currently all 15 skills silently fail to find artifacts in submodules because path resolution never looks beyond the top-level project root. How should the plugin support multi-module projects where design artifacts are distributed across submodules?
+Every skill in the SDD plugin hardcodes `docs/adrs/` and `docs/openspec/specs/` relative to a single project root. Users want to use a top-level project with git submodules where each submodule maintains its own ADRs and specs (e.g., a platform repo with `service-a/`, `service-b/`, and `shared-lib/` submodules, each with independent architectural decisions). Currently all 15 skills silently fail to find artifacts in submodules because path resolution never looks beyond the top-level project root. How should the plugin support multi-module projects where design artifacts are distributed across submodules?
 
 ## Decision Drivers
 
 * **Real-world project structure**: Production projects (spotter, joe-links, claude-ops) are moving toward multi-service architectures with git submodules; single-root assumptions break immediately
 * **Claude Code already recursively loads CLAUDE.md**: Subdirectory CLAUDE.md files are automatically loaded into session context, meaning workspace discovery infrastructure already exists
 * **Per-module autonomy**: Each submodule should own its architectural decisions independently — a service team should not need to coordinate ADR numbering with unrelated modules
-* **Aggregate views are still valuable**: Operations like `/design:audit`, `/design:list`, and `/design:docs` should be able to report across all modules in a single invocation
-* **No new config format**: ADR-0015 (markdown-native configuration) eliminates `.claude-plugin-design.json` in favor of CLAUDE.md — workspace config should follow the same principle rather than introducing yet another config mechanism
+* **Aggregate views are still valuable**: Operations like `/sdd:audit`, `/sdd:list`, and `/sdd:docs` should be able to report across all modules in a single invocation
+* **No new config format**: ADR-0015 (markdown-native configuration) eliminates `.claude-plugin-sdd.json` in favor of CLAUDE.md — workspace config should follow the same principle rather than introducing yet another config mechanism
 * **Minimal migration burden**: Existing single-root projects should continue working without any changes
 
 ## Considered Options
@@ -30,7 +30,7 @@ Every skill in the design plugin hardcodes `docs/adrs/` and `docs/openspec/specs
 
 Chosen option: "Option 4 — Recursive CLAUDE.md with auto-discovery from `.gitmodules`", because it leverages Claude Code's existing behavior of recursively loading CLAUDE.md files from subdirectories, requires no new configuration format (aligning with ADR-0015's markdown-native principle), gives each submodule autonomous control over its own design artifacts, and enables aggregate operations across modules through a simple scan of known module paths.
 
-Skills gain a `--module <name>` flag to scope operations to a single submodule. When no `--module` flag is provided, skills that create artifacts (e.g., `/design:adr`, `/design:spec`) operate in the top-level project root as today, while skills that read artifacts (e.g., `/design:list`, `/design:audit`, `/design:prime`) aggregate across all discovered modules. The `references/shared-patterns.md` file gains an "Artifact Path Resolution" pattern that reads CLAUDE.md to resolve artifact directories instead of hardcoding `docs/adrs/` and `docs/openspec/specs/`.
+Skills gain a `--module <name>` flag to scope operations to a single submodule. When no `--module` flag is provided, skills that create artifacts (e.g., `/sdd:adr`, `/sdd:spec`) operate in the top-level project root as today, while skills that read artifacts (e.g., `/sdd:list`, `/sdd:audit`, `/sdd:prime`) aggregate across all discovered modules. The `references/shared-patterns.md` file gains an "Artifact Path Resolution" pattern that reads CLAUDE.md to resolve artifact directories instead of hardcoding `docs/adrs/` and `docs/openspec/specs/`.
 
 ### Consequences
 
@@ -48,11 +48,11 @@ Skills gain a `--module <name>` flag to scope operations to a single submodule. 
 
 Implementation will be confirmed by:
 
-1. A project with two git submodules, each containing their own `CLAUDE.md` and `docs/adrs/` directory, is correctly discovered by running `/design:list` at the top level — both modules' ADRs appear with module labels
-2. `/design:adr --module service-a "some decision"` creates the ADR in `service-a/docs/adrs/`, not the top-level `docs/adrs/`
-3. `/design:prime` in a workspace project loads ADRs and specs from all modules into session context
-4. `/design:audit` in a workspace project reports drift per module and flags cross-module inconsistencies
-5. `/design:check` with `--module service-b` scopes its drift check to only `service-b/` artifacts and code
+1. A project with two git submodules, each containing their own `CLAUDE.md` and `docs/adrs/` directory, is correctly discovered by running `/sdd:list` at the top level — both modules' ADRs appear with module labels
+2. `/sdd:adr --module service-a "some decision"` creates the ADR in `service-a/docs/adrs/`, not the top-level `docs/adrs/`
+3. `/sdd:prime` in a workspace project loads ADRs and specs from all modules into session context
+4. `/sdd:audit` in a workspace project reports drift per module and flags cross-module inconsistencies
+5. `/sdd:check` with `--module service-b` scopes its drift check to only `service-b/` artifacts and code
 6. A single-root project (no `.gitmodules`, no submodule CLAUDE.md files) continues to work identically to current behavior — zero regression
 7. The "Artifact Path Resolution" pattern in `references/shared-patterns.md` is used by all skills instead of hardcoded paths
 
@@ -60,7 +60,7 @@ Implementation will be confirmed by:
 
 ### Option 1: Workspace Configuration JSON at Top Level
 
-A top-level `workspace.json` or a `workspace` key in `.claude-plugin-design.json` that maps module names to paths and their artifact directories.
+A top-level `workspace.json` or a `workspace` key in `.claude-plugin-sdd.json` that maps module names to paths and their artifact directories.
 
 ```json
 {
@@ -85,8 +85,8 @@ Each submodule is treated as a completely separate project. Users must `cd` into
 
 * Good, because it requires zero changes to existing skills — each submodule is just a standalone project
 * Good, because there is no ambiguity about which module an operation targets
-* Bad, because cross-module operations (`/design:audit` across all services, `/design:docs` for the whole platform) are impossible
-* Bad, because `/design:prime` cannot load architectural context from sibling modules, so an agent working in `service-a` has no visibility into decisions made in `service-b` that may affect shared interfaces
+* Bad, because cross-module operations (`/sdd:audit` across all services, `/sdd:docs` for the whole platform) are impossible
+* Bad, because `/sdd:prime` cannot load architectural context from sibling modules, so an agent working in `service-a` has no visibility into decisions made in `service-b` that may affect shared interfaces
 * Bad, because it forces users to maintain separate Claude Code sessions per submodule, losing the benefit of a unified project view
 
 ### Option 3: Monorepo Path Mapping in Single Config
@@ -123,7 +123,7 @@ Each submodule carries its own CLAUDE.md declaring its design artifacts. The plu
 
 ```mermaid
 flowchart TD
-    A["Skill invoked<br/>(e.g., /design:list)"] --> B{"--module flag<br/>provided?"}
+    A["Skill invoked<br/>(e.g., /sdd:list)"] --> B{"--module flag<br/>provided?"}
 
     B -->|"Yes"| C["Resolve single module path<br/>from --module name"]
     B -->|"No"| D{"Is this a<br/>write operation?"}

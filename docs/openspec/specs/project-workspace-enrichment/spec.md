@@ -2,17 +2,17 @@
 
 ## Overview
 
-Enriches tracker-native projects created by `/design:plan` and `/design:organize` with navigational context, structured views, iteration fields, and sane defaults so that both LLM agents and human developers can effectively navigate and manage planned work. Formalizes ADR-0012 (Project Workspace Enrichment), which extends the project grouping capabilities of ADR-0009 and the story-sized issue granularity of ADR-0011.
+Enriches tracker-native projects created by `/sdd:plan` and `/sdd:organize` with navigational context, structured views, iteration fields, and sane defaults so that both LLM agents and human developers can effectively navigate and manage planned work. Formalizes ADR-0012 (Project Workspace Enrichment), which extends the project grouping capabilities of ADR-0009 and the story-sized issue granularity of ADR-0011.
 
 ## Requirements
 
 ### Requirement: GitHub Project Description and README
 
-Projects created or managed by `/design:plan` and `/design:organize` SHALL have a short description and a README. The description SHALL be a one-liner summarizing the project scope (e.g., "Implementation of SPEC-0003: JWT Authentication"). The README SHALL be a structured navigational document written as a GitHub Project README field (not a repository file) containing spec references, governing ADRs, key files with line-number references, a story index, and dependency ordering. The README serves as project-scoped agent context, analogous to `/design:prime` output but limited to the project's scope.
+Projects created or managed by `/sdd:plan` and `/sdd:organize` SHALL have a short description and a README. The description SHALL be a one-liner summarizing the project scope (e.g., "Implementation of SPEC-0003: JWT Authentication"). The README SHALL be a structured navigational document written as a GitHub Project README field (not a repository file) containing spec references, governing ADRs, key files with line-number references, a story index, and dependency ordering. The README serves as project-scoped agent context, analogous to `/sdd:prime` output but limited to the project's scope.
 
 #### Scenario: Plan creates project with README
 
-- **WHEN** `/design:plan` creates a new GitHub Project for an epic
+- **WHEN** `/sdd:plan` creates a new GitHub Project for an epic
 - **THEN** the project SHALL have a description set to "Implementation of {SPEC-XXXX}: {Capability Title}"
 - **AND** the project SHALL have a README containing:
   - Paths to `spec.md` and `design.md` with brief summaries
@@ -23,7 +23,7 @@ Projects created or managed by `/design:plan` and `/design:organize` SHALL have 
 
 #### Scenario: Organize adds README to existing project
 
-- **WHEN** `/design:organize` restructures an existing GitHub Project (tier b or c)
+- **WHEN** `/sdd:organize` restructures an existing GitHub Project (tier b or c)
 - **THEN** the skill SHALL add or replace the project README with the same structure as above, derived from the spec and its current stories
 
 #### Scenario: README content structure
@@ -54,11 +54,11 @@ Projects created or managed by `/design:plan` and `/design:organize` SHALL have 
 
 ### Requirement: GitHub Project Iteration Fields
 
-Projects created by `/design:plan` SHALL have an iteration field named "Sprint" with a default cycle length of 2 weeks. The cycle length SHALL be configurable via `.claude-plugin-design.json` key `projects.iteration_weeks`. Stories SHALL be assigned to iterations based on their dependency ordering: foundation stories go into Sprint 1, dependent stories into Sprint 2, and so on. The iteration field MUST be created via the GitHub Projects V2 GraphQL API (`gh api graphql`).
+Projects created by `/sdd:plan` SHALL have an iteration field named "Sprint" with a default cycle length of 2 weeks. The cycle length SHALL be configurable via `.claude-plugin-sdd.json` key `projects.iteration_weeks`. Stories SHALL be assigned to iterations based on their dependency ordering: foundation stories go into Sprint 1, dependent stories into Sprint 2, and so on. The iteration field MUST be created via the GitHub Projects V2 GraphQL API (`gh api graphql`).
 
 #### Scenario: Iteration field creation
 
-- **WHEN** `/design:plan` creates a GitHub Project
+- **WHEN** `/sdd:plan` creates a GitHub Project
 - **THEN** the skill SHALL add an iteration field named "Sprint" to the project with a cycle length equal to `projects.iteration_weeks` (default: 2 weeks)
 - **AND** the iteration field SHALL be created using `gh api graphql -f query='...'` with the `createProjectV2Field` mutation
 
@@ -71,16 +71,16 @@ Projects created by `/design:plan` SHALL have an iteration field named "Sprint" 
 
 #### Scenario: Custom iteration duration
 
-- **WHEN** `.claude-plugin-design.json` contains `"projects": { "iteration_weeks": 3 }`
+- **WHEN** `.claude-plugin-sdd.json` contains `"projects": { "iteration_weeks": 3 }`
 - **THEN** the iteration field SHALL use a 3-week cycle length instead of the default 2-week cycle
 
 ### Requirement: GitHub Project Named Views
 
-Projects created by `/design:plan` SHALL have three named views configured. The views SHALL replace the default unnamed "Table" view that GitHub creates automatically. The view names and types SHALL be configurable via `.claude-plugin-design.json` key `projects.views`. Views MUST be created via the GitHub Projects V2 GraphQL API.
+Projects created by `/sdd:plan` SHALL have three named views configured. The views SHALL replace the default unnamed "Table" view that GitHub creates automatically. The view names and types SHALL be configurable via `.claude-plugin-sdd.json` key `projects.views`. Views MUST be created via the GitHub Projects V2 GraphQL API.
 
 #### Scenario: View creation
 
-- **WHEN** `/design:plan` creates a GitHub Project
+- **WHEN** `/sdd:plan` creates a GitHub Project
 - **THEN** the skill SHALL create three named views:
 
 | View Name | Type | Purpose |
@@ -91,7 +91,7 @@ Projects created by `/design:plan` SHALL have three named views configured. The 
 
 #### Scenario: Custom view configuration
 
-- **WHEN** `.claude-plugin-design.json` contains `"projects": { "views": ["Backlog", "Sprint Board", "Timeline"] }`
+- **WHEN** `.claude-plugin-sdd.json` contains `"projects": { "views": ["Backlog", "Sprint Board", "Timeline"] }`
 - **THEN** the skill SHALL create views with the custom names instead of the defaults
 - **AND** the view types SHALL map positionally: first = Table, second = Board, third = Roadmap
 
@@ -102,23 +102,23 @@ Projects created by `/design:plan` SHALL have three named views configured. The 
 
 ### Requirement: Gitea Project Structure
 
-For Gitea trackers, projects created by `/design:plan` SHALL use milestones as epic buckets, board columns for workflow stages, and task checklists (per ADR-0011) for requirement tracking within stories. The board columns SHALL be configurable via `.claude-plugin-design.json` key `projects.columns`.
+For Gitea trackers, projects created by `/sdd:plan` SHALL use milestones as epic buckets, board columns for workflow stages, and task checklists (per ADR-0011) for requirement tracking within stories. The board columns SHALL be configurable via `.claude-plugin-sdd.json` key `projects.columns`.
 
 #### Scenario: Milestone creation
 
-- **WHEN** `/design:plan` creates issues for a spec using the Gitea tracker
+- **WHEN** `/sdd:plan` creates issues for a spec using the Gitea tracker
 - **THEN** the skill SHALL create one Gitea milestone per epic, titled with the epic name
 - **AND** all stories belonging to that epic SHALL be assigned to the corresponding milestone
 
 #### Scenario: Column configuration
 
-- **WHEN** `/design:plan` creates a Gitea project board
+- **WHEN** `/sdd:plan` creates a Gitea project board
 - **THEN** the board SHALL have four default columns: Todo, In Progress, In Review, Done
 - **AND** newly created stories SHALL be placed in the "Todo" column
 
 #### Scenario: Custom column configuration
 
-- **WHEN** `.claude-plugin-design.json` contains `"projects": { "columns": ["Backlog", "Doing", "Review", "Shipped"] }`
+- **WHEN** `.claude-plugin-sdd.json` contains `"projects": { "columns": ["Backlog", "Doing", "Review", "Shipped"] }`
 - **THEN** the board SHALL use the custom column names instead of the defaults
 
 #### Scenario: Story assignment to milestones
@@ -129,7 +129,7 @@ For Gitea trackers, projects created by `/design:plan` SHALL use milestones as e
 
 ### Requirement: Auto-Create Labels
 
-When any skill (`/design:plan`, `/design:organize`, `/design:enrich`, `/design:work`) attempts to apply a label to an issue that does not exist in the repository, the skill SHALL create the label with a default color before applying it. The implementation SHALL follow a try-then-create pattern to minimize API calls and avoid race conditions.
+When any skill (`/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:work`) attempts to apply a label to an issue that does not exist in the repository, the skill SHALL create the label with a default color before applying it. The implementation SHALL follow a try-then-create pattern to minimize API calls and avoid race conditions.
 
 #### Scenario: Label exists
 
@@ -164,27 +164,27 @@ When any skill (`/design:plan`, `/design:organize`, `/design:enrich`, `/design:w
 
 ### Requirement: Gitea Native Dependencies
 
-For Gitea trackers, `/design:plan` SHALL use Gitea's native issue dependency API (`POST /repos/{owner}/{repo}/issues/{index}/dependencies`) to express story ordering. Dependencies are directional: story A blocks story B.
+For Gitea trackers, `/sdd:plan` SHALL use Gitea's native issue dependency API (`POST /repos/{owner}/{repo}/issues/{index}/dependencies`) to express story ordering. Dependencies are directional: story A blocks story B.
 
 #### Scenario: Dependency creation
 
-- **WHEN** `/design:plan` determines that story B depends on story A (dependency ordering)
+- **WHEN** `/sdd:plan` determines that story B depends on story A (dependency ordering)
 - **AND** the tracker is Gitea
 - **THEN** the skill SHALL create a native dependency link where story A blocks story B using the Gitea dependency API
 
-#### Scenario: Dependency query by /design:work
+#### Scenario: Dependency query by /sdd:work
 
-- **WHEN** `/design:work` picks up stories from a Gitea tracker
+- **WHEN** `/sdd:work` picks up stories from a Gitea tracker
 - **THEN** it SHALL be able to query dependencies via the Gitea API to determine which stories are unblocked
 - **AND** it SHALL prefer stories with no unresolved dependencies
 
 ### Requirement: Organize Three-Tier Intervention
 
-`/design:organize` SHALL gauge the current state of a project (missing views, no README, unstructured columns, missing dependencies) and present the operator with exactly three intervention options. The skill SHALL execute only the chosen tier.
+`/sdd:organize` SHALL gauge the current state of a project (missing views, no README, unstructured columns, missing dependencies) and present the operator with exactly three intervention options. The skill SHALL execute only the chosen tier.
 
 #### Scenario: Messiness assessment
 
-- **WHEN** `/design:organize` is invoked on an existing project
+- **WHEN** `/sdd:organize` is invoked on an existing project
 - **THEN** the skill SHALL assess the project for:
   - Missing or default-only views
   - Missing README
@@ -215,11 +215,11 @@ For Gitea trackers, `/design:plan` SHALL use Gitea's native issue dependency API
 
 ### Requirement: Configuration Persistence
 
-The `.claude-plugin-design.json` file SHALL support new keys under the `projects` object for workspace enrichment configuration. All new keys SHALL be optional and backward-compatible with existing `.claude-plugin-design.json` files.
+The `.claude-plugin-sdd.json` file SHALL support new keys under the `projects` object for workspace enrichment configuration. All new keys SHALL be optional and backward-compatible with existing `.claude-plugin-sdd.json` files.
 
 #### Scenario: Custom configuration
 
-- **WHEN** `.claude-plugin-design.json` contains:
+- **WHEN** `.claude-plugin-sdd.json` contains:
   ```json
   {
     "projects": {
@@ -229,11 +229,11 @@ The `.claude-plugin-design.json` file SHALL support new keys under the `projects
     }
   }
   ```
-- **THEN** `/design:plan` SHALL use these values instead of the defaults when creating project workspaces
+- **THEN** `/sdd:plan` SHALL use these values instead of the defaults when creating project workspaces
 
 #### Scenario: Default values
 
-- **WHEN** `.claude-plugin-design.json` exists but does not contain `projects.views`, `projects.columns`, or `projects.iteration_weeks`
+- **WHEN** `.claude-plugin-sdd.json` exists but does not contain `projects.views`, `projects.columns`, or `projects.iteration_weeks`
 - **THEN** the skill SHALL use the following defaults:
 
 | Key | Default Value |
@@ -244,7 +244,7 @@ The `.claude-plugin-design.json` file SHALL support new keys under the `projects
 
 #### Scenario: Backward compatibility
 
-- **WHEN** an existing `.claude-plugin-design.json` file contains only `tracker` and `tracker_config` keys (pre-SPEC-0011 format)
+- **WHEN** an existing `.claude-plugin-sdd.json` file contains only `tracker` and `tracker_config` keys (pre-SPEC-0011 format)
 - **THEN** the skill SHALL continue to function correctly, using defaults for all workspace enrichment keys
 - **AND** the skill SHALL NOT overwrite or remove existing keys when merging new configuration
 

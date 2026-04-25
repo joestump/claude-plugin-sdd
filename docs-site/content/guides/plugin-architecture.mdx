@@ -6,12 +6,12 @@ sidebar_position: 5
 
 # Plugin Architecture
 
-How the design plugin is structured internally, and the conventions it follows.
+How the SDD plugin is structured internally, and the conventions it follows.
 
 ## Directory Layout
 
 ```
-claude-plugin-design/
+claude-plugin-sdd/
 ├── .claude-plugin/
 │   └── plugin.json          # Plugin metadata and version
 ├── skills/                   # All 15 skills
@@ -27,7 +27,7 @@ claude-plugin-design/
 │           └── upgrade-mode.md
 ├── references/               # Shared patterns across skills
 │   ├── shared-patterns.md    # Tracker detection, config schema, etc.
-│   └── claude-md-template.md # CLAUDE.md template for /design:init
+│   └── claude-md-template.md # CLAUDE.md template for /sdd:init
 ├── templates/                # Docusaurus site templates
 │   ├── docusaurus/           # Standalone scaffold templates
 │   └── integration/          # Plugin for existing Docusaurus sites
@@ -41,7 +41,7 @@ claude-plugin-design/
 Each skill is a single `SKILL.md` file inside `skills/{name}/`. The file has two parts:
 
 1. **YAML frontmatter** — declares metadata that Claude uses to decide when and how to invoke the skill:
-   - `name`: The skill identifier (matches the slash command, e.g., `plan` for `/design:plan`)
+   - `name`: The skill identifier (matches the slash command, e.g., `plan` for `/sdd:plan`)
    - `description`: A natural-language trigger description. Claude uses this to match user intent to the right skill.
    - `allowed-tools`: A comma-separated list of tools the skill is permitted to use at runtime.
    - `argument-hint`: Documents the expected arguments and flags (e.g., `[spec-name] [--review] [--scrum]`).
@@ -60,7 +60,7 @@ The plugin uses a three-level loading strategy to keep context windows lean:
 2. **Skill body (loaded on trigger)**: The full markdown body of a `SKILL.md` is only loaded into context when the skill is actually invoked.
 3. **References (loaded on demand)**: Files in a skill's `references/` subdirectory are loaded only when the skill's instructions explicitly call for them.
 
-This is why the `/design:docs` skill splits its three modes (scaffold, integration, upgrade) into separate reference files rather than inlining them. When a user runs `/design:docs` in scaffold mode, only `references/scaffold-mode.md` gets loaded — the integration and upgrade instructions stay out of context entirely.
+This is why the `/sdd:docs` skill splits its three modes (scaffold, integration, upgrade) into separate reference files rather than inlining them. When a user runs `/sdd:docs` in scaffold mode, only `references/scaffold-mode.md` gets loaded — the integration and upgrade instructions stay out of context entirely.
 
 ### Allowed Tools
 
@@ -79,8 +79,8 @@ The file `references/shared-patterns.md` exists to deduplicate logic that five o
 The shared patterns file contains:
 
 - **Spec Resolution**: How to resolve a spec identifier (SPEC number, directory name, or interactive selection) to a file path.
-- **Tracker Detection**: The algorithm for discovering which issue trackers are available — checking saved preferences in `.claude-plugin-design.json`, probing for MCP tools, falling back to CLI detection, and prompting the user to choose when multiple trackers are found.
-- **Config Schema**: The full schema for `.claude-plugin-design.json` with all optional keys.
+- **Tracker Detection**: The algorithm for discovering which issue trackers are available — checking saved preferences in `.claude-plugin-sdd.json`, probing for MCP tools, falling back to CLI detection, and prompting the user to choose when multiple trackers are found.
+- **Config Schema**: The full schema for `.claude-plugin-sdd.json` with all optional keys.
 - **Team Handoff Protocol**: The drafter-reviewer message flow used by `--review` mode (draft, review, revise up to 2 rounds, approve).
 - **Try-Then-Create Label Pattern**: Attempt to apply a label; if it doesn't exist, create it with a default color and retry.
 - **Branch Naming Conventions**: How to derive branch names from issue numbers and titles.
@@ -91,11 +91,11 @@ The shared patterns file contains:
 
 ## Configuration
 
-### `.claude-plugin-design.json`
+### `.claude-plugin-sdd.json`
 
 This is the per-project configuration file, created in the user's project root. It is not part of the plugin itself — it lives in whatever project the user is working on.
 
-The file is first created when `/design:plan` detects and saves a tracker preference. It is subsequently read by `plan`, `organize`, `enrich`, `work`, and `review`.
+The file is first created when `/sdd:plan` detects and saves a tracker preference. It is subsequently read by `plan`, `organize`, `enrich`, `work`, and `review`.
 
 The configuration covers:
 
@@ -111,7 +111,7 @@ All keys are optional and backward-compatible. When writing, skills merge into t
 
 ### `CLAUDE.md` Integration
 
-The template in `references/claude-md-template.md` is what `/design:init` injects into a project's `CLAUDE.md` file. It gives Claude architecture awareness in every session by documenting:
+The template in `references/claude-md-template.md` is what `/sdd:init` injects into a project's `CLAUDE.md` file. It gives Claude architecture awareness in every session by documenting:
 
 - Where ADRs and specs live
 - The full skill table with descriptions
@@ -120,9 +120,9 @@ The template in `references/claude-md-template.md` is what `/design:init` inject
 
 This matters because `CLAUDE.md` is loaded at the start of every Claude Code session. Without it, Claude would not know that architecture artifacts exist or how to interact with them.
 
-### `.design-docs.json`
+### `.sdd-docs.json`
 
-This manifest is created by `/design:docs` in the user's project root. It tracks which files the docs skill has generated, along with their checksums. This enables the upgrade mode to detect which generated files have been manually modified by the user and which can be safely overwritten during a docs regeneration.
+This manifest is created by `/sdd:docs` in the user's project root. It tracks which files the docs skill has generated, along with their checksums. This enables the upgrade mode to detect which generated files have been manually modified by the user and which can be safely overwritten during a docs regeneration.
 
 ## Templates
 
@@ -132,22 +132,22 @@ The `templates/` directory contains source files that get copied into the user's
 
 - **`templates/docusaurus/`**: Used by scaffold mode. Contains a complete standalone Docusaurus site structure including `docusaurus.config.ts`, `sidebars.ts`, custom components (RFC 2119 highlighting, status badges, requirement boxes), and CSS. This gets copied to a `docs-site/` directory in the user's project.
 
-- **`templates/integration/`**: Used by integration mode. Contains a Docusaurus build-time plugin (`sync-design-docs`) that hooks into an existing Docusaurus installation. It uses `loadContent()` and `getPathsToWatch()` for hot module reloading. Output goes to `{site}/docs/architecture/` (gitignored), with components placed in `{site}/src/components/design-docs/`.
+- **`templates/integration/`**: Used by integration mode. Contains a Docusaurus build-time plugin (`sync-spec-docs`) that hooks into an existing Docusaurus installation. It uses `loadContent()` and `getPathsToWatch()` for hot module reloading. Output goes to `{site}/docs/architecture/` (gitignored), with components placed in `{site}/src/components/design-docs/`.
 
 ## Design Artifacts
 
 The plugin dogfoods its own architecture governance. The `docs/adrs/` and `docs/openspec/specs/` directories contain the ADRs and specifications that govern the plugin's own development. At the time of writing, the plugin has 14 ADRs and 13 specs.
 
-For example, ADR-0011 and SPEC-0010 govern how `/design:plan` decomposes specs into issues, and ADR-0013 and SPEC-0012 define the `--scrum` ceremony mode. Changes to the plugin go through the same Decide-Specify-Build cycle that users follow in their own projects.
+For example, ADR-0011 and SPEC-0010 govern how `/sdd:plan` decomposes specs into issues, and ADR-0013 and SPEC-0012 define the `--scrum` ceremony mode. Changes to the plugin go through the same Decide-Specify-Build cycle that users follow in their own projects.
 
 ## Conventions
 
-- **Skill naming**: kebab-case directory name matches the slash command (e.g., `skills/plan/SKILL.md` maps to `/design:plan`)
+- **Skill naming**: kebab-case directory name matches the slash command (e.g., `skills/plan/SKILL.md` maps to `/sdd:plan`)
 - **ADR numbering**: `ADR-XXXX` (zero-padded, sequential)
 - **Spec numbering**: `SPEC-XXXX` (zero-padded, sequential)
 - **Paired artifacts**: Every spec has both `spec.md` (requirements) and `design.md` (architecture) — when either changes, the other must be reviewed for alignment
 - **RFC 2119**: Specs use SHALL/MUST/SHOULD/MAY for normative requirements
-- **Governing comments**: Code leaves `// Governing: ADR-XXXX, SPEC-XXXX REQ "Name"` traces so future sessions and `/design:check` can trace implementation back to decisions
+- **Governing comments**: Code leaves `// Governing: ADR-XXXX, SPEC-XXXX REQ "Name"` traces so future sessions and `/sdd:check` can trace implementation back to decisions
 - **Team review**: `--review` flag spawns a drafter/auditor + reviewer pair with a maximum of 2 revision rounds
-- **Scrum ceremonies**: `--scrum` flag on `/design:plan` and `/design:audit` spawns 5-agent teams for full grooming and triage ceremonies
+- **Scrum ceremonies**: `--scrum` flag on `/sdd:plan` and `/sdd:audit` spawns 5-agent teams for full grooming and triage ceremonies
 - **Releases**: Tagged as `vX.Y.Z`, created via `gh release create` with a haiku summary

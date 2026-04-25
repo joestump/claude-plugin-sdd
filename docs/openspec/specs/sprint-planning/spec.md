@@ -2,33 +2,33 @@
 
 ## Overview
 
-A standalone skill that resolves an existing specification, detects the user's issue tracker, and decomposes spec requirements into trackable work items (epics, tasks, sub-tasks). Supports six trackers (Beads, GitHub, GitLab, Gitea, Jira, Linear), persists tracker preferences to `.claude-plugin-design.json`, and falls back to `tasks.md` generation when no tracker is available. See ADR-0008.
+A standalone skill that resolves an existing specification, detects the user's issue tracker, and decomposes spec requirements into trackable work items (epics, tasks, sub-tasks). Supports six trackers (Beads, GitHub, GitLab, Gitea, Jira, Linear), persists tracker preferences to `.claude-plugin-sdd.json`, and falls back to `tasks.md` generation when no tracker is available. See ADR-0008.
 
 ## Requirements
 
 ### Requirement: Spec Resolution
 
-The `/design:plan` skill SHALL accept a spec identifier as its primary argument. The identifier MAY be a SPEC number (e.g., `SPEC-0003`) or a capability directory name (e.g., `web-dashboard`). The skill MUST resolve the identifier to the corresponding spec directory under `docs/openspec/specs/`.
+The `/sdd:plan` skill SHALL accept a spec identifier as its primary argument. The identifier MAY be a SPEC number (e.g., `SPEC-0003`) or a capability directory name (e.g., `web-dashboard`). The skill MUST resolve the identifier to the corresponding spec directory under `docs/openspec/specs/`.
 
 #### Scenario: Resolution by SPEC number
 
-- **WHEN** a user runs `/design:plan SPEC-0003`
+- **WHEN** a user runs `/sdd:plan SPEC-0003`
 - **THEN** the skill SHALL scan `docs/openspec/specs/*/spec.md` for a file whose title contains `SPEC-0003` and use the containing directory
 
 #### Scenario: Resolution by capability name
 
-- **WHEN** a user runs `/design:plan web-dashboard`
+- **WHEN** a user runs `/sdd:plan web-dashboard`
 - **THEN** the skill SHALL look for `docs/openspec/specs/web-dashboard/spec.md` and use that directory
 
 #### Scenario: No argument provided
 
-- **WHEN** a user runs `/design:plan` with no spec identifier (ignoring flags)
+- **WHEN** a user runs `/sdd:plan` with no spec identifier (ignoring flags)
 - **THEN** the skill SHALL list all available specs by globbing `docs/openspec/specs/*/spec.md`, reading each title, and using `AskUserQuestion` to let the user choose
 
 #### Scenario: Spec not found
 
 - **WHEN** the provided identifier does not match any existing spec
-- **THEN** the skill SHALL inform the user and suggest running `/design:spec` to create one
+- **THEN** the skill SHALL inform the user and suggest running `/sdd:spec` to create one
 
 ### Requirement: Spec Reading
 
@@ -69,22 +69,22 @@ The six supported trackers are:
 
 ### Requirement: Preference Persistence
 
-The skill SHALL persist tracker preferences to `.claude-plugin-design.json` in the project root when the user opts in. On subsequent invocations, the skill MUST check for a saved preference before running tracker detection.
+The skill SHALL persist tracker preferences to `.claude-plugin-sdd.json` in the project root when the user opts in. On subsequent invocations, the skill MUST check for a saved preference before running tracker detection.
 
 #### Scenario: Saved preference exists and tracker is available
 
-- **WHEN** `.claude-plugin-design.json` exists with a `"tracker"` key and the saved tracker's tools are still available
+- **WHEN** `.claude-plugin-sdd.json` exists with a `"tracker"` key and the saved tracker's tools are still available
 - **THEN** the skill SHALL use the saved tracker and configuration directly without prompting
 
 #### Scenario: Saved preference exists but tracker is unavailable
 
-- **WHEN** `.claude-plugin-design.json` exists with a `"tracker"` key but the saved tracker's tools are no longer available
+- **WHEN** `.claude-plugin-sdd.json` exists with a `"tracker"` key but the saved tracker's tools are no longer available
 - **THEN** the skill SHALL warn the user ("Your saved tracker '{name}' is no longer available. Detecting other trackers...") and fall through to tracker detection
 
 #### Scenario: Saving preference
 
 - **WHEN** the user agrees to save their tracker choice
-- **THEN** the skill SHALL write or merge into `.claude-plugin-design.json`:
+- **THEN** the skill SHALL write or merge into `.claude-plugin-sdd.json`:
   ```json
   {
     "tracker": "{tracker-name}",
@@ -97,9 +97,9 @@ The skill SHALL persist tracker preferences to `.claude-plugin-design.json` in t
   - Linear: `{ "team_id": "..." }`
   - Beads: `{}` (no extra config needed)
 
-#### Scenario: Merging with existing .claude-plugin-design.json
+#### Scenario: Merging with existing .claude-plugin-sdd.json
 
-- **WHEN** `.claude-plugin-design.json` already exists with other keys
+- **WHEN** `.claude-plugin-sdd.json` already exists with other keys
 - **THEN** the skill SHALL merge the tracker keys without overwriting the entire file
 
 ### Requirement: Issue Creation Flow
@@ -139,7 +139,7 @@ The skill SHALL create issues following an epic-to-task-to-sub-task hierarchy de
 
 ### Requirement: Project Grouping
 
-The `/design:plan` skill SHALL organize created issues into tracker-native projects. The default behavior SHALL be one project per epic. The user MAY override this behavior with flags or `.claude-plugin-design.json` configuration. See ADR-0009.
+The `/sdd:plan` skill SHALL organize created issues into tracker-native projects. The default behavior SHALL be one project per epic. The user MAY override this behavior with flags or `.claude-plugin-sdd.json` configuration. See ADR-0009.
 
 #### Scenario: Default project grouping (one project per epic)
 
@@ -148,12 +148,12 @@ The `/design:plan` skill SHALL organize created issues into tracker-native proje
 
 #### Scenario: Single combined project via `--project` flag
 
-- **WHEN** the user runs `/design:plan SPEC-XXXX --project "Q1 Sprint"`
+- **WHEN** the user runs `/sdd:plan SPEC-XXXX --project "Q1 Sprint"`
 - **THEN** the skill SHALL create or locate a project with the specified name and SHALL add all created issues (epics, tasks, sub-tasks) to that single project
 
 #### Scenario: Skip project creation via `--no-projects` flag
 
-- **WHEN** the user runs `/design:plan SPEC-XXXX --no-projects`
+- **WHEN** the user runs `/sdd:plan SPEC-XXXX --no-projects`
 - **THEN** the skill SHALL skip project creation entirely and SHALL NOT attempt to group issues into any project
 
 #### Scenario: Tracker without project support
@@ -163,7 +163,7 @@ The `/design:plan` skill SHALL organize created issues into tracker-native proje
 
 ### Requirement: Branch Naming Conventions
 
-The `/design:plan` skill SHALL include a "Branch" section in each created issue's body with a recommended branch name. Branch names SHALL follow a deterministic pattern derived from the issue number and a slug. See ADR-0009.
+The `/sdd:plan` skill SHALL include a "Branch" section in each created issue's body with a recommended branch name. Branch names SHALL follow a deterministic pattern derived from the issue number and a slug. See ADR-0009.
 
 #### Scenario: Default branch names for tasks and epics
 
@@ -172,15 +172,15 @@ The `/design:plan` skill SHALL include a "Branch" section in each created issue'
 - **AND WHEN** the skill creates an epic issue with number `{N}` for a capability named `{name}`
 - **THEN** the issue body SHALL include a Branch section with `epic/{N}-{slug}`
 
-#### Scenario: Custom branch prefix via `--branch-prefix` or `.claude-plugin-design.json`
+#### Scenario: Custom branch prefix via `--branch-prefix` or `.claude-plugin-sdd.json`
 
-- **WHEN** the user provides `--branch-prefix work/` on the command line or has `"branches": { "prefix": "work/" }` in `.claude-plugin-design.json`
+- **WHEN** the user provides `--branch-prefix work/` on the command line or has `"branches": { "prefix": "work/" }` in `.claude-plugin-sdd.json`
 - **THEN** the skill SHALL use the custom prefix instead of `feature/` for tasks (epics SHALL still use `epic/`)
-- **AND** command-line flags SHALL take precedence over `.claude-plugin-design.json` values
+- **AND** command-line flags SHALL take precedence over `.claude-plugin-sdd.json` values
 
 #### Scenario: Omit branch sections via `--no-branches`
 
-- **WHEN** the user runs `/design:plan SPEC-XXXX --no-branches`
+- **WHEN** the user runs `/sdd:plan SPEC-XXXX --no-branches`
 - **THEN** the skill SHALL omit the Branch section and the PR Convention section from all created issue bodies
 
 #### Scenario: Slug derivation
@@ -195,7 +195,7 @@ The `/design:plan` skill SHALL include a "Branch" section in each created issue'
 
 ### Requirement: PR Conventions
 
-The `/design:plan` skill SHALL include a "PR Convention" section in each created issue's body with tracker-specific close keywords. The close keywords SHALL automatically resolve the issue when the PR/MR is merged. See ADR-0009.
+The `/sdd:plan` skill SHALL include a "PR Convention" section in each created issue's body with tracker-specific close keywords. The close keywords SHALL automatically resolve the issue when the PR/MR is merged. See ADR-0009.
 
 #### Scenario: GitHub and Gitea PR conventions
 
@@ -237,7 +237,7 @@ When the `--review` flag is present, the skill SHALL spawn a planning team for p
 
 #### Scenario: Team creation
 
-- **WHEN** the user runs `/design:plan SPEC-XXXX --review`
+- **WHEN** the user runs `/sdd:plan SPEC-XXXX --review`
 - **THEN** the skill SHALL create a team with a planner agent and a reviewer agent using `TeamCreate`
 
 #### Scenario: Reviewer validation
@@ -262,11 +262,11 @@ After creating issues (or generating `tasks.md`), the skill SHALL present a summ
 #### Scenario: Report contents
 
 - **WHEN** planning is complete
-- **THEN** the skill SHALL report: which tracker was used (or tasks.md fallback), the number of epics, tasks, and sub-tasks created, where the user can find them, and a suggestion to run `/design:prime` before starting implementation
+- **THEN** the skill SHALL report: which tracker was used (or tasks.md fallback), the number of epics, tasks, and sub-tasks created, where the user can find them, and a suggestion to run `/sdd:prime` before starting implementation
 
 ### Requirement: Tracker-Specific Configuration
 
-When a tracker requires configuration not already saved in `.claude-plugin-design.json` (e.g., repo owner/name for GitHub, project key for Jira), the skill SHALL use `AskUserQuestion` to gather it. The skill SHALL offer to save the configuration to `.claude-plugin-design.json`.
+When a tracker requires configuration not already saved in `.claude-plugin-sdd.json` (e.g., repo owner/name for GitHub, project key for Jira), the skill SHALL use `AskUserQuestion` to gather it. The skill SHALL offer to save the configuration to `.claude-plugin-sdd.json`.
 
 #### Scenario: GitHub/GitLab/Gitea config needed
 
@@ -287,11 +287,11 @@ When a tracker requires configuration not already saved in `.claude-plugin-desig
 
 This requirement is OPTIONAL and describes a future capability.
 
-When invoked as `/design:plan SPEC-XXXX --gaps`, the skill MAY read the spec's requirements, scan the codebase for implementation, and identify requirements that are unimplemented or partially implemented. The skill MAY then create issues for the gaps found.
+When invoked as `/sdd:plan SPEC-XXXX --gaps`, the skill MAY read the spec's requirements, scan the codebase for implementation, and identify requirements that are unimplemented or partially implemented. The skill MAY then create issues for the gaps found.
 
 #### Scenario: Gap analysis invocation
 
-- **WHEN** a user runs `/design:plan SPEC-0003 --gaps`
+- **WHEN** a user runs `/sdd:plan SPEC-0003 --gaps`
 - **THEN** the skill MAY read the spec requirements, scan the codebase for implementations matching each requirement, and report which requirements lack implementation
 
 #### Scenario: Gap issue creation
@@ -303,11 +303,11 @@ When invoked as `/design:plan SPEC-XXXX --gaps`, the skill MAY read the spec's r
 
 This requirement is OPTIONAL and describes a future capability.
 
-When invoked as `/design:plan --analyze` (no spec argument required), the skill MAY scan the codebase for DRY violations, dead code, untested code paths, and security issues, and create issues for findings.
+When invoked as `/sdd:plan --analyze` (no spec argument required), the skill MAY scan the codebase for DRY violations, dead code, untested code paths, and security issues, and create issues for findings.
 
 #### Scenario: Code quality invocation
 
-- **WHEN** a user runs `/design:plan --analyze`
+- **WHEN** a user runs `/sdd:plan --analyze`
 - **THEN** the skill MAY scan the codebase without requiring a spec argument and identify DRY violations, dead code, untested paths, and security issues
 
 #### Scenario: Code quality issue creation

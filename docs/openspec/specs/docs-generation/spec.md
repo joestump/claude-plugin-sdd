@@ -2,27 +2,27 @@
 
 ## Overview
 
-A `/design:docs` skill that generates Docusaurus documentation from ADRs and OpenSpec specifications, with custom React components for RFC 2119 keyword highlighting, status badges, requirement boxes, cross-reference linking, and dark mode support. Supports two modes: scaffold (standalone site) and integration (plugin into existing Docusaurus site), with manifest-based upgrades and separate spec/design pages. See ADR-0004 and ADR-0006.
+A `/sdd:docs` skill that generates Docusaurus documentation from ADRs and OpenSpec specifications, with custom React components for RFC 2119 keyword highlighting, status badges, requirement boxes, cross-reference linking, and dark mode support. Supports two modes: scaffold (standalone site) and integration (plugin into existing Docusaurus site), with manifest-based upgrades and separate spec/design pages. See ADR-0004 and ADR-0006.
 
 ## Requirements
 
 ### Requirement: Template-Based Scaffolding
 
-The `/design:docs` skill SHALL scaffold a Docusaurus site by copying production-ready templates from the plugin's `templates/docusaurus/` directory to `docs-site/` in the project root using `cp -r`. It MUST only customize `package.json` (project name) and `docusaurus.config.ts` (title, URLs).
+The `/sdd:docs` skill SHALL scaffold a Docusaurus site by copying production-ready templates from the plugin's `templates/docusaurus/` directory to `docs-site/` in the project root using `cp -r`. It MUST only customize `package.json` (project name) and `docusaurus.config.ts` (title, URLs).
 
 #### Scenario: First-time docs generation
 
-- **WHEN** a user runs `/design:docs` and no `docs-site/` directory exists
+- **WHEN** a user runs `/sdd:docs` and no `docs-site/` directory exists
 - **THEN** the skill SHALL copy templates, customize config files for the project, run `npm install`, and report what was created
 
 #### Scenario: Existing docs-site
 
-- **WHEN** a user runs `/design:docs` and `docs-site/` already exists
+- **WHEN** a user runs `/sdd:docs` and `docs-site/` already exists
 - **THEN** the skill SHALL ask the user before overwriting
 
 #### Scenario: No Node.js installed
 
-- **WHEN** a user runs `/design:docs` and Node.js is not available
+- **WHEN** a user runs `/sdd:docs` and Node.js is not available
 - **THEN** the skill SHALL report that Node.js is required and stop without creating any files
 
 ### Requirement: Pre-flight Validation
@@ -31,12 +31,12 @@ The skill MUST check for existing design artifacts before scaffolding. It MUST v
 
 #### Scenario: No artifacts exist
 
-- **WHEN** a user runs `/design:docs` with no ADRs and no specs
-- **THEN** the skill SHALL report that no artifacts were found and suggest using `/design:adr` or `/design:spec` first
+- **WHEN** a user runs `/sdd:docs` with no ADRs and no specs
+- **THEN** the skill SHALL report that no artifacts were found and suggest using `/sdd:adr` or `/sdd:spec` first
 
 #### Scenario: Only ADRs exist
 
-- **WHEN** a user runs `/design:docs` with ADRs but no specs
+- **WHEN** a user runs `/sdd:docs` with ADRs but no specs
 - **THEN** the skill SHALL proceed but note that the docs site will only include ADRs
 
 ### Requirement: ADR Transform Pipeline
@@ -109,17 +109,17 @@ The skill MUST scan for existing Docusaurus sites before choosing a generation m
 
 #### Scenario: Existing Docusaurus site found
 
-- **WHEN** a user runs `/design:docs` and a `docusaurus.config.ts` or `docusaurus.config.js` is found outside `docs-site/`
+- **WHEN** a user runs `/sdd:docs` and a `docusaurus.config.ts` or `docusaurus.config.js` is found outside `docs-site/`
 - **THEN** the skill SHALL ask the user whether to integrate into the existing site or scaffold a new standalone site
 
 #### Scenario: Multiple Docusaurus sites found
 
-- **WHEN** a user runs `/design:docs` and multiple Docusaurus configurations are found
+- **WHEN** a user runs `/sdd:docs` and multiple Docusaurus configurations are found
 - **THEN** the skill SHALL present all found sites and ask the user which one to integrate with, or offer to scaffold a new site
 
 #### Scenario: No existing Docusaurus site
 
-- **WHEN** a user runs `/design:docs` and no existing Docusaurus configuration is found
+- **WHEN** a user runs `/sdd:docs` and no existing Docusaurus configuration is found
 - **THEN** the skill SHALL proceed directly with scaffold mode
 
 ### Requirement: Integration Mode
@@ -129,7 +129,7 @@ When the user selects integration mode, the skill SHALL install a self-contained
 #### Scenario: Plugin installation
 
 - **WHEN** integration mode is selected for a site at `{site}/`
-- **THEN** the skill SHALL copy the `sync-design-docs` plugin to `{site}/plugins/sync-design-docs/`, copy React components to `{site}/src/components/design-docs/`, create `{site}/src/css/design-docs.css` with design-specific styles (excluding theme color variables), and register the plugin in `{site}/docusaurus.config.ts`
+- **THEN** the skill SHALL copy the `sync-spec-docs` plugin to `{site}/plugins/sync-spec-docs/`, copy React components to `{site}/src/components/design-docs/`, create `{site}/src/css/design-docs.css` with design-specific styles (excluding theme color variables), and register the plugin in `{site}/docusaurus.config.ts`
 
 #### Scenario: Component namespacing
 
@@ -155,17 +155,17 @@ When the user selects integration mode, the skill SHALL install a self-contained
 
 #### Scenario: Existing plugin directory
 
-- **WHEN** `{site}/plugins/sync-design-docs/` already exists
+- **WHEN** `{site}/plugins/sync-spec-docs/` already exists
 - **THEN** the skill SHALL ask the user before overwriting
 
 ### Requirement: Upgrade Manifest
 
-The skill MUST create a `.design-docs.json` manifest at the project root on first run in either mode. The manifest SHALL record the plugin version, mode (`scaffold` or `integration`), site directory path, creation timestamp, and SHA-256 checksums of all managed files. See ADR-0006.
+The skill MUST create a `.sdd-docs.json` manifest at the project root on first run in either mode. The manifest SHALL record the plugin version, mode (`scaffold` or `integration`), site directory path, creation timestamp, and SHA-256 checksums of all managed files. See ADR-0006.
 
 #### Scenario: Manifest creation
 
-- **WHEN** `/design:docs` runs for the first time (no `.design-docs.json` exists)
-- **THEN** the skill SHALL create `.design-docs.json` with the current plugin version, mode, site directory, timestamps, and checksums of all installed files
+- **WHEN** `/sdd:docs` runs for the first time (no `.sdd-docs.json` exists)
+- **THEN** the skill SHALL create `.sdd-docs.json` with the current plugin version, mode, site directory, timestamps, and checksums of all installed files
 
 #### Scenario: Manifest schema
 
@@ -174,7 +174,7 @@ The skill MUST create a `.design-docs.json` manifest at the project root on firs
 
 ### Requirement: Upgrade Flow
 
-When `.design-docs.json` exists and `/design:docs` is re-run, the skill MUST perform an upgrade instead of a fresh installation. It SHALL compare current file checksums against manifest checksums to determine upgrade actions. See ADR-0006.
+When `.sdd-docs.json` exists and `/sdd:docs` is re-run, the skill MUST perform an upgrade instead of a fresh installation. It SHALL compare current file checksums against manifest checksums to determine upgrade actions. See ADR-0006.
 
 #### Scenario: Unchanged file upgrade
 
@@ -198,7 +198,7 @@ When `.design-docs.json` exists and `/design:docs` is re-run, the skill MUST per
 
 #### Scenario: Deleted manifest
 
-- **WHEN** `/design:docs` is run and a docs site exists but `.design-docs.json` is missing
+- **WHEN** `/sdd:docs` is run and a docs site exists but `.sdd-docs.json` is missing
 - **THEN** the skill SHALL warn the user that upgrade tracking is unavailable and offer to re-create the manifest by checksumming existing files
 
 ### Requirement: Spec/Design Page Separation

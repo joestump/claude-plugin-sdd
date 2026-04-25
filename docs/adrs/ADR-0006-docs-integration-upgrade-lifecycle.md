@@ -8,9 +8,9 @@ decision-makers: Plugin maintainers
 
 ## Context and Problem Statement
 
-ADR-0004 established Docusaurus with template-based scaffolding as the documentation generation approach. Since that decision, three interconnected problems have emerged that limit the usefulness and maintainability of `/design:docs`.
+ADR-0004 established Docusaurus with template-based scaffolding as the documentation generation approach. Since that decision, three interconnected problems have emerged that limit the usefulness and maintainability of `/sdd:docs`.
 
-**Problem 1: No integration with existing Docusaurus sites.** The current `/design:docs` skill only scaffolds a standalone `docs-site/` directory. Projects that already have a Docusaurus documentation site cannot use the design docs capability without maintaining two separate sites. There is no way to embed ADR and spec documentation into an existing site's navigation and search.
+**Problem 1: No integration with existing Docusaurus sites.** The current `/sdd:docs` skill only scaffolds a standalone `docs-site/` directory. Projects that already have a Docusaurus documentation site cannot use the design docs capability without maintaining two separate sites. There is no way to embed ADR and spec documentation into an existing site's navigation and search.
 
 **Problem 2: No upgrade path when the plugin evolves.** The scaffold approach is fire-and-forget: templates are copied once and the user owns the result. When the plugin ships improvements to transforms, components, or styles, there is no mechanism to pull those changes into an existing installation. Users must manually diff and merge, which is error-prone and discourages upgrades.
 
@@ -64,7 +64,7 @@ These three decisions work together: integration mode uses a Docusaurus build-ti
 * Good, because the integration plugin reuses the same transform pipeline as scaffold mode, keeping behavior consistent
 * Good, because the detection step (scanning for `docusaurus.config.*`) automatically guides users to the right mode
 * Bad, because two modes (scaffold and integration) increase the surface area of the skill and its documentation
-* Bad, because the manifest adds a new file (`.design-docs.json`) that users must understand and not delete
+* Bad, because the manifest adds a new file (`.sdd-docs.json`) that users must understand and not delete
 * Bad, because directory-per-spec output changes the URL structure, which may break existing bookmarks or links to spec pages
 * Neutral, because the upgrade mechanism adds complexity but prevents the worse outcome of users falling permanently behind on improvements
 
@@ -72,11 +72,11 @@ These three decisions work together: integration mode uses a Docusaurus build-ti
 
 Implementation will be confirmed by:
 
-1. Running `/design:docs` on a project with an existing Docusaurus site detects it and offers integration mode
+1. Running `/sdd:docs` on a project with an existing Docusaurus site detects it and offers integration mode
 2. Integration mode installs the sync plugin, components, CSS, and MDX registrations into the existing site without breaking it
-3. Running `/design:docs` on a project without an existing site proceeds with scaffold mode as before
-4. A `.design-docs.json` manifest is created in both modes, tracking mode, version, site directory, and file checksums
-5. Re-running `/design:docs` on an already-configured project triggers upgrade flow: unchanged files are updated in place, modified files prompt the user with a diff
+3. Running `/sdd:docs` on a project without an existing site proceeds with scaffold mode as before
+4. A `.sdd-docs.json` manifest is created in both modes, tracking mode, version, site directory, and file checksums
+5. Re-running `/sdd:docs` on an already-configured project triggers upgrade flow: unchanged files are updated in place, modified files prompt the user with a diff
 6. Specs with both `spec.md` and `design.md` produce two separate pages under an expandable sidebar category
 7. Specs with only `spec.md` (no `design.md`) produce a single page without a category wrapper
 8. An overview index page lists all specs with linked columns for Specification and Design documents
@@ -86,7 +86,7 @@ Implementation will be confirmed by:
 
 ### Option A: Dual-Mode with Docusaurus Plugin (Scaffold vs. Integration)
 
-Detect existing Docusaurus sites by scanning for `docusaurus.config.{ts,js}` in common locations (`website/`, `docs-site/`, `docs/`, `./`). If found, offer integration mode. Otherwise, default to scaffold mode. Integration mode copies a self-contained Docusaurus plugin (`sync-design-docs`) into the existing site's `plugins/` directory, along with React components namespaced under `design-docs/` to avoid collisions.
+Detect existing Docusaurus sites by scanning for `docusaurus.config.{ts,js}` in common locations (`website/`, `docs-site/`, `docs/`, `./`). If found, offer integration mode. Otherwise, default to scaffold mode. Integration mode copies a self-contained Docusaurus plugin (`sync-spec-docs`) into the existing site's `plugins/` directory, along with React components namespaced under `design-docs/` to avoid collisions.
 
 * Good, because it works for both greenfield projects (scaffold) and existing documentation sites (integration)
 * Good, because the integration plugin is self-contained and uses standard Docusaurus plugin APIs (`loadContent`, `getPathsToWatch`)
@@ -116,7 +116,7 @@ Use git submodules to link the plugin's template directory into the project, so 
 
 ### Option D: Manifest-Based Upgrade with Checksum Tracking
 
-Create a `.design-docs.json` manifest when `/design:docs` first runs. The manifest records the plugin version, mode (scaffold or integration), site directory path, and SHA-256 checksums of all managed files at the time of installation. On subsequent runs, the skill compares current file checksums against the manifest to classify each file as unchanged (safe to replace), modified (show diff and ask), or missing (re-create).
+Create a `.sdd-docs.json` manifest when `/sdd:docs` first runs. The manifest records the plugin version, mode (scaffold or integration), site directory path, and SHA-256 checksums of all managed files at the time of installation. On subsequent runs, the skill compares current file checksums against the manifest to classify each file as unchanged (safe to replace), modified (show diff and ask), or missing (re-create).
 
 * Good, because checksums precisely detect whether a user has customized a managed file
 * Good, because unchanged files can be updated silently, minimizing user interaction
@@ -179,12 +179,12 @@ Continue combining spec.md and design.md into a single page.
 
 ```mermaid
 flowchart TD
-    start["/design:docs invoked"] --> preflight["Pre-flight checks\n(Node.js, artifacts)"]
+    start["/sdd:docs invoked"] --> preflight["Pre-flight checks\n(Node.js, artifacts)"]
     preflight --> scan["Scan for existing\ndocusaurus.config.*"]
     scan --> found{Existing site\nfound?}
     found -->|Yes| ask["Ask user:\nIntegrate or Scaffold?"]
-    found -->|No| manifest_check_s{"`.design-docs.json`\nexists?"}
-    ask -->|Integrate| manifest_check_i{"`.design-docs.json`\nexists?"}
+    found -->|No| manifest_check_s{"`.sdd-docs.json`\nexists?"}
+    ask -->|Integrate| manifest_check_i{"`.sdd-docs.json`\nexists?"}
     ask -->|Scaffold| manifest_check_s
 
     manifest_check_s -->|Yes| upgrade_s["Upgrade Flow\n(scaffold mode)"]
@@ -192,9 +192,9 @@ flowchart TD
     manifest_check_i -->|Yes| upgrade_i["Upgrade Flow\n(integration mode)"]
     manifest_check_i -->|No| integrate["Integration Mode\n(install plugin)"]
 
-    scaffold --> write_manifest["Write .design-docs.json\n(version, mode, checksums)"]
+    scaffold --> write_manifest["Write .sdd-docs.json\n(version, mode, checksums)"]
     integrate --> write_manifest
-    upgrade_s --> update_manifest["Update .design-docs.json\n(new version, checksums)"]
+    upgrade_s --> update_manifest["Update .sdd-docs.json\n(new version, checksums)"]
     upgrade_i --> update_manifest
 ```
 
@@ -202,7 +202,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    start["Upgrade triggered"] --> read["Read .design-docs.json\n(checksums, version)"]
+    start["Upgrade triggered"] --> read["Read .sdd-docs.json\n(checksums, version)"]
     read --> each["For each managed file"]
     each --> managed_check{"managed == true?"}
 
@@ -265,7 +265,7 @@ flowchart LR
 
 ## More Information
 
-### `.design-docs.json` Manifest Schema
+### `.sdd-docs.json` Manifest Schema
 
 ```json
 {
@@ -301,7 +301,7 @@ When integration mode installs into an existing site at `{site}/`:
 ```
 {site}/
 ├── plugins/
-│   └── sync-design-docs/       # Build-time Docusaurus plugin
+│   └── sync-spec-docs/       # Build-time Docusaurus plugin
 │       ├── index.js             # Plugin entry (loadContent, getPathsToWatch)
 │       └── lib/                 # Transform scripts (parameterized paths)
 │           ├── transform-adrs.js

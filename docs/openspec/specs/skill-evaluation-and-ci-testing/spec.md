@@ -2,7 +2,7 @@
 
 ## Overview
 
-A testing and evaluation framework for the design plugin's 15 skills, using skill-creator's eval infrastructure with GitHub Actions CI integration. Covers eval authoring, automated test runs, assertion-based grading, benchmark tracking, and cross-skill pipeline testing. See ADR-0021.
+A testing and evaluation framework for the SDD plugin's 15 skills, using skill-creator's eval infrastructure with GitHub Actions CI integration. Covers eval authoring, automated test runs, assertion-based grading, benchmark tracking, and cross-skill pipeline testing. See ADR-0021.
 
 ## Requirements
 
@@ -22,12 +22,12 @@ Skills MUST be grouped into tiers for test allocation:
 
 #### Scenario: Realistic test prompt quality
 
-- **WHEN** an eval prompt is authored for `/design:plan`
-- **THEN** the prompt includes a specific spec reference, mentions relevant flags, and provides enough context for the skill to operate (e.g., "Plan a sprint from SPEC-0014 for the claude-plugin-design repo on GitHub")
+- **WHEN** an eval prompt is authored for `/sdd:plan`
+- **THEN** the prompt includes a specific spec reference, mentions relevant flags, and provides enough context for the skill to operate (e.g., "Plan a sprint from SPEC-0014 for the claude-plugin-sdd repo on GitHub")
 
 #### Scenario: Tier allocation respected
 
-- **WHEN** `/design:plan` (Tier 1) has only 2 test prompts
+- **WHEN** `/sdd:plan` (Tier 1) has only 2 test prompts
 - **THEN** CI SHOULD warn: "Tier 1 skill 'plan' has only 2 evals (minimum recommended: 3)"
 
 ### Requirement: Automated Test Runner
@@ -59,7 +59,7 @@ Each eval run MUST execute both a **with-skill** run (skill loaded) and a **base
 
 Each eval prompt MUST have at least 2 grading assertions in `evals/evals.json`. Assertions MUST be objectively verifiable — not subjective quality judgments. Assertions MUST use the `text`, `passed`, and `evidence` fields expected by the eval viewer.
 
-Common assertion types for design plugin skills:
+Common assertion types for SDD plugin skills:
 - **File existence**: "ADR file was created at docs/adrs/ADR-XXXX-*.md"
 - **Content structure**: "Spec contains a ## Requirements section with at least one ### Requirement:"
 - **Section presence**: "Security Requirements section present in web-facing spec"
@@ -71,7 +71,7 @@ Assertions that test content quality (e.g., "the ADR rationale is compelling") S
 
 #### Scenario: Grading a plan skill eval
 
-- **WHEN** the grader evaluates a `/design:plan` test run
+- **WHEN** the grader evaluates a `/sdd:plan` test run
 - **THEN** it checks assertions like: "Epic issue created with 'epic' label", "3-4 story issues created", "Each story has a ## Requirements section", "Branch naming conventions present in issue bodies"
 
 #### Scenario: Assertion failure reported
@@ -127,7 +127,7 @@ The viewer MUST show:
 
 ### Requirement: Cross-Skill Pipeline Testing
 
-A dedicated `evals/pipeline/` directory MUST contain end-to-end test scenarios that invoke multiple skills in sequence against a test repository. Pipeline tests MUST cover at least the core workflow: `/design:spec` → `/design:plan` → `/design:work` → `/design:review`.
+A dedicated `evals/pipeline/` directory MUST contain end-to-end test scenarios that invoke multiple skills in sequence against a test repository. Pipeline tests MUST cover at least the core workflow: `/sdd:spec` → `/sdd:plan` → `/sdd:work` → `/sdd:review`.
 
 Pipeline tests MUST run only on release branches or when manually triggered (they are expensive). Each pipeline test MUST use a disposable test repository (created via `gh repo create --template` or a local git init) to avoid polluting real repos.
 

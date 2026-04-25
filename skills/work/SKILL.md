@@ -90,7 +90,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    | `{spec-dir}` | Spec changes require coordinated review |
    | `{adr-dir}` | ADR changes require coordinated review |
    | `CLAUDE.md` (project root) | Shared configuration — concurrent edits cause conflicts |
-   | `.claude-plugin-design.json` | Plugin configuration — concurrent edits cause conflicts |
+   | `.claude-plugin-sdd.json` | Plugin configuration — concurrent edits cause conflicts |
 
    **Exception:** Governing comments (per ADR-0020) MUST be added in feature PRs, not deferred. These are inline code comments (e.g., `// Governing: ADR-XXXX, SPEC-XXXX REQ "..."`) and are NOT considered design document modifications.
 
@@ -103,7 +103,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
    **Filtering rules:**
    - **Skip epics**: Issues labeled `epic` or titled "Implement ..." are grouping issues, not implementation work.
-   - **Skip issues without `### Branch` sections**: These lack branch naming conventions. If any are found, suggest `/design:enrich` to add them and report which issues were skipped.
+   - **Skip issues without `### Branch` sections**: These lack branch naming conventions. If any are found, suggest `/sdd:enrich` to add them and report which issues were skipped.
    - **Extract branch names**: Parse the `### Branch` section from each issue body to get the deterministic branch name (e.g., `feature/42-jwt-token-generation`).
    - **Extract PR conventions**: Parse the `### PR Convention` section for close keywords and epic references.
    - **Detect dependency ordering**: If issue bodies reference dependencies or logical ordering, respect that order when queuing work. For **Gitea**, query native dependencies via `GET /repos/{owner}/{repo}/issues/{index}/dependencies` (or via MCP tools discovered by `ToolSearch`) to find unblocked stories. (Governing: SPEC-0011 REQ "Gitea Native Dependencies")
@@ -119,12 +119,12 @@ You are picking up tracker issues and implementing them in parallel using git wo
      5. Place blocked issues in a **deferred queue**. When a dependency reaches `merged` state (detected during monitoring in step 11), automatically move newly-unblocked issues to the ready queue.
      6. For Gitea trackers, also check native dependencies via the API in addition to body parsing.
 
-   If no workable issues are found after filtering, report why and suggest `/design:plan` (no issues at all) or `/design:enrich` (issues exist but lack branch sections).
+   If no workable issues are found after filtering, report why and suggest `/sdd:plan` (no issues at all) or `/sdd:enrich` (issues exist but lack branch sections).
 
 5. **Dry-run gate**: If `--dry-run` is set, output a preview table and stop:
 
    ```
-   ## Dry Run: /design:work [SPEC-0003 | issue batch]
+   ## Dry Run: /sdd:work [SPEC-0003 | issue batch]
 
    Would create {N} worktrees with up to {max-agents} parallel agents.
 
@@ -137,7 +137,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
    ### Skipped Issues
    - #45 Implement Auth Service (epic — skipped)
-   - #47 Setup Auth Module (no ### Branch section — run `/design:enrich`)
+   - #47 Setup Auth Module (no ### Branch section — run `/sdd:enrich`)
 
    No changes were made.
    ```
@@ -157,18 +157,18 @@ You are picking up tracker issues and implementing them in parallel using git wo
      - If the user says stop, halt and report.
    - Run `git fetch` to ensure we have the latest remote state.
 
-7. **Read worktree config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `#### Worktrees` subsection from the `### Design Plugin Configuration` section in CLAUDE.md. Defaults: `Base Dir`=`.claude/worktrees/`, `Max Agents`=3, `Auto Cleanup`=false, `PR Mode`="ready". CLI flags override config values.
+7. **Read worktree config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `#### Worktrees` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Base Dir`=`.claude/worktrees/`, `Max Agents`=3, `Auto Cleanup`=false, `PR Mode`="ready". CLI flags override config values.
 
 7a. **Resolve parallelism limit** (Governing: SPEC-0015 REQ "Parallelism Limits", ADR-0017 Layer 1):
 
    Determine the maximum number of concurrent agents using this precedence order (highest to lowest):
    1. `--max-agents N` CLI flag (if provided)
-   2. CLAUDE.md `## Design Plugin Configuration` section, key `max-parallel-agents` (if present)
+   2. CLAUDE.md `## SDD Configuration` section, key `max-parallel-agents` (if present)
    3. Default: **4**
 
-   **Reading from CLAUDE.md:** Scan the project's `CLAUDE.md` for a `## Design Plugin Configuration` section. Look for a line matching `- **Max parallel agents**: N` or `max-parallel-agents: N`. Parse the integer value. Example:
+   **Reading from CLAUDE.md:** Scan the project's `CLAUDE.md` for a `## SDD Configuration` section. Look for a line matching `- **Max parallel agents**: N` or `max-parallel-agents: N`. Parse the integer value. Example:
    ```markdown
-   ## Design Plugin Configuration
+   ## SDD Configuration
 
    - **Max parallel agents**: 2
    - **Hotspot threshold**: 40%
@@ -197,7 +197,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
       ```bash
       gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url,labels --limit 50
       ```
-      Include PRs from previous `/design:work` runs that haven't merged yet.
+      Include PRs from previous `/sdd:work` runs that haven't merged yet.
 
    2. **For each open PR, extract file ownership:**
       ```bash
@@ -290,7 +290,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
         ```bash
         git -C {worktree-path} diff --name-only
         ```
-        For each modified file, check if it falls under a protected path (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-design.json`).
+        For each modified file, check if it falls under a protected path (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-sdd.json`).
 
         **If protected files are found:**
         1. Revert each protected file:
@@ -330,11 +330,11 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
 11. **Monitor, queue, and lifecycle transitions**: The lead tracks worker progress (Governing: SPEC-0015 REQ "Parallelism Limits", SPEC-0015 REQ "Issue Lifecycle Labels"):
     - **Enforce parallelism cap**: Never exceed the resolved `max-parallel-agents` limit from step 7a. Track the count of active agents at all times.
-    - **Transition to `merged` on PR merge**: When a worker reports success and the PR is subsequently merged (either via `/design:review` or manually), transition the issue:
+    - **Transition to `merged` on PR merge**: When a worker reports success and the PR is subsequently merged (either via `/sdd:review` or manually), transition the issue:
       ```bash
       gh issue edit {issue-number} --remove-label "in-review" --add-label "merged"
       ```
-      If the work session itself does not merge PRs, the `merged` transition will be handled by `/design:review` or the next `/design:work` invocation that detects merged PRs.
+      If the work session itself does not merge PRs, the `merged` transition will be handled by `/sdd:review` or the next `/sdd:work` invocation that detects merged PRs.
     - **Unblock deferred issues**: After any issue transitions to `merged`, re-check the deferred queue from step 4. For each deferred issue, re-query its dependencies. If ALL dependencies now have the `merged` label, move the issue to the ready queue and start it if an agent slot is available.
     - When a worker finishes, check if there are queued issues waiting.
     - If queued issues have dependency requirements, check if dependencies are now satisfied.
@@ -449,10 +449,10 @@ You are picking up tracker issues and implementing them in parallel using git wo
     - Preserved (failed): 1
 
     ### Next Steps
-    - Run `/design:review` for automated spec-aware PR review and merge
-    - Fix failing issue #44 manually or re-run `/design:work 44`
-    - Run `/design:check` to verify implementation alignment
-    - Run `/design:audit` for comprehensive drift analysis
+    - Run `/sdd:review` for automated spec-aware PR review and merge
+    - Fix failing issue #44 manually or re-run `/sdd:work 44`
+    - Run `/sdd:check` to verify implementation alignment
+    - Run `/sdd:audit` for comprehensive drift analysis
     ```
 
 ## Why `git worktree add` Instead of `EnterWorktree`
@@ -468,12 +468,12 @@ You are picking up tracker issues and implementing them in parallel using git wo
 | Worker can't complete implementation | Reports failure to lead, worktree preserved for manual pickup |
 | Tests fail after 2 retries | Worker reports blocked with error details, moves to next issue |
 | `TeamCreate` fails | Falls back to single-agent sequential mode |
-| No workable issues found | Suggest `/design:plan` (no issues at all) or `/design:enrich` (issues exist but lack `### Branch`) |
+| No workable issues found | Suggest `/sdd:plan` (no issues at all) or `/sdd:enrich` (issues exist but lack `### Branch`) |
 | Uncommitted changes in main tree | Ask user whether to continue or commit first |
 | `git worktree add` fails (branch exists) | Check if the branch already exists remotely. If so, use `git worktree add .claude/worktrees/{branch-name} {branch-name}` (without `-b`) to check out the existing branch |
 | Push fails (remote rejection) | Worker reports the error to lead; worktree preserved |
 | PR creation fails | Worker reports the error to lead; branch is still pushed, user can create PR manually |
-| Tracker not available | Suggest `/design:plan` to create issues first |
+| Tracker not available | Suggest `/sdd:plan` to create issues first |
 | Issue has no acceptance criteria | Worker uses the issue title and body as guidance, warns in PR description |
 | Label creation fails (permissions) | Warn the user that lifecycle labels could not be created, continue without label management |
 | Label transition fails | Log the failure but do NOT block work — label management is best-effort, implementation is primary |
@@ -491,14 +491,14 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
 ## Rules
 
-- A spec is NOT required — `/design:work` can operate from the backlog alone
+- A spec is NOT required — `/sdd:work` can operate from the backlog alone
 - When no arguments are provided, MUST analyze the backlog and propose a batch to the user before starting any work
 - MUST read spec.md and design.md before dispatching workers only when a spec is provided or resolvable from issue bodies
 - MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
 - MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
 - MUST extract branch names from issue bodies — never invent branch names
 - MUST skip epics (labeled `epic` or titled "Implement ...") — only work on implementation issues
-- MUST skip issues without `### Branch` sections and suggest `/design:enrich`
+- MUST skip issues without `### Branch` sections and suggest `/sdd:enrich`
 - MUST respect dependency ordering when queuing work
 - MUST create regular (non-draft) PRs by default — only create draft PRs with `--draft`
 - MUST leave governing comments per `references/shared-patterns.md` § "Governing Comment Format" in implemented code when spec context is available; omit when there is no spec
@@ -516,7 +516,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - When `TeamCreate` fails, MUST fall back to single-agent sequential mode — never error out
 - For Gitea trackers, MUST query native dependencies via API to determine unblocked stories (Governing: SPEC-0011 REQ "Gitea Native Dependencies")
 - MUST NOT spawn more than `max-parallel-agents` concurrent agents (default: 4); resolve from CLI flag → CLAUDE.md → default (Governing: SPEC-0015 REQ "Parallelism Limits", ADR-0017 Layer 1)
-- MUST read `## Design Plugin Configuration` from CLAUDE.md for `max-parallel-agents` setting before falling back to default
+- MUST read `## SDD Configuration` from CLAUDE.md for `max-parallel-agents` setting before falling back to default
 - MUST queue excess stories when more are ready than the parallelism limit allows, starting them as active agents complete
 - MUST report active agent count and queue depth to the user before starting work ("Starting N of M ready stories (Q queued, max-parallel-agents: limit)")
 - Workers MUST broadcast `FILE_CLAIM` via `SendMessage` before modifying any file
@@ -550,7 +550,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST auto-rebase all remaining open PRs after each merge
 - MUST detect circular file dependencies in the merge order graph and request manual resolution — do NOT merge PRs in a cycle without user input
 - If a rebase fails during merge ordering, MUST preserve the worktree and report the conflict for manual resolution
-- Workers MUST NOT modify protected paths (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-design.json`) in feature branches (Governing: SPEC-0015 REQ "Design Document Isolation")
+- Workers MUST NOT modify protected paths (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-sdd.json`) in feature branches (Governing: SPEC-0015 REQ "Design Document Isolation")
 - Workers MUST run `git diff --name-only` before staging and revert any protected files that were modified
 - Workers MUST record reverted protected-file changes in a `### Deferred Design Doc Updates` section in the PR body
 - Governing comments (per ADR-0020) are inline code annotations and MUST be added in feature PRs — they are NOT subject to design document isolation

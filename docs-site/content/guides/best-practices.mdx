@@ -6,13 +6,13 @@ sidebar_position: 4
 
 # Best Practices
 
-Tips for getting the most out of the design plugin.
+Tips for getting the most out of the SDD plugin.
 
-## Start Every Session with `/design:prime`
+## Start Every Session with `/sdd:prime`
 
 Claude doesn't remember your architecture between sessions. Every fresh conversation starts from zero — no knowledge of your ADRs, no awareness of your specs, no understanding of past decisions. Without priming, Claude will make reasonable-sounding suggestions that directly contradict decisions you've already made and documented.
 
-`/design:prime` loads your ADRs and specs into context so Claude works *with* your architecture instead of against it. If you're focusing on a specific area, use topic filtering (`/design:prime authentication`) to load only the relevant artifacts and keep the context window focused.
+`/sdd:prime` loads your ADRs and specs into context so Claude works *with* your architecture instead of against it. If you're focusing on a specific area, use topic filtering (`/sdd:prime authentication`) to load only the relevant artifacts and keep the context window focused.
 
 Make it a habit. Prime before you ask anything else.
 
@@ -20,7 +20,7 @@ Make it a habit. Prime before you ask anything else.
 
 The biggest risk isn't making bad decisions — it's making decisions nobody documents. If you catch yourself saying "we decided to..." in a PR review, that's an ADR waiting to happen. If a teammate asks "why did we use X instead of Y?" and the answer lives only in someone's head, you've already lost.
 
-Use `/design:adr` to capture decisions while the reasoning is fresh. An ADR written in five minutes today saves hours of archaeology later. The "Considered Alternatives" section is the most valuable part — it prevents future you from re-litigating settled questions.
+Use `/sdd:adr` to capture decisions while the reasoning is fresh. An ADR written in five minutes today saves hours of archaeology later. The "Considered Alternatives" section is the most valuable part — it prevents future you from re-litigating settled questions.
 
 Don't wait for decisions to feel "big enough." A decision to use a specific library, to prefer composition over inheritance in a subsystem, or to adopt a particular error handling pattern — these all shape the codebase and deserve a record.
 
@@ -28,7 +28,7 @@ Don't wait for decisions to feel "big enough." A decision to use a specific libr
 
 `spec.md` and `design.md` are paired artifacts — when one changes, the other needs review. The spec defines *what* and *why*; the design doc defines *how*. If you update requirements without revisiting the design, or change the design without checking it still satisfies the spec, you've introduced drift at the source of truth.
 
-The `/design:spec` skill enforces this pairing when you use it. But manual edits — quick fixes in an editor, tweaks during code review — can cause the two files to diverge silently. Run `/design:check` after any manual edits to catch misalignment early, before it propagates into implementation.
+The `/sdd:spec` skill enforces this pairing when you use it. But manual edits — quick fixes in an editor, tweaks during code review — can cause the two files to diverge silently. Run `/sdd:check` after any manual edits to catch misalignment early, before it propagates into implementation.
 
 ## Use `--review` for Consequential Artifacts
 
@@ -44,23 +44,23 @@ The overhead is roughly one to two minutes for a full team review. That's cheap 
 
 The temptation is to jump straight to coding. You have the spec, you understand the requirements, why not just start?
 
-Because `/design:plan` does more than create a task list. It derives issues with acceptance criteria directly from spec scenarios — each issue gets clear, verifiable goals that a worker can implement and validate independently. Skip planning and workers have to interpret the spec themselves, which leads to inconsistent implementations, missed requirements, and rework.
+Because `/sdd:plan` does more than create a task list. It derives issues with acceptance criteria directly from spec scenarios — each issue gets clear, verifiable goals that a worker can implement and validate independently. Skip planning and workers have to interpret the spec themselves, which leads to inconsistent implementations, missed requirements, and rework.
 
-Planning also establishes dependency ordering. Some issues block others. `/design:plan` captures these relationships so `/design:work` can pick up issues in the right sequence instead of starting with something that depends on unfinished work.
+Planning also establishes dependency ordering. Some issues block others. `/sdd:plan` captures these relationships so `/sdd:work` can pick up issues in the right sequence instead of starting with something that depends on unfinished work.
 
 ## Use `--scrum` for Large or Ambiguous Specs
 
 Standard planning works well for focused specs with clear requirements. But when a spec has seven or more requirements, touches multiple subsystems, or has requirements that could be interpreted multiple ways, the scrum ceremony pays for itself.
 
-The `--scrum` flag on `/design:plan` runs the full ceremony: spec audit, decomposition, five-agent grooming, organize, enrich, and a sprint report. Engineer B's high-bar review is the key differentiator — it challenges vague acceptance criteria, flags missing edge cases, and pushes back on over-scoped issues before they become implementation problems.
+The `--scrum` flag on `/sdd:plan` runs the full ceremony: spec audit, decomposition, five-agent grooming, organize, enrich, and a sprint report. Engineer B's high-bar review is the key differentiator — it challenges vague acceptance criteria, flags missing edge cases, and pushes back on over-scoped issues before they become implementation problems.
 
-Similarly, `--scrum` on `/design:audit` runs a triage ceremony that validates your source of truth, groups findings into themes, and runs a five-agent triage where the Architect makes final calls on whether to fix the code or update the artifact.
+Similarly, `--scrum` on `/sdd:audit` runs a triage ceremony that validates your source of truth, groups findings into themes, and runs a five-agent triage where the Architect makes final calls on whether to fix the code or update the artifact.
 
 Rule of thumb: if you're unsure whether scrum is warranted, it probably is. The cost of unnecessary grooming is a few extra minutes. The cost of shipping vague issues to workers is hours of rework.
 
-## Let `/design:work` Propose from the Backlog
+## Let `/sdd:work` Propose from the Backlog
 
-Running `/design:work` without arguments doesn't just pick a random issue. It analyzes the full backlog — considering dependency ordering, blocked vs. unblocked issues, and unblocking impact — then proposes a batch of issues to work on.
+Running `/sdd:work` without arguments doesn't just pick a random issue. It analyzes the full backlog — considering dependency ordering, blocked vs. unblocked issues, and unblocking impact — then proposes a batch of issues to work on.
 
 This is often better than manually picking issues because you tend to gravitate toward what's interesting rather than what's most impactful. The backlog analysis surfaces the issues that, once completed, unblock the most downstream work.
 
@@ -68,15 +68,15 @@ You can always override the proposal. But let the tool make the first suggestion
 
 ## Trust the Drift Detection Feedback Loop
 
-`/design:check` is cheap — run it often during implementation, like a linter. It does a quick-pass comparison of your code against governing ADRs and specs, flagging obvious divergences. Get in the habit of running it before committing, especially after implementing a tricky requirement.
+`/sdd:check` is cheap — run it often during implementation, like a linter. It does a quick-pass comparison of your code against governing ADRs and specs, flagging obvious divergences. Get in the habit of running it before committing, especially after implementing a tricky requirement.
 
-`/design:audit` is comprehensive — run it at milestones. It does a deep alignment analysis across all artifacts and implementation, catching subtle drift that quick checks miss. Use it before releases, after large merges, or whenever you suspect things have gotten out of sync.
+`/sdd:audit` is comprehensive — run it at milestones. It does a deep alignment analysis across all artifacts and implementation, catching subtle drift that quick checks miss. Use it before releases, after large merges, or whenever you suspect things have gotten out of sync.
 
 Together they form a feedback loop: workers leave governing comments during implementation (`// Governing: ADR-0001, SPEC-0003 REQ "Token Validation"`), and drift detection uses those comments to trace implementation back to decisions quickly and accurately. The more consistently you leave governing comments, the faster and more precise drift detection becomes.
 
 ## Configure Your Tracker Once
 
-The first time you run `/design:plan`, it asks for your tracker preference and saves it to `.claude-plugin-design.json`. It also saves project settings, branch conventions, and PR conventions. Every subsequent invocation of `/design:plan`, `/design:organize`, `/design:enrich`, `/design:work`, and `/design:review` picks up these settings automatically.
+The first time you run `/sdd:plan`, it asks for your tracker preference and saves it to `.claude-plugin-sdd.json`. It also saves project settings, branch conventions, and PR conventions. Every subsequent invocation of `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:work`, and `/sdd:review` picks up these settings automatically.
 
 Take the time to configure it properly on the first run. You can customize branch prefixes (e.g., `feat/SPEC-0001/` vs. `feature/spec-0001/`), PR close keywords, project views, and iteration lengths. Getting this right once means every plan, every branch, and every PR follows the same conventions without manual intervention.
 
@@ -84,33 +84,33 @@ Take the time to configure it properly on the first run. You can customize branc
 
 | I want to... | Use |
 |---|---|
-| Document a decision | `/design:adr` |
-| Formalize requirements | `/design:spec` |
-| Break a spec into issues | `/design:plan` |
-| Group issues into projects retroactively | `/design:organize` |
-| Add branch names to existing issues | `/design:enrich` |
-| Implement planned issues | `/design:work` |
-| Review and merge PRs | `/design:review` |
-| Quick alignment check | `/design:check` |
-| Full project audit | `/design:audit` |
-| Find undocumented decisions in code | `/design:discover` |
-| Generate a docs site | `/design:docs` |
-| Set up a new project | `/design:init` |
-| Load context at session start | `/design:prime` |
-| See what exists | `/design:list` |
-| Update artifact status | `/design:status` |
+| Document a decision | `/sdd:adr` |
+| Formalize requirements | `/sdd:spec` |
+| Break a spec into issues | `/sdd:plan` |
+| Group issues into projects retroactively | `/sdd:organize` |
+| Add branch names to existing issues | `/sdd:enrich` |
+| Implement planned issues | `/sdd:work` |
+| Review and merge PRs | `/sdd:review` |
+| Quick alignment check | `/sdd:check` |
+| Full project audit | `/sdd:audit` |
+| Find undocumented decisions in code | `/sdd:discover` |
+| Generate a docs site | `/sdd:docs` |
+| Set up a new project | `/sdd:init` |
+| Load context at session start | `/sdd:prime` |
+| See what exists | `/sdd:list` |
+| Update artifact status | `/sdd:status` |
 
 ## Common Patterns
 
 ### Greenfield Project
 
 ```
-/design:init
-/design:adr [first major decision] --review
-/design:spec [first capability] --review
-/design:plan SPEC-0001 --scrum
-/design:work SPEC-0001
-/design:review SPEC-0001
+/sdd:init
+/sdd:adr [first major decision] --review
+/sdd:spec [first capability] --review
+/sdd:plan SPEC-0001 --scrum
+/sdd:work SPEC-0001
+/sdd:review SPEC-0001
 ```
 
 Start with init, then capture your foundational decisions as ADRs before writing any specs. The first ADR is usually the most important — it sets the tone for how decisions get recorded. Use `--review` on early artifacts since they'll govern everything that follows.
@@ -118,22 +118,22 @@ Start with init, then capture your foundational decisions as ADRs before writing
 ### Existing Codebase
 
 ```
-/design:init
-/design:discover
+/sdd:init
+/sdd:discover
 # Review suggestions, then create ADRs and specs for the most important ones
-/design:adr [discovered decision]
-/design:spec [discovered capability]
-/design:plan SPEC-0001
+/sdd:adr [discovered decision]
+/sdd:spec [discovered capability]
+/sdd:plan SPEC-0001
 ```
 
-Don't try to document everything at once. `/design:discover` will surface implicit architecture — conventions, patterns, and decisions buried in the code. Pick the most consequential ones to formalize first. You can always come back for more.
+Don't try to document everything at once. `/sdd:discover` will surface implicit architecture — conventions, patterns, and decisions buried in the code. Pick the most consequential ones to formalize first. You can always come back for more.
 
 ### Mid-Sprint Course Correction
 
 ```
-/design:audit --scrum
+/sdd:audit --scrum
 # Review triage report, update specs/ADRs as recommended
-/design:plan SPEC-0003     # re-plan updated spec
+/sdd:plan SPEC-0003     # re-plan updated spec
 ```
 
 When things feel off — requirements are unclear, implementation keeps diverging from the spec, or the team is making contradictory decisions — run a scrum audit. The triage ceremony will identify what's drifted, whether the code or the artifacts need updating, and give you a clear path to realignment.

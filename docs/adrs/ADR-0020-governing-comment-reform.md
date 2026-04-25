@@ -8,7 +8,7 @@ decision-makers: joestump
 
 ## Context and Problem Statement
 
-The design plugin encourages inline governing comments throughout code (e.g., `// Governing: ADR-0001, SPEC-0003 REQ "Token Validation"`) to trace implementation back to architectural decisions. In practice, this approach has become excessive and counterproductive. How should the plugin reform governing comment practices to preserve traceability without degrading readability or creating merge conflicts?
+The SDD plugin encourages inline governing comments throughout code (e.g., `// Governing: ADR-0001, SPEC-0003 REQ "Token Validation"`) to trace implementation back to architectural decisions. In practice, this approach has become excessive and counterproductive. How should the plugin reform governing comment practices to preserve traceability without degrading readability or creating merge conflicts?
 
 Evidence from production projects reveals two concrete failures:
 
@@ -61,10 +61,10 @@ The reform has three rules:
 
 Implementation will be confirmed by:
 
-1. All design plugin skills that generate or suggest governing comments (check, audit, work, spec) reference this ADR's file-level consolidation format
-2. `/design:check` flags files with more than 5 inline governing comments as candidates for file-level consolidation
-3. `/design:work` adds governing comments in the implementing PR, never as a separate retroactive PR
-4. `/design:audit` reports governing comment density as an INFO-level finding when a file has more governing comment lines than a configurable threshold
+1. All SDD plugin skills that generate or suggest governing comments (check, audit, work, spec) reference this ADR's file-level consolidation format
+2. `/sdd:check` flags files with more than 5 inline governing comments as candidates for file-level consolidation
+3. `/sdd:work` adds governing comments in the implementing PR, never as a separate retroactive PR
+4. `/sdd:audit` reports governing comment density as an INFO-level finding when a file has more governing comment lines than a configurable threshold
 5. The `shared-patterns.md` governing comment guidance is updated to reflect the file-level consolidation format
 
 ## Pros and Cons of the Options
@@ -96,8 +96,8 @@ Rely on PR descriptions, commit messages, and spec documents for traceability. N
 * Good, because code is maximally clean and readable
 * Good, because zero governing comments means zero governing-comment-related merge conflicts
 * Bad, because traceability is completely lost at the code level — future developers (and agents) cannot determine why a piece of code exists without searching through PR history
-* Bad, because `/design:check` and `/design:audit` lose their primary signal for verifying that code implements the intended decisions
-* Bad, because it undermines the core value proposition of the design plugin — connecting decisions to implementation
+* Bad, because `/sdd:check` and `/sdd:audit` lose their primary signal for verifying that code implements the intended decisions
+* Bad, because it undermines the core value proposition of the SDD plugin — connecting decisions to implementation
 
 ### Option 4: File-Level Consolidation with Selective Inline Annotations
 

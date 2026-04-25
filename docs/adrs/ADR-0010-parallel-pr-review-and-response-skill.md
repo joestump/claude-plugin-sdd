@@ -8,7 +8,7 @@ decision-makers: joestump
 
 ## Context and Problem Statement
 
-The `/design:work` skill (ADR-0009, SPEC-0007/0008) creates draft PRs for each implemented issue, but the review-and-merge phase remains manual. After a `/design:work` run produces 5-15 draft PRs, a human must review each one, leave comments, wait for fixes, and merge -- a bottleneck that undermines the parallelism of the implementation phase. The plugin's workflow covers spec → plan → organize → enrich → work, but stops short of closing the loop.
+The `/sdd:work` skill (ADR-0009, SPEC-0007/0008) creates draft PRs for each implemented issue, but the review-and-merge phase remains manual. After a `/sdd:work` run produces 5-15 draft PRs, a human must review each one, leave comments, wait for fixes, and merge -- a bottleneck that undermines the parallelism of the implementation phase. The plugin's workflow covers spec → plan → organize → enrich → work, but stops short of closing the loop.
 
 How should the plugin automate the PR review-and-merge cycle to complete the spec-to-merged-code pipeline?
 
@@ -48,7 +48,7 @@ Chosen option: "Option 1 -- Two pairs with one back-and-forth round", because it
 Implementation will be confirmed by:
 
 1. `skills/review/SKILL.md` exists and follows the established SKILL.md format with YAML frontmatter
-2. Running `/design:review SPEC-0003` discovers all open PRs for that spec, spawns 2 reviewer + 2 responder agents, and processes them
+2. Running `/sdd:review SPEC-0003` discovers all open PRs for that spec, spawns 2 reviewer + 2 responder agents, and processes them
 3. Each reviewer submits a GitHub PR review (or equivalent) with line-level comments referencing spec acceptance criteria
 4. Each responder checks out the PR branch, addresses feedback, pushes fix commits, and replies to review comments
 5. After one round, approved PRs are merged and their linked issues are closed
@@ -67,7 +67,7 @@ Create a team with 4 agents organized into two reviewer-responder pairs. PRs are
 * Good, because the one-round limit is simple to implement and reason about
 * Good, because round-robin distribution is fair and requires no domain-aware scheduling
 * Neutral, because 4 agents is a fixed cost regardless of PR count (could use fewer for 1-2 PRs)
-* Bad, because responders must check out branches and push commits, requiring worktree management similar to `/design:work`
+* Bad, because responders must check out branches and push commits, requiring worktree management similar to `/sdd:work`
 * Bad, because one round may leave complex PRs only partially addressed
 
 ### Option 2: One Agent Per PR (Self-Review)
@@ -76,7 +76,7 @@ Each PR gets a single agent that reads its own diff, identifies issues, fixes th
 
 * Good, because it is simple -- one agent, one PR, no coordination
 * Good, because it requires fewer total agents
-* Bad, because self-review has no separation of concerns -- the agent reviews code it effectively wrote (via `/design:work`)
+* Bad, because self-review has no separation of concerns -- the agent reviews code it effectively wrote (via `/sdd:work`)
 * Bad, because there is no independent verification of spec compliance
 * Bad, because the "review" is superficial since the agent already understands its own changes
 
@@ -104,10 +104,10 @@ One reviewer agent reviews all PRs; multiple responder agents address feedback i
 
 ```mermaid
 flowchart TD
-    A["/design:review\n[SPEC-XXXX or PR numbers]\n[--no-merge] [--dry-run]"] --> B["Resolve target PRs\n(by spec or PR numbers)"]
+    A["/sdd:review\n[SPEC-XXXX or PR numbers]\n[--no-merge] [--dry-run]"] --> B["Resolve target PRs\n(by spec or PR numbers)"]
 
     B --> C["Load architecture context\n(spec.md, design.md, ADRs)"]
-    C --> D["Read .claude-plugin-design.json\nfor tracker + config"]
+    C --> D["Read .claude-plugin-sdd.json\nfor tracker + config"]
 
     D --> E["Create team:\n2 reviewers + 2 responders"]
 
@@ -168,10 +168,10 @@ sequenceDiagram
 
 ## More Information
 
-- This ADR extends the `/design:work` pipeline (ADR-0009) by adding the review-and-merge phase. It does not modify `/design:work` -- it operates on PRs that already exist.
-- The two-pair structure (2+2) is a default. For small batches (1-2 PRs), the skill may use a single pair (1+1) to avoid unnecessary agent overhead. The `.claude-plugin-design.json` `review` section can configure `max_pairs`.
-- Responders need worktree access to push fix commits. They reuse the worktrees created by `/design:work` if they still exist, or create new ones from the PR branch.
+- This ADR extends the `/sdd:work` pipeline (ADR-0009) by adding the review-and-merge phase. It does not modify `/sdd:work` -- it operates on PRs that already exist.
+- The two-pair structure (2+2) is a default. For small batches (1-2 PRs), the skill may use a single pair (1+1) to avoid unnecessary agent overhead. The `.claude-plugin-sdd.json` `review` section can configure `max_pairs`.
+- Responders need worktree access to push fix commits. They reuse the worktrees created by `/sdd:work` if they still exist, or create new ones from the PR branch.
 - The one-round limit is a hard constraint to prevent runaway review cycles. Complex PRs that cannot be resolved in one round are left for human follow-up with clear comments explaining what remains.
 - Reviewers check against three criteria: (1) spec acceptance criteria from the linked issue, (2) governing ADR compliance, and (3) general code quality (tests pass, no regressions, clean diffs).
-- Auto-merge uses the tracker's merge API (e.g., `gh pr merge --squash` for GitHub). The merge strategy (squash, merge, rebase) can be configured via `.claude-plugin-design.json` `review.merge_strategy`.
-- Related: ADR-0008 (standalone sprint planning), ADR-0009 (project grouping and developer workflow), `/design:work` (parallel issue implementation).
+- Auto-merge uses the tracker's merge API (e.g., `gh pr merge --squash` for GitHub). The merge strategy (squash, merge, rebase) can be configured via `.claude-plugin-sdd.json` `review.merge_strategy`.
+- Related: ADR-0008 (standalone sprint planning), ADR-0009 (project grouping and developer workflow), `/sdd:work` (parallel issue implementation).

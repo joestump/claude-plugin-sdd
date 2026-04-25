@@ -8,7 +8,7 @@ decision-makers: Joe Stump
 
 ## Context and Problem Statement
 
-The design plugin has 15 skills, zero test coverage, and just underwent a major overhaul (6 new ADRs, 3 new specs, config migration, workspace mode, security injection, worker protocols). How should we test these skills to catch regressions, validate behavior, and maintain quality as the plugin evolves?
+The SDD plugin has 15 skills, zero test coverage, and just underwent a major overhaul (6 new ADRs, 3 new specs, config migration, workspace mode, security injection, worker protocols). How should we test these skills to catch regressions, validate behavior, and maintain quality as the plugin evolves?
 
 The skill-creator plugin provides an eval framework (`evals.json`, `run_eval.py`, grading assertions, `aggregate_benchmark.py`, eval viewer), but it has never been applied to this plugin. The existing CI pipeline uses `claude-code-action` for PR code review but has no skill-level testing.
 

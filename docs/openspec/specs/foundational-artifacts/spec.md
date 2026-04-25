@@ -8,11 +8,11 @@ Standard formats for architectural decisions (MADR) and specifications (OpenSpec
 
 ### Requirement: MADR ADR Format
 
-The `/design:adr` skill SHALL create ADRs using the MADR (Markdown Architectural Decision Records) format. Each ADR MUST include YAML frontmatter with `status` and `date` fields. Each ADR MUST include sections for Context and Problem Statement, Decision Drivers, Considered Options, Decision Outcome (with Consequences and Confirmation), Pros and Cons of the Options, and Architecture Diagram.
+The `/sdd:adr` skill SHALL create ADRs using the MADR (Markdown Architectural Decision Records) format. Each ADR MUST include YAML frontmatter with `status` and `date` fields. Each ADR MUST include sections for Context and Problem Statement, Decision Drivers, Considered Options, Decision Outcome (with Consequences and Confirmation), Pros and Cons of the Options, and Architecture Diagram.
 
 #### Scenario: Create a new ADR
 
-- **WHEN** a user runs `/design:adr` with a description
+- **WHEN** a user runs `/sdd:adr` with a description
 - **THEN** the skill SHALL create a new ADR file at `docs/adrs/ADR-XXXX-short-title.md` with all required MADR sections, YAML frontmatter with status "proposed", and the current date
 
 #### Scenario: Sequential ADR numbering
@@ -22,7 +22,7 @@ The `/design:adr` skill SHALL create ADRs using the MADR (Markdown Architectural
 
 #### Scenario: ADR with team review
 
-- **WHEN** a user runs `/design:adr --review`
+- **WHEN** a user runs `/sdd:adr --review`
 - **THEN** the skill SHALL spawn a team with a drafter agent and an architect agent, with a maximum of 2 revision rounds before the architect approves
 
 ### Requirement: Architecture Diagrams
@@ -36,11 +36,11 @@ Every ADR MUST include an Architecture Diagram section containing at least one M
 
 ### Requirement: OpenSpec Specification Format
 
-The `/design:spec` skill SHALL create specifications as paired files: `spec.md` for requirements and `design.md` for architecture and rationale. Both files MUST be created in `docs/openspec/specs/{capability-name}/`.
+The `/sdd:spec` skill SHALL create specifications as paired files: `spec.md` for requirements and `design.md` for architecture and rationale. Both files MUST be created in `docs/openspec/specs/{capability-name}/`.
 
 #### Scenario: Create a new spec
 
-- **WHEN** a user runs `/design:spec` with a capability name
+- **WHEN** a user runs `/sdd:spec` with a capability name
 - **THEN** the skill SHALL create both `spec.md` and `design.md` in `docs/openspec/specs/{capability-name}/`
 
 #### Scenario: Spec numbering
@@ -73,25 +73,25 @@ Every requirement in a spec.md MUST have at least one scenario. Scenarios MUST u
 
 ### Requirement: Artifact Listing
 
-The `/design:list` skill SHALL scan both `docs/adrs/` and `docs/openspec/specs/` and present results in a formatted table with columns for ID, Title, Status, and Date. It MUST be read-only with allowed-tools limited to Read, Glob, and Grep.
+The `/sdd:list` skill SHALL scan both `docs/adrs/` and `docs/openspec/specs/` and present results in a formatted table with columns for ID, Title, Status, and Date. It MUST be read-only with allowed-tools limited to Read, Glob, and Grep.
 
 #### Scenario: List all artifacts
 
-- **WHEN** a user runs `/design:list`
+- **WHEN** a user runs `/sdd:list`
 - **THEN** the skill SHALL display a table of all ADRs and specs with their ID, Title, Status, and Date
 
 #### Scenario: Filter by type
 
-- **WHEN** a user runs `/design:list adr` or `/design:list spec`
+- **WHEN** a user runs `/sdd:list adr` or `/sdd:list spec`
 - **THEN** the skill SHALL display only the specified artifact type
 
 ### Requirement: Status Management
 
-The `/design:status` skill SHALL update the YAML frontmatter status of ADRs and specs. It MUST support all valid status transitions: ADRs (proposed, accepted, deprecated, superseded) and specs (draft, review, approved, implemented, deprecated).
+The `/sdd:status` skill SHALL update the YAML frontmatter status of ADRs and specs. It MUST support all valid status transitions: ADRs (proposed, accepted, deprecated, superseded) and specs (draft, review, approved, implemented, deprecated).
 
 #### Scenario: Update ADR status
 
-- **WHEN** a user runs `/design:status ADR-0001 accepted`
+- **WHEN** a user runs `/sdd:status ADR-0001 accepted`
 - **THEN** the skill SHALL update the YAML frontmatter status field to "accepted" without modifying any other content
 
 #### Scenario: Invalid status

@@ -8,7 +8,7 @@ decision-makers: joestump
 
 ## Context and Problem Statement
 
-A review of three production projects built with the design plugin (spotter, joe-links, claude-ops) revealed that the plugin treats security as entirely opt-in. None of the existing skills prompt for security requirements, inject security checklists, or flag dangerous code patterns. The result is that security posture varies wildly across projects and depends entirely on whether someone remembers to ask for it.
+A review of three production projects built with the SDD plugin (spotter, joe-links, claude-ops) revealed that the plugin treats security as entirely opt-in. None of the existing skills prompt for security requirements, inject security checklists, or flag dangerous code patterns. The result is that security posture varies wildly across projects and depends entirely on whether someone remembers to ask for it.
 
 How should the plugin ensure that web-facing specifications include security requirements by default, so that authentication, rate limiting, input validation, and other baseline protections are part of every web spec rather than an afterthought?
 
@@ -22,10 +22,10 @@ How should the plugin ensure that web-facing specifications include security req
 
 ## Considered Options
 
-* **Option 1**: Separate `/design:security` skill for security auditing and requirements
-* **Option 2**: Post-hoc security audit only (add security checks to `/design:audit`)
+* **Option 1**: Separate `/sdd:security` skill for security auditing and requirements
+* **Option 2**: Post-hoc security audit only (add security checks to `/sdd:audit`)
 * **Option 3**: Security checklist in CLAUDE.md that developers reference manually
-* **Option 4**: Integrated into existing skills — `/design:spec`, `/design:plan`, and `/design:check` all gain security awareness (chosen)
+* **Option 4**: Integrated into existing skills — `/sdd:spec`, `/sdd:plan`, and `/sdd:check` all gain security awareness (chosen)
 
 ## Decision Outcome
 
@@ -33,11 +33,11 @@ Chosen option: "Option 4 — Integrated into existing skills", because security 
 
 The integration touches four points in the plugin's workflow:
 
-1. **`/design:spec`** injects a mandatory "Security Requirements" section into every web-facing specification. This section covers authentication, rate limiting, security headers, request body size limits, CSRF protection, and redirect validation. The spec author must explicitly justify any public (unauthenticated) endpoints rather than leaving them unauthenticated by default.
+1. **`/sdd:spec`** injects a mandatory "Security Requirements" section into every web-facing specification. This section covers authentication, rate limiting, security headers, request body size limits, CSRF protection, and redirect validation. The spec author must explicitly justify any public (unauthenticated) endpoints rather than leaving them unauthenticated by default.
 
-2. **`/design:plan`** adds a security checklist to every issue that involves an HTTP endpoint. The checklist covers authentication middleware, input validation, output encoding, rate limiting, and body size limits. This ensures developers see the security requirements at the point of implementation, not buried in a spec they may not re-read.
+2. **`/sdd:plan`** adds a security checklist to every issue that involves an HTTP endpoint. The checklist covers authentication middleware, input validation, output encoding, rate limiting, and body size limits. This ensures developers see the security requirements at the point of implementation, not buried in a spec they may not re-read.
 
-3. **`/design:check`** gains security lint patterns that flag known dangerous code constructs:
+3. **`/sdd:check`** gains security lint patterns that flag known dangerous code constructs:
    - `io.ReadAll(r.Body)` without `http.MaxBytesReader` (unbounded memory allocation)
    - `template.HTML` with unsanitized user content (XSS via Go template bypass)
    - `http.Redirect` with user-controlled URLs (open redirect)
@@ -66,7 +66,7 @@ Spotter's security posture is the best of the three, but only because issues #94
 
 * Good, because every web-facing spec will have security requirements from day one, eliminating the class of "forgot to add auth" vulnerabilities that claude-ops shipped
 * Good, because security checklists in plan issues surface requirements at the implementation point, not buried in a spec document developers may not re-read
-* Good, because security lint patterns in `/design:check` catch dangerous code constructs before they reach production
+* Good, because security lint patterns in `/sdd:check` catch dangerous code constructs before they reach production
 * Good, because auth-by-default with explicit opt-out forces conscious decisions about public endpoints rather than accidental exposure
 * Good, because the approach is language-aware — lint patterns can be extended for Go, Python, TypeScript, etc.
 * Bad, because mandatory security sections add length to every web spec, including simple internal tools where the threat model may not warrant full coverage
@@ -77,17 +77,17 @@ Spotter's security posture is the best of the three, but only because issues #94
 
 Implementation will be confirmed by:
 
-1. Running `/design:spec` for a web-facing project produces a spec with a "Security Requirements" section covering authentication, rate limiting, headers, body limits, CSRF, and redirect validation
+1. Running `/sdd:spec` for a web-facing project produces a spec with a "Security Requirements" section covering authentication, rate limiting, headers, body limits, CSRF, and redirect validation
 2. The security section requires explicit justification for any endpoint marked as public (unauthenticated)
-3. Running `/design:plan` on a spec with HTTP endpoints produces issues that include a security checklist
-4. Running `/design:check` on code containing `io.ReadAll(r.Body)` without `MaxBytesReader` flags the pattern
-5. Running `/design:check` on code with `innerHTML` assignments flags the pattern
-6. Running `/design:check` on endpoint registration without auth middleware flags the pattern
-7. Running `/design:check` on CDN `<script>` tags without `integrity` attributes flags the pattern
+3. Running `/sdd:plan` on a spec with HTTP endpoints produces issues that include a security checklist
+4. Running `/sdd:check` on code containing `io.ReadAll(r.Body)` without `MaxBytesReader` flags the pattern
+5. Running `/sdd:check` on code with `innerHTML` assignments flags the pattern
+6. Running `/sdd:check` on endpoint registration without auth middleware flags the pattern
+7. Running `/sdd:check` on CDN `<script>` tags without `integrity` attributes flags the pattern
 
 ## Pros and Cons of the Options
 
-### Option 1: Separate `/design:security` Skill
+### Option 1: Separate `/sdd:security` Skill
 
 A standalone skill that generates security requirements, audits code for vulnerabilities, and produces security-focused reports. Invoked explicitly when security review is needed.
 
@@ -100,17 +100,17 @@ A standalone skill that generates security requirements, audits code for vulnera
 
 ### Option 2: Post-Hoc Security Audit Only
 
-Add security checks to `/design:audit` so that drift reports include a security posture section. No changes to spec or plan skills — security issues are caught during audits rather than prevented during design.
+Add security checks to `/sdd:audit` so that drift reports include a security posture section. No changes to spec or plan skills — security issues are caught during audits rather than prevented during design.
 
 * Good, because it requires no changes to the spec or plan workflows
-* Good, because `/design:audit` already has the infrastructure for findings, severity ratings, and remediation recommendations
+* Good, because `/sdd:audit` already has the infrastructure for findings, severity ratings, and remediation recommendations
 * Bad, because it catches security issues after implementation rather than preventing them during design — exactly the pattern that required spotter's security retrofit
 * Bad, because the remediation cost is much higher when vulnerabilities are found in working code vs. prevented in the spec
 * Bad, because it provides no security guidance during implementation — developers writing code see no security checklists
 
 ### Option 3: Security Checklist in CLAUDE.md
 
-Add a "Security Requirements" section to the CLAUDE.md template that `/design:init` generates. Developers and agents reference this checklist manually when writing specs and implementing features.
+Add a "Security Requirements" section to the CLAUDE.md template that `/sdd:init` generates. Developers and agents reference this checklist manually when writing specs and implementing features.
 
 * Good, because it is the simplest implementation — just a markdown section
 * Good, because CLAUDE.md is loaded into every session, so the checklist is always visible
@@ -121,7 +121,7 @@ Add a "Security Requirements" section to the CLAUDE.md template that `/design:in
 
 ### Option 4: Integrated into Existing Skills (Chosen)
 
-Security requirements, checklists, and lint patterns are woven into `/design:spec`, `/design:plan`, and `/design:check` so that security is part of the normal workflow at every stage.
+Security requirements, checklists, and lint patterns are woven into `/sdd:spec`, `/sdd:plan`, and `/sdd:check` so that security is part of the normal workflow at every stage.
 
 * Good, because security is present at every stage: design (spec), planning (plan), and verification (check)
 * Good, because no new skills to discover or remember to invoke
@@ -135,13 +135,13 @@ Security requirements, checklists, and lint patterns are woven into `/design:spe
 
 ```mermaid
 flowchart TD
-    A["Developer invokes\n/design:spec (web project)"] --> B{"Web-facing\nspec?"}
+    A["Developer invokes\n/sdd:spec (web project)"] --> B{"Web-facing\nspec?"}
     B -->|Yes| C["Inject mandatory\nSecurity Requirements section"]
     B -->|No| D["Standard spec\n(no security section)"]
 
     C --> E["Spec includes:\n- Auth requirement\n- Rate limiting strategy\n- Security headers\n- Body size limits\n- CSRF protection\n- Redirect validation"]
 
-    E --> F["Developer invokes\n/design:plan"]
+    E --> F["Developer invokes\n/sdd:plan"]
     F --> G{"Issue involves\nHTTP endpoint?"}
     G -->|Yes| H["Inject security checklist:\n- Auth middleware\n- Input validation\n- Output encoding\n- Rate limiting\n- Body size limits"]
     G -->|No| I["Standard issue\n(no security checklist)"]
@@ -149,7 +149,7 @@ flowchart TD
     H --> J["Developer implements code"]
     I --> J
 
-    J --> K["Developer invokes\n/design:check"]
+    J --> K["Developer invokes\n/sdd:check"]
     K --> L["Security lint patterns scan for:"]
 
     L --> M["io.ReadAll without MaxBytesReader"]
@@ -173,7 +173,7 @@ flowchart TD
 ## More Information
 
 - This ADR addresses the "Security-by-Default" section of the v3.0 plan, which documented security findings across spotter, joe-links, and claude-ops.
-- The security lint patterns in `/design:check` are intentionally conservative — they flag patterns that are dangerous in the majority of cases, accepting that some flags may be false positives (e.g., `io.ReadAll` on a body already wrapped in `MaxBytesReader` upstream). False positives can be suppressed with inline comments.
+- The security lint patterns in `/sdd:check` are intentionally conservative — they flag patterns that are dangerous in the majority of cases, accepting that some flags may be false positives (e.g., `io.ReadAll` on a body already wrapped in `MaxBytesReader` upstream). False positives can be suppressed with inline comments.
 - Auth-by-default is inspired by the principle of least privilege: the safe default is "authenticated" and the developer must explicitly opt out with justification, rather than the reverse.
-- The mandatory security section in `/design:spec` is triggered by detecting web-facing characteristics in the spec (HTTP endpoints, server routes, API definitions, browser UI). Purely internal library specs or CLI tool specs do not receive the section.
+- The mandatory security section in `/sdd:spec` is triggered by detecting web-facing characteristics in the spec (HTTP endpoints, server routes, API definitions, browser UI). Purely internal library specs or CLI tool specs do not receive the section.
 - Related: ADR-0001 (drift introspection skills), ADR-0019 (frontend quality standards, which covers CDN SRI and innerHTML from the frontend perspective), SPEC-0016 (security and quality guardrails spec).

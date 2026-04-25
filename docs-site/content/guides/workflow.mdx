@@ -4,9 +4,9 @@ sidebar_label: Workflow
 sidebar_position: 1
 ---
 
-# The Design Plugin Workflow
+# The SDD Plugin Workflow
 
-The design plugin follows a deliberate, four-phase workflow:
+The SDD plugin follows a deliberate, four-phase workflow:
 **Decide → Specify → Plan → Build**. Each phase produces artifacts that
 inform the next, creating a traceable path from architectural
 intent to working code — with agents handling the heavy lifting at every step.
@@ -18,7 +18,7 @@ ADRs capture *why* you chose one approach over another — the context,
 the alternatives you considered, and the consequences you accepted.
 
 ```
-/design:adr Add authentication using JWT tokens
+/sdd:adr Add authentication using JWT tokens
 ```
 
 This creates a MADR-format document with structured sections:
@@ -31,7 +31,7 @@ This creates a MADR-format document with structured sections:
 - **Architecture Diagram** — a Mermaid diagram showing the decision's impact
 
 After creating the ADR, the agent suggests formalizing the decision into
-a specification with `/design:spec`.
+a specification with `/sdd:spec`.
 
 :::tip Use `--review` for important decisions
 For consequential decisions, add the `--review` flag to spawn a two-agent
@@ -39,7 +39,7 @@ team: a drafter writes the ADR and an architect reviews it, with up to
 2 revision rounds.
 
 ```
-/design:adr Add authentication using JWT tokens --review
+/sdd:adr Add authentication using JWT tokens --review
 ```
 :::
 
@@ -51,7 +51,7 @@ works (`design.md`), so requirements and architecture can evolve
 independently.
 
 ```
-/design:spec Authentication Service
+/sdd:spec Authentication Service
 ```
 
 This creates a paired set of documents:
@@ -77,11 +77,11 @@ for the API gateway, service discovery, and inter-service communication.
 ## Phase 3: Plan (Sprint Planning)
 
 Once a spec exists, break it down into trackable work items with
-`/design:plan`:
+`/sdd:plan`:
 
 ```
-/design:plan authentication-service
-/design:plan SPEC-0003
+/sdd:plan authentication-service
+/sdd:plan SPEC-0003
 ```
 
 The plan skill groups requirements into **3–4 story-sized issues** by
@@ -94,7 +94,7 @@ The skill handles the full planning pipeline automatically:
 
 1. **Detects your issue tracker** — checks for [Beads](https://github.com/steveyegge/beads),
    GitHub, GitLab, Gitea, Jira, and Linear. Saves your choice to
-   `.claude-plugin-design.json` so you're not asked again.
+   `.claude-plugin-sdd.json` so you're not asked again.
 
 2. **Creates an epic and stories** — one epic per spec, 3–4 story issues
    grouped by functional area (Setup, Core Logic, Validation, Extensions).
@@ -120,22 +120,22 @@ audit, five-agent backlog review (including a grumpy high-bar engineer),
 dissent resolution, and automatic organize + enrich — all in one command.
 
 ```
-/design:plan SPEC-0003 --scrum
-/design:plan --scrum            # groom full backlog
+/sdd:plan SPEC-0003 --scrum
+/sdd:plan --scrum            # groom full backlog
 ```
 
 See the [Sprint Planning guide](./sprint-planning) for a full walkthrough.
 :::
 
 :::tip Retroactive enrichment
-Already have issues from a previous `/design:plan` run? Use
-`/design:organize` to group them into projects and `/design:enrich`
+Already have issues from a previous `/sdd:plan` run? Use
+`/sdd:organize` to group them into projects and `/sdd:enrich`
 to add branch naming and PR conventions to their bodies — without
 re-creating the issues.
 
 ```
-/design:organize SPEC-0003
-/design:enrich SPEC-0003
+/sdd:organize SPEC-0003
+/sdd:enrich SPEC-0003
 ```
 :::
 
@@ -146,7 +146,7 @@ it's time to build. Prime the session with architecture context and let
 agents work through the backlog.
 
 ```
-/design:prime authentication
+/sdd:prime authentication
 ```
 
 This loads the relevant ADRs and specs into context. Agents pick up
@@ -168,20 +168,20 @@ function validateToken(token: string): Claims {
 These comments serve two purposes:
 - Future agents (and humans) can understand *why* code is written a
   certain way
-- `/design:check` uses them to detect drift between code and specs
+- `/sdd:check` uses them to detect drift between code and specs
 
 ### Check for drift as you go
 
 As implementation progresses, use drift detection to catch divergence early:
 
 ```
-/design:check src/auth/
+/sdd:check src/auth/
 ```
 
 And run a full audit at milestones:
 
 ```
-/design:audit
+/sdd:audit
 ```
 
 :::tip Use `--scrum` on audit to triage findings
@@ -191,8 +191,8 @@ into functional themes, assigns P1/P2/P3 priority and effort estimates,
 and separates "fix the code" findings from "update the spec" findings.
 
 ```
-/design:audit --scrum
-/design:audit auth --scrum    # scoped to auth domain
+/sdd:audit --scrum
+/sdd:audit auth --scrum    # scoped to auth domain
 ```
 :::
 
@@ -204,7 +204,7 @@ system to a project.
 ### 1. Record the decision
 
 ```
-/design:adr Add WebSocket-based real-time notifications --review
+/sdd:adr Add WebSocket-based real-time notifications --review
 ```
 
 The drafter and architect produce an ADR exploring WebSockets vs SSE vs
@@ -213,7 +213,7 @@ polling. The team accepts WebSockets for bidirectional communication needs.
 ### 2. Write the specifications
 
 ```
-/design:spec Notification Service
+/sdd:spec Notification Service
 ```
 
 The agent writes SPEC-0004 with requirements for event types, delivery
@@ -222,13 +222,13 @@ rules, and notification preferences — each with WHEN/THEN scenarios.
 ### 3. Plan the sprint
 
 ```
-/design:plan SPEC-0004
+/sdd:plan SPEC-0004
 ```
 
 The agent:
 
 - **Detects Beads** (finds `.beads/` in the project root) and offers to
-  save the preference to `.claude-plugin-design.json`
+  save the preference to `.claude-plugin-sdd.json`
 - **Creates an epic**: "Implement Notification Service"
 - **Groups requirements into 3 stories** by functional area:
   - Story 1: "Setup & Event Schema" (REQ "Event Types", REQ "Schema Validation")
@@ -253,14 +253,14 @@ The agent:
 You can then plan a second spec the same way:
 
 ```
-/design:spec WebSocket Gateway
-/design:plan SPEC-0005
+/sdd:spec WebSocket Gateway
+/sdd:plan SPEC-0005
 ```
 
 ### 4. Prime and build
 
 ```
-/design:prime notifications
+/sdd:prime notifications
 ```
 
 Agents pick up unblocked tasks with full context from the ADRs and specs.
@@ -281,9 +281,9 @@ const eventSchema = z.object({
 ### 5. Validate alignment
 
 ```
-/design:check src/notifications/
-/design:check src/websocket/
-/design:audit --review
+/sdd:check src/notifications/
+/sdd:check src/websocket/
+/sdd:audit --review
 ```
 
 The audit catches that the reconnection implementation uses linear backoff
@@ -311,15 +311,15 @@ co-located with the spec that you can use to track work manually.
 The workflow is not strictly linear. As you build, you'll discover:
 
 - **New decisions** — implementation reveals choices the ADR didn't anticipate.
-  Record them: `/design:adr`
+  Record them: `/sdd:adr`
 - **Spec gaps** — requirements that were too vague or missing entirely.
-  Update them: edit the spec, run `/design:check`
+  Update them: edit the spec, run `/sdd:check`
 - **Re-planning** — specs evolved during implementation and the backlog
-  needs updating. Re-run: `/design:plan SPEC-0003`
+  needs updating. Re-run: `/sdd:plan SPEC-0003`
 - **Stale artifacts** — decisions that no longer apply as the system evolved.
-  Update their status: `/design:status ADR-0003 deprecated`
+  Update their status: `/sdd:status ADR-0003 deprecated`
 
-The design plugin's drift detection skills (`/design:check` and
-`/design:audit`) close this loop by surfacing misalignment before it
+The SDD plugin's drift detection skills (`/sdd:check` and
+`/sdd:audit`) close this loop by surfacing misalignment before it
 becomes entrenched. Governing comments left by agents during implementation
 make drift detection faster and more accurate.

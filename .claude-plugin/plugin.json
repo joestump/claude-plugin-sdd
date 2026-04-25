@@ -1,13 +1,13 @@
 {
-  "name": "design",
-  "version": "3.0.0",
-  "description": "Architecture governance: ADRs, specifications, sprint planning, parallel implementation, code review, and documentation generation.",
+  "name": "sdd",
+  "version": "4.0.0",
+  "description": "Spec-Driven Development: ADRs, specifications, sprint planning, parallel implementation, code review, and documentation generation.",
   "author": {
     "name": "Joe Stump",
     "url": "https://github.com/joestump"
   },
-  "homepage": "https://github.com/joestump/claude-plugin-design",
-  "repository": "https://github.com/joestump/claude-plugin-design",
+  "homepage": "https://github.com/joestump/claude-plugin-sdd",
+  "repository": "https://github.com/joestump/claude-plugin-sdd",
   "license": "MIT",
   "keywords": ["adr", "openspec", "docusaurus", "architecture", "specifications", "documentation"]
 }

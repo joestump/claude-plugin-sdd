@@ -28,13 +28,13 @@ You are performing a fast, focused drift check on a specific target. This skill 
 
 2. **Validate the target exists**:
    - For file/directory targets: verify the path exists. If not, report: "Target not found: `{target}`. Provide a valid file path, directory, ADR reference (ADR-XXXX), or SPEC reference (SPEC-XXXX)."
-   - For ADR references: glob `{adr-dir}/ADR-{number}-*.md`. If not found, report: "ADR-{XXXX} not found in `{adr-dir}`. Run `/design:list adr` to see available ADRs."
-   - For SPEC references: glob `{spec-dir}/*/spec.md` and search for the matching SPEC number. If not found, report: "SPEC-{XXXX} not found in `{spec-dir}`. Run `/design:list spec` to see available specs."
+   - For ADR references: glob `{adr-dir}/ADR-{number}-*.md`. If not found, report: "ADR-{XXXX} not found in `{adr-dir}`. Run `/sdd:list adr` to see available ADRs."
+   - For SPEC references: glob `{spec-dir}/*/spec.md` and search for the matching SPEC number. If not found, report: "SPEC-{XXXX} not found in `{spec-dir}`. Run `/sdd:list spec` to see available specs."
 
 3. **Locate design artifacts**:
-   - Scan `{adr-dir}` for ADR files. If the directory does not exist, report: "The `{adr-dir}` directory does not exist. Run `/design:adr [description]` to create your first ADR."
-   - Scan `{spec-dir}` for spec files. If the directory does not exist, report: "The `{spec-dir}` directory does not exist. Run `/design:spec [capability]` to create your first spec."
-   - If neither ADRs nor specs exist, report: "No design artifacts found. Create an ADR with `/design:adr` or a spec with `/design:spec` first."
+   - Scan `{adr-dir}` for ADR files. If the directory does not exist, report: "The `{adr-dir}` directory does not exist. Run `/sdd:adr [description]` to create your first ADR."
+   - Scan `{spec-dir}` for spec files. If the directory does not exist, report: "The `{spec-dir}` directory does not exist. Run `/sdd:spec [capability]` to create your first spec."
+   - If neither ADRs nor specs exist, report: "No design artifacts found. Create an ADR with `/sdd:adr` or a spec with `/sdd:spec` first."
    - It is valid for only ADRs or only specs to exist -- proceed with whatever is available.
 
 4. **Determine relevant artifacts**:
@@ -148,9 +148,9 @@ You are performing a fast, focused drift check on a specific target. This skill 
    ```
 
 10. **Add suggested actions** at the end based on findings:
-   - If critical issues exist, suggest `/design:audit {target} --review` for deeper analysis
-   - If stale artifact findings exist, suggest `/design:status` to update
-   - If coverage gaps suggest a missing spec, suggest `/design:spec`
+   - If critical issues exist, suggest `/sdd:audit {target} --review` for deeper analysis
+   - If stale artifact findings exist, suggest `/sdd:status` to update
+   - If coverage gaps suggest a missing spec, suggest `/sdd:spec`
    - Always provide at least one actionable fix suggestion for the highest-severity finding
 
 11. **Handle clean results**: If no drift is found, report:
@@ -205,7 +205,7 @@ You are performing a fast, focused drift check on a specific target. This skill 
 ## Rules
 
 - This skill is always single-agent. It does NOT support `--review`.
-- Analyzes three drift categories (Code vs. Spec, Code vs. ADR, ADR vs. Spec) plus two code quality scans (Security Lint, Template Quality). Coverage gaps, stale artifacts, and policy violations are NOT checked — use `/design:audit` for a comprehensive six-category analysis.
+- Analyzes three drift categories (Code vs. Spec, Code vs. ADR, ADR vs. Spec) plus two code quality scans (Security Lint, Template Quality). Coverage gaps, stale artifacts, and policy violations are NOT checked — use `/sdd:audit` for a comprehensive six-category analysis.
 - Keep analysis focused and fast. Read only the files relevant to the target, not the entire codebase.
 - Always use full artifact identifiers in output: `ADR-0001`, `SPEC-0002`, `Req 3`. Do not abbreviate.
 - Include file paths with line numbers in the Location column when possible (e.g., `src/auth/login.ts:45`).

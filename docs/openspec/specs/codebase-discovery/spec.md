@@ -2,28 +2,28 @@
 
 ## Overview
 
-A read-only analysis skill that explores an existing codebase to discover implicit architectural decisions and specification-worthy subsystems, producing a structured suggestion report. The skill bridges the gap between installing the design plugin and having a useful set of design artifacts by reverse-engineering what the code already implies. See ADR-0005.
+A read-only analysis skill that explores an existing codebase to discover implicit architectural decisions and specification-worthy subsystems, producing a structured suggestion report. The skill bridges the gap between installing the SDD plugin and having a useful set of design artifacts by reverse-engineering what the code already implies. See ADR-0005.
 
 ## Requirements
 
 ### Requirement: Discovery Report Output
 
-The `/design:discover` skill SHALL produce a structured report containing two sections: Suggested ADRs and Suggested Specs. The report MUST NOT create any files -- it SHALL only output suggestions for the user to act on. Each suggestion MUST include a title, evidence from the codebase, and a ready-to-use description that can be passed directly to `/design:adr` or `/design:spec`.
+The `/sdd:discover` skill SHALL produce a structured report containing two sections: Suggested ADRs and Suggested Specs. The report MUST NOT create any files -- it SHALL only output suggestions for the user to act on. Each suggestion MUST include a title, evidence from the codebase, and a ready-to-use description that can be passed directly to `/sdd:adr` or `/sdd:spec`.
 
 #### Scenario: Discover on a project with no existing artifacts
 
-- **WHEN** a user runs `/design:discover` on a project with code but no ADRs or specs
+- **WHEN** a user runs `/sdd:discover` on a project with code but no ADRs or specs
 - **THEN** the skill SHALL analyze the codebase and produce a report with suggested ADRs for implicit decisions and suggested specs for subsystem boundaries
 
 #### Scenario: Discover on a project with existing artifacts
 
-- **WHEN** a user runs `/design:discover` on a project that already has ADRs and specs
+- **WHEN** a user runs `/sdd:discover` on a project that already has ADRs and specs
 - **THEN** the skill SHALL read existing artifacts, avoid duplicating already-documented decisions, and only suggest new ADRs and specs for undocumented areas
 
 #### Scenario: Discover produces actionable suggestions
 
 - **WHEN** the skill produces a suggestion
-- **THEN** each suggestion SHALL include a ready-to-use command (e.g., `/design:adr Chose PostgreSQL over MongoDB for user data persistence`) that the user can copy and run directly
+- **THEN** each suggestion SHALL include a ready-to-use command (e.g., `/sdd:adr Chose PostgreSQL over MongoDB for user data persistence`) that the user can copy and run directly
 
 ### Requirement: Codebase Analysis Categories
 
@@ -55,12 +55,12 @@ The skill MUST accept an optional scope argument to limit analysis to a subdirec
 
 #### Scenario: Scoped discovery
 
-- **WHEN** a user runs `/design:discover src/auth`
+- **WHEN** a user runs `/sdd:discover src/auth`
 - **THEN** the skill SHALL limit analysis to the `src/auth` directory and its relationships to the rest of the codebase, producing suggestions relevant only to that scope
 
 #### Scenario: Unscoped discovery
 
-- **WHEN** a user runs `/design:discover` with no arguments
+- **WHEN** a user runs `/sdd:discover` with no arguments
 - **THEN** the skill SHALL analyze the entire project
 
 ### Requirement: Duplicate Avoidance

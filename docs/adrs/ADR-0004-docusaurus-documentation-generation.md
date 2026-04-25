@@ -49,7 +49,7 @@ The implementation follows a transform pipeline architecture: source markdown fi
 
 Implementation will be confirmed by:
 
-1. The `/design:docs` skill (in `skills/docs/SKILL.md`) scaffolds a working Docusaurus site from the `templates/docusaurus/` directory
+1. The `/sdd:docs` skill (in `skills/docs/SKILL.md`) scaffolds a working Docusaurus site from the `templates/docusaurus/` directory
 2. The transform pipeline correctly converts ADR markdown into MDX with status badges, RFC 2119 keyword highlighting, ADR cross-references, and consequence keyword coloring
 3. The transform pipeline correctly converts OpenSpec markdown into MDX with requirement boxes, domain badges, spec cross-references, and RFC 2119 highlighting
 4. The MDX escaping utility handles curly braces, angle brackets, and other MDX v3 unsafe patterns without breaking JSX components
@@ -60,7 +60,7 @@ Implementation will be confirmed by:
 
 ### Option 1: Docusaurus with MDX and Template-Based Scaffolding
 
-A complete Docusaurus site shipped as templates in `templates/docusaurus/`. The `/design:docs` skill copies these templates into `docs-site/` in the user's project, customizes `package.json` and `docusaurus.config.ts` for the project, and runs `npm install`. Build-time transform scripts convert source markdown into MDX with custom React components.
+A complete Docusaurus site shipped as templates in `templates/docusaurus/`. The `/sdd:docs` skill copies these templates into `docs-site/` in the user's project, customizes `package.json` and `docusaurus.config.ts` for the project, and runs `npm install`. Build-time transform scripts convert source markdown into MDX with custom React components.
 
 * Good, because Docusaurus has native MDX support, allowing JSX components to be embedded directly in generated documentation
 * Good, because `@docusaurus/theme-mermaid` provides first-class Mermaid rendering with no configuration needed beyond enabling the theme
@@ -194,7 +194,7 @@ templates/docusaurus/
 
 ### Key Design Decisions Within the Implementation
 
-* **Copy-then-customize**: The `/design:docs` skill uses `cp -r` to copy the entire template directory, then modifies only `package.json` (project name) and `docusaurus.config.ts` (title, URLs). This means the templates are production-ready defaults, not skeletons that require extensive filling in.
+* **Copy-then-customize**: The `/sdd:docs` skill uses `cp -r` to copy the entire template directory, then modifies only `package.json` (project name) and `docusaurus.config.ts` (title, URLs). This means the templates are production-ready defaults, not skeletons that require extensive filling in.
 * **Separate `docs-generated/` directory**: Transform output goes to `docs-generated/` at the project root rather than into `docs-site/docs/`. This keeps generated MDX out of the Docusaurus source tree and makes it clear what is a build artifact versus source.
 * **File watching with chokidar**: The `npm run dev` script uses `concurrently` to run both the chokidar file watcher (re-running transforms when ADRs or specs change) and the Docusaurus dev server, so edits to source markdown are reflected in the browser automatically.
 * **MDX escaping as a separate utility**: Rather than scattering escape logic across transform scripts, all MDX v3 escaping is centralized in `mdx-escape.js`. This utility preserves JSX component tags while escaping literal curly braces and angle brackets that MDX would interpret as expressions.
@@ -202,5 +202,5 @@ templates/docusaurus/
 
 ### Related Decisions
 
-* ADR-0001 introduced `/design:check` and `/design:audit`, which produce findings that appear in the generated documentation site.
+* ADR-0001 introduced `/sdd:check` and `/sdd:audit`, which produce findings that appear in the generated documentation site.
 * The OpenSpec format (spec.md + design.md paired files) directly influences the spec transform pipeline, which must handle both file types with different metadata extraction and component injection strategies.

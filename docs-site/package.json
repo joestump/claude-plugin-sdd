@@ -1,5 +1,5 @@
 {
-  "name": "claude-plugin-design-docs",
+  "name": "claude-plugin-sdd-docs",
   "version": "0.0.0",
   "private": true,
   "scripts": {
