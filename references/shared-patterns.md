@@ -246,11 +246,34 @@ Skills MAY tolerate minor natural-language variations in key names (e.g., "Branc
 
 ## Tracker Detection
 
-### Check for Saved Preference
+Tracker detection follows a strict precedence order: **saved preference → git remote inference → tooling probe → fallback**. Each step short-circuits the next when it produces an unambiguous answer.
 
-Read the `### SDD Configuration` section in the project-root `CLAUDE.md` (following the Config Resolution pattern above). If it contains a `#### Tracker` subsection with a `- **Type**: {tracker}` entry, use that tracker directly. If it also has tracker-specific keys (Owner, Repo, Project Key, etc.), use those settings. If the saved tracker's tools are no longer available, warn the user and fall through to detection.
+### 1. Check for Saved Preference
 
-### Detect Available Trackers
+Read the `### SDD Configuration` section in the project-root `CLAUDE.md` (following the Config Resolution pattern above). If it contains a `#### Tracker` subsection with a `- **Type**: {tracker}` entry, use that tracker directly. If it also has tracker-specific keys (Owner, Repo, Project Key, etc.), use those settings. If the saved tracker's tools are no longer available, warn the user and fall through to subsequent steps.
+
+### 2. Infer From Git Remote
+
+If the project is a git repository, run `git remote get-url origin` (or `git config --get remote.origin.url` if the former is unavailable) and match the host against the table below. A unique match is treated as a strong signal — the skill MUST use that tracker without prompting.
+
+| Remote host pattern | Tracker | Notes |
+|---------------------|---------|-------|
+| `github.com` | GitHub | Both HTTPS and SSH URL forms; matches `github.com:owner/repo` and `https://github.com/owner/repo`. |
+| `gitlab.com`, `gitlab.*` (self-hosted) | GitLab | Self-hosted GitLab instances commonly use `gitlab.{org}.{tld}`. |
+| `gitea.*`, `*.gitea.*`, `git.*` (when paired with Gitea API headers) | Gitea | Self-hosted Gitea has no canonical hostname; match `gitea.` prefix or domain. When ambiguous, fall through to tooling probe. |
+| `bitbucket.org`, `bitbucket.*` | (unsupported) | Not a tracker target — falls through. |
+
+The skill MUST also extract `owner` and `repo` from the URL when inference succeeds — these populate the tracker-specific configuration without a follow-up prompt. URL parsing MUST handle both HTTPS (`https://github.com/owner/repo.git`) and SSH (`git@github.com:owner/repo.git`) forms, stripping any trailing `.git`.
+
+**Ambiguity cases** that fall through to step 3:
+- The repo has multiple remotes pointing to different platforms (e.g., `origin → github.com`, `mirror → gitea.example.com`). Prefer `origin` if it is one of them; otherwise prompt.
+- The remote host does not match any pattern above (corporate forges, unknown self-hosted instances).
+- The project is not a git repository (no `.git/` directory).
+- The project uses a non-VCS-derivable tracker (Jira, Linear, Beads). These cannot be inferred from a git remote and require step 3.
+
+### 3. Detect Available Trackers (tooling probe)
+
+Used when steps 1–2 do not produce an unambiguous answer.
 
 - **Beads**: Look for a `.beads/` directory in the project root, or run `bd --version`.
 - **GitHub**: Use `ToolSearch` to probe for MCP tools matching `github`, or check `gh` CLI via `gh --version`.
@@ -259,7 +282,7 @@ Read the `### SDD Configuration` section in the project-root `CLAUDE.md` (follow
 - **Jira**: Use `ToolSearch` to probe for MCP tools matching `jira`.
 - **Linear**: Use `ToolSearch` to probe for MCP tools matching `linear`.
 
-### Choose Tracker
+### 4. Choose Tracker
 
 - Multiple trackers found → use `AskUserQuestion` to let the user pick. Include an option to save the choice as default.
 - Exactly one found → use it. Ask if they want to save it as default.
