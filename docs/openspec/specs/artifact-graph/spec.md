@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: approved
+date: 2026-05-01
 implements: [ADR-0023]
 requires: [SPEC-0014]
 ---
@@ -110,7 +111,7 @@ The graph builder MUST validate the graph immediately after construction and bef
 
 1. **ID resolution**: Every artifact ID referenced in a frontmatter edge MUST exist as a node in the graph. Unresolved references MUST be reported as a hard error including the source artifact, the offending field, and the missing target ID.
 2. **Cycle detection**: The graph MUST be a DAG except for symmetric `related` edges. A cycle in any other edge type (`supersedes`, `extends`, `enables`, `governs`, `implements`, `requires`) MUST be reported as a hard error including the full cycle path.
-3. **Status consistency**: When ADR A declares `supersedes: [ADR B]`, ADR B's frontmatter status SHOULD be `superseded`. The same applies to `supersedes` between specs. A status mismatch MUST be reported as a warning (not a hard error) so the graph remains queryable while the inconsistency is resolved.
+3. **Status consistency**: When ADR A declares `supersedes: [ADR B]`, ADR B's frontmatter status MUST be `superseded` (or `deprecated` if explicitly chosen by the author). The same applies to `supersedes` between specs, where the target's spec status MUST be `deprecated`. The graph builder MUST detect any deviation from this rule and emit a warning identifying the source artifact, the target artifact, and the actual status. Warnings MUST NOT block queries — the graph remains queryable while the inconsistency is resolved.
 
 Hard errors MUST cause the skill to refuse to answer query verbs and exit with a non-zero status. Warnings MUST be reported to the user but MUST NOT block queries.
 
@@ -244,14 +245,14 @@ The `/sdd:graph` skill SHALL support four output formats. The default format MUS
 
 **ASCII DAG layout rules:**
 
-- MUST use Unicode box-drawing characters: `──►` for forward edges, `┬` `├` `└` for branch joins, `│` for vertical continuations, `▼` for descent into a separate subgraph.
-- Derived edges MUST be visually distinguished from authored edges. The skill SHALL use a dashed arrow (`─ ─►`) for derived edges and a solid arrow (`───►`) for authored edges, with edge-type labels annotated when the edge type is non-default (e.g., `─[supersedes]►`).
-- Node labels MUST include the artifact ID and a one-line title. Title truncation MUST be deterministic — truncate to a configured maximum (default 60 characters) with a trailing ellipsis when exceeded.
+- MUST use Unicode box-drawing characters from the `U+2500–U+257F` block. The minimum set the renderer MUST handle is `──►`, `┬`, `├`, `└`, `┐`, `┌`, `┴`, `┤`, and `│`. Additional characters from the same Unicode block MAY be used.
+- Derived edges MUST be visually distinguished from authored edges. The skill SHALL use a dashed arrow (`─ ─►`) for derived edges and a solid arrow (`───►`) for authored edges. Edge-type labels MUST be inlined on every edge except where the edge type is the *default for the source/target pair*: unlabeled forward arrows mean `governs` for ADR→spec edges, `requires` for spec→spec edges, and `extends` for ADR→ADR edges. All other edge types (e.g., `supersedes`, `enables`, `implements`, `related`) MUST carry a label of the form `─[supersedes]►`.
+- Node labels MUST include the artifact ID and a one-line title. Title truncation MUST be deterministic — truncate to a configured maximum (default 60 characters) with a trailing single-character ellipsis (`…`) when exceeded. Titles MUST be normalized before truncation: collapse runs of whitespace to a single space, strip leading/trailing whitespace, do not strip punctuation.
 - Layout direction MUST be:
   - `ancestors`: top-to-bottom, queried artifact at the bottom, transitive ancestors flowing down toward it.
   - `impact`: top-to-bottom, queried artifact at the top, dependents flowing down.
-  - `chain`: bidirectional, queried artifact in the middle, ancestors above and dependents below joined by a `▼`.
-- The DAG MUST be reproducible — given the same input graph, the skill MUST emit byte-identical output. Topological tie-breakers MUST sort by artifact ID ascending.
+  - `chain`: bidirectional, queried artifact in the middle of a single contiguous diagram. Ancestors render above; dependents render below. The two regions are visually separated by a single `│` continuation through the queried node — NOT by `▼`. The `▼` glyph is reserved for the diagnostic-output case of "descent into a separate subgraph" (used by `orphans` when grouping by category in DAG view, not used by traversal verbs).
+- The DAG MUST be reproducible — given the same input graph, the skill MUST emit byte-identical output. To make byte-identity precise, the skill MUST also pin: (a) line ending = LF only, (b) encoding = UTF-8 with no BOM, (c) exactly one trailing newline at the end of output, (d) exactly two spaces of indentation per nesting level, (e) sibling branches sorted by artifact ID ascending. Tie-breaking for any other ordering decision MUST also use artifact ID ascending.
 
 The JSON output schema MUST be stable and versioned. The top-level object MUST include a `schema_version` field. Breaking changes to the JSON schema MUST require a new schema version and MUST be documented in this spec via a versioned addendum.
 
@@ -267,12 +268,15 @@ The minimum JSON schema fields per response:
       "type": "spec",
       "module": null,
       "edges": [
-        { "type": "governed-by", "target": "ADR-0008", "derived": true }
+        { "type": "governed-by", "target": "ADR-0008", "derived": true },
+        { "type": "implements", "target": "ADR-0008", "derived": false }
       ]
     }
   ]
 }
 ```
+
+The `derived` field MUST be present on every edge object — `true` for inverse edges computed by the graph builder, `false` for edges authored in frontmatter or governing comment blocks. Omitting the field is not permitted; consumers MUST be able to filter authored vs. derived edges without inferring from absence.
 
 #### Scenario: Default ASCII DAG for hierarchical result
 
@@ -313,7 +317,7 @@ The minimum JSON schema fields per response:
 
 In workspace mode (per ADR-0016 / SPEC-0014), the `/sdd:graph` skill SHALL aggregate the graph across all discovered modules. Artifact IDs in cross-module output MUST be prefixed with the module name in square brackets (e.g., `[api] SPEC-0001`, `[worker] ADR-0003`) to disambiguate independently numbered artifacts.
 
-When the `--module <name>` flag is provided, the skill MUST scope queries to a single module and MUST NOT prefix IDs in output. Cross-module edges (e.g., a spec in module `api` that requires a spec in module `shared-lib`) MUST be supported by allowing edge fields to reference module-prefixed IDs using the syntax `[module]/SPEC-XXXX` or `[module]/ADR-XXXX`.
+When the `--module <name>` flag is provided, the skill MUST scope queries to a single module and MUST NOT prefix IDs in output. Cross-module edges (e.g., a spec in module `api` that requires a spec in module `shared-lib`) MUST be supported by allowing edge fields to reference module-prefixed IDs. Authoring syntax MUST quote the prefixed ID as a YAML scalar to avoid YAML's nested-list parse: `requires: ["[shared-lib]/SPEC-0001"]`. Display syntax in tool output uses the same `[module]/SPEC-XXXX` form without quotes (since output is not YAML).
 
 #### Scenario: Aggregate query in workspace
 
@@ -327,8 +331,13 @@ When the `--module <name>` flag is provided, the skill MUST scope queries to a s
 
 #### Scenario: Cross-module edge
 
-- **WHEN** a spec in module `api` declares `requires: [[shared-lib]/SPEC-0001]`
+- **WHEN** a spec in module `api` declares `requires: ["[shared-lib]/SPEC-0001"]` (quoted YAML scalar)
 - **THEN** the graph builder SHALL record an edge from `[api]/SPEC-XXXX` to `[shared-lib]/SPEC-0001` and SHALL treat it as a normal forward edge for traversal queries
+
+#### Scenario: Cross-module edge with unquoted YAML rejected
+
+- **WHEN** an authoring frontmatter contains `requires: [[shared-lib]/SPEC-0001]` (unquoted, parses as YAML nested list)
+- **THEN** the graph builder MUST emit a hard error identifying the file and field with guidance to quote module-prefixed IDs as scalars
 
 #### Scenario: Single-module project
 

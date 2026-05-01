@@ -15,10 +15,10 @@ How should the plugin make artifact relationships first-class so that they can b
 ## Decision Drivers
 
 * **Markdown-native principle**: ADR-0015 already eliminated `.claude-plugin-design.json` in favor of CLAUDE.md sections. A new sidecar manifest for graph metadata would re-introduce the split-truth problem that decision was meant to fix.
-* **Structured beats fuzzy at this scale**: The corpus is 22 ADRs and 17 specs with explicit, named relationships. A graph captures what's actually true; vector embeddings would synthesize what's only approximately true. The graph is the right primitive.
+* **Structured beats fuzzy at this scale**: The corpus is 23 ADRs and 18 specs with explicit, named relationships. A graph captures what's actually true; vector embeddings would synthesize what's only approximately true. The graph is the right primitive.
 * **Foundation for future MCP**: Whether or not we eventually ship a local MCP with embeddings + reranking (the user's "GraphRAG + KNN + reranking" goal), that MCP needs a parseable graph as input. Building the graph layer now creates the contract; the MCP becomes a downstream consumer rather than a coupled rewrite.
 * **Authoring ergonomics**: Authors already write these relationships — just in prose at the bottom of the file. Lifting them into frontmatter is a re-shape, not a new burden, and it's where MADR already puts machine-readable metadata.
-* **Backfill path**: 22 ADRs and 17 specs encode their edges in "Related" / "More Information" / "Supersedes" prose today. Any solution that requires retroactive manual annotation across all of them will stall.
+* **Backfill path**: 23 ADRs and 18 specs encode their edges in "Related" / "More Information" / "Supersedes" prose today. Any solution that requires retroactive manual annotation across all of them will stall.
 * **Complements ADR-0020**: Code-to-artifact edges already exist via governing comment blocks. Formalizing artifact-to-artifact edges completes the graph without re-litigating the code side.
 
 ## Considered Options
@@ -61,7 +61,7 @@ Edges link whole artifacts (ADR ↔ ADR, ADR ↔ spec, spec ↔ spec). Requireme
 
 ### Sub-decision 3: Backfill is assisted, not manual
 
-Backfilling 22 ADRs and 17 specs by hand will not happen. The `/sdd:graph` skill includes a `backfill` mode that parses existing prose ("Related:", "Supersedes", "More Information", `## Overview` references to ADR-XXXX/SPEC-XXXX) and proposes a per-file diff for human review. The author accepts, edits, or rejects each proposed edge. No edges are added without explicit consent.
+Backfilling 23 ADRs and 18 specs by hand will not happen. The `/sdd:graph` skill includes a `backfill` mode that parses existing prose ("Related:", "Supersedes", "More Information", `## Overview` references to ADR-XXXX/SPEC-XXXX) and proposes a per-file diff for human review. The author accepts, edits, or rejects each proposed edge. No edges are added without explicit consent.
 
 ### `/sdd:graph` skill shape (v1 verbs)
 
@@ -74,7 +74,7 @@ Backfilling 22 ADRs and 17 specs by hand will not happen. The `/sdd:graph` skill
 | `cycles` | Detect circular dependencies (sanity check) |
 | `backfill` | Propose edges from prose for human review |
 
-Output formats: markdown table (default), `--mermaid` for visual graphs, `--json` for downstream tooling consumption (this is the contract a future MCP would call).
+Output formats: ASCII DAG (default for hierarchical traversal verbs `chain` / `impact` / `ancestors`), markdown table (default for flat results `orphans` / `cycles`, or via `--table`), `--mermaid` for visual graphs, `--json` for downstream tooling consumption (this is the contract a future MCP would call). See SPEC-0018 REQ "Output Formats" for the full layout rules and JSON schema.
 
 ### Consequences
 
@@ -98,7 +98,7 @@ Implementation will be confirmed by:
 3. `skills/graph/SKILL.md` exists and follows the established SKILL.md format with YAML frontmatter
 4. Running `/sdd:graph impact ADR-0008` returns a list of artifacts and code files that depend on ADR-0008
 5. Running `/sdd:graph orphans` returns code files lacking governing comments and specs lacking implementing code
-6. Running `/sdd:graph backfill` parses existing prose in the 22 ADRs + 17 specs in this repo and produces a per-file diff of proposed frontmatter edges for human review
+6. Running `/sdd:graph backfill` parses existing prose in the 23 ADRs + 18 specs in this repo and produces a per-file diff of proposed frontmatter edges for human review
 7. The skill emits `--json` output that a future MCP could consume directly without re-parsing markdown
 8. Cycle detection rejects any backfill proposal that would introduce a circular dependency
 
@@ -174,10 +174,11 @@ flowchart TB
         BACKFILL["backfill\n(propose edges from prose)"]
     end
 
-    subgraph "Output Formats"
-        MD["Markdown table (default)"]
+    subgraph "Output Formats (per SPEC-0018)"
+        ASCII["ASCII DAG\n(default for hierarchical:\nchain, impact, ancestors)"]
+        MD["Markdown table\n(default for flat:\norphans, cycles;\nor --table)"]
         MERMAID["--mermaid (visual)"]
-        JSON["--json (machine-readable)"]
+        JSON["--json (machine contract)"]
     end
 
     subgraph "Future Consumers (not in this ADR)"
@@ -198,10 +199,14 @@ flowchart TB
     VALIDATE --> CYCLES
     PARSE --> BACKFILL
 
-    IMPACT --> MD
-    ANCESTORS --> MD
-    CHAIN --> MD
+    IMPACT --> ASCII
+    ANCESTORS --> ASCII
+    CHAIN --> ASCII
     ORPHANS --> MD
+    CYCLES --> MD
+    IMPACT -.-> MD
+    ANCESTORS -.-> MD
+    CHAIN -.-> MD
     IMPACT -.-> MERMAID
     CHAIN -.-> MERMAID
     IMPACT -.-> JSON
@@ -242,6 +247,6 @@ flowchart LR
 - This ADR explicitly does not commit to a local MCP. The user's stated long-term goal — a local MCP using "GraphRAG + KNN + reranking" over ADRs, specs, code, tests, and backlog — is a future decision. That MCP would consume the JSON output of `/sdd:graph` rather than reparse markdown, so the schema established here is forward-compatible with that direction.
 - The forward-only edge convention (`governs:` on ADRs, `implements:` on specs; not both) is borrowed from how relational databases model many-to-many relationships: store one direction, derive the other. Authoring discipline is lower; the graph builder handles inversion.
 - Cycle detection is a hard error, not a warning. ADR/spec relationships are intrinsically a DAG — a cycle indicates a real authoring mistake (e.g., A supersedes B and B supersedes A) and should be fixed before the graph is queried.
-- The `/sdd:graph backfill` mode is the migration story for the existing 22 ADRs and 17 specs in this repo. Without it, the schema would exist but go unused for months. The mode is read-only-by-default: it produces a diff that the user accepts in whole, in part, or not at all.
+- The `/sdd:graph backfill` mode is the migration story for the existing 23 ADRs and 18 specs in this repo. Without it, the schema would exist but go unused for months. The mode is read-only-by-default: it produces a diff that the user accepts in whole, in part, or not at all.
 - Skills affected by this ADR: a new `skills/graph/SKILL.md`, additions to `skills/adr/SKILL.md` and `skills/spec/SKILL.md` (template documentation for the new frontmatter fields), and additions to `references/shared-patterns.md` (a "Graph Edge Resolution" pattern documenting forward-only conventions and inverse derivation).
 - Related: ADR-0015 (markdown-native config), ADR-0020 (governing comment reform), ADR-0001 (drift introspection — beneficiary), ADR-0014 (audit triage — beneficiary), ADR-0016 (workspace mode — graph must aggregate across modules in workspace projects).

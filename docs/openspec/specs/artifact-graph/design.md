@@ -194,7 +194,7 @@ flowchart TB
 
 - **Should `related` allow cross-type edges (ADR ↔ spec)?** The schema currently scopes `related` to ADR ↔ ADR. Allowing ADR-related-to-spec or spec-related-to-spec would require a fifth derived inverse pattern and broaden the meaning of "weak association." Defer until a real use case appears.
 
-- **How should the backfill mode persist rejection state?** A separate `.sdd-graph-backfill-state` file would re-introduce a sidecar (against ADR-0015's spirit). A `_backfill_skipped: [...]` field in artifact frontmatter is in-file but pollutes the schema. Likely answer: a single `.sdd-graph-backfill-skip` file is acceptable here because it is purely operational state, not configuration — but worth confirming during implementation.
+- **Backfill rejection state persistence (resolved):** A single `.sdd-graph-backfill-skip` file at the project root will hold rejected proposals as line-delimited `{file}:{edge-field}:{target-id}` records. This is operational state, not configuration, so it does not violate ADR-0015's markdown-native principle (which targets configuration). The file is gitignored by default but versioned if the user opts in. `--reset` clears the file. SPEC-0018 REQ "Backfill Mode" already mandates the rejection-memory behavior; this resolves the persistence mechanism.
 
 - **Does requirement-level granularity merit its own future spec, or is it best handled by extending this spec?** Probably extension (additive frontmatter at the requirement level), but defer the answer until v2 evidence demands it.
 
