@@ -250,26 +250,47 @@ Tracker detection follows a strict precedence order: **saved preference → git 
 
 ### 1. Check for Saved Preference
 
-Read the `### SDD Configuration` section in the project-root `CLAUDE.md` (following the Config Resolution pattern above). If it contains a `#### Tracker` subsection with a `- **Type**: {tracker}` entry, use that tracker directly. If it also has tracker-specific keys (Owner, Repo, Project Key, etc.), use those settings. If the saved tracker's tools are no longer available, warn the user and fall through to subsequent steps.
+Read the `### SDD Configuration` section in the project-root `CLAUDE.md` (following the Config Resolution pattern above). If it contains a `#### Tracker` subsection with a `- **Type**: {tracker}` entry, use that tracker directly. If it also has tracker-specific keys (Owner, Repo, Project Key, etc.), use those settings. If the saved tracker's tools are no longer available, warn the user and **skip directly to step 3 (tooling probe)** — do NOT fall through to step 2 (git-remote inference), since a vanished tracker for a non-VCS platform (Jira, Linear, Beads) must not be silently replaced by whatever the git remote happens to point to.
 
 ### 2. Infer From Git Remote
 
-If the project is a git repository, run `git remote get-url origin` (or `git config --get remote.origin.url` if the former is unavailable) and match the host against the table below. A unique match is treated as a strong signal — the skill MUST use that tracker without prompting.
+If the project is a git repository, run `git remote get-url origin`, parse the URL, and match the host against the table below. A unique match is treated as a strong signal — the skill MUST use that tracker without prompting.
 
-| Remote host pattern | Tracker | Notes |
-|---------------------|---------|-------|
-| `github.com` | GitHub | Both HTTPS and SSH URL forms; matches `github.com:owner/repo` and `https://github.com/owner/repo`. |
-| `gitlab.com`, `gitlab.*` (self-hosted) | GitLab | Self-hosted GitLab instances commonly use `gitlab.{org}.{tld}`. |
-| `gitea.*`, `*.gitea.*`, `git.*` (when paired with Gitea API headers) | Gitea | Self-hosted Gitea has no canonical hostname; match `gitea.` prefix or domain. When ambiguous, fall through to tooling probe. |
-| `bitbucket.org`, `bitbucket.*` | (unsupported) | Not a tracker target — falls through. |
+**URL parsing.** The skill MUST handle these git remote URL forms:
 
-The skill MUST also extract `owner` and `repo` from the URL when inference succeeds — these populate the tracker-specific configuration without a follow-up prompt. URL parsing MUST handle both HTTPS (`https://github.com/owner/repo.git`) and SSH (`git@github.com:owner/repo.git`) forms, stripping any trailing `.git`.
+- HTTPS: `https://github.com/owner/repo.git`
+- HTTPS with auth: `https://x-access-token:TOKEN@github.com/owner/repo.git`
+- SSH (scp form): `git@github.com:owner/repo.git`
+- SSH (URL form, with optional port): `ssh://git@github.com:2222/owner/repo.git`
+- Git protocol: `git://github.com/owner/repo`
+
+Parsing rules:
+
+1. Strip the userinfo portion (everything from `://` or `git@` up to the next `@` or `:`) — this prevents auth tokens from leaking into matches and avoids accidental logging.
+2. Extract the host. Lowercase it. Strip any trailing dot.
+3. Strip any trailing `.git` from the path component.
+4. Extract `owner` and `repo` from the path. Both forms `:owner/repo` (scp) and `/owner/repo` (URL) MUST be supported.
+
+**Host matching rule.** Match the normalized host against patterns using exact-FQDN or leading-label matching, NOT substring or unanchored matching:
+
+| Pattern | Matches | Tracker |
+|---------|---------|---------|
+| Host equals `github.com` | `github.com` only | GitHub |
+| Host equals `gitlab.com` OR FQDN leading label is `gitlab` | `gitlab.com`, `gitlab.example.com` | GitLab |
+| FQDN leading label is `gitea` | `gitea.com`, `gitea.stump.rocks`, etc. | Gitea |
+
+"FQDN leading label is `X`" means the host starts with `X.` followed by at least one more label — equivalent to the regex `^X\.[a-z0-9.-]+$`. This rule rejects substring matches like `notgitea.example.com` and `gitlab.com.malicious.example`.
+
+**Hosts that fall through to step 3** include but are not limited to: `github.com` GitHub Enterprise on a custom domain, `codeberg.org` (Gitea-based public forge), `git.sr.ht` (Sourcehut), corporate forges, and any host not matching the table above. These cases are intentional — the table is a conservative whitelist; growth happens via explicit additions, not regex laxity.
+
+The skill MUST extract `owner` and `repo` per the parsing rules above when inference succeeds — these populate tracker-specific configuration without a follow-up prompt.
 
 **Ambiguity cases** that fall through to step 3:
-- The repo has multiple remotes pointing to different platforms (e.g., `origin → github.com`, `mirror → gitea.example.com`). Prefer `origin` if it is one of them; otherwise prompt.
-- The remote host does not match any pattern above (corporate forges, unknown self-hosted instances).
+
+- The repo has multiple remotes pointing to different platforms (e.g., `origin → github.com`, `mirror → gitea.example.com`). The skill MUST prefer `origin` if its host matches a known pattern; if `origin` itself does not match (e.g., `origin → corporate-forge.example.com`, `mirror → github.com`), the skill MUST fall through to step 3 — it MUST NOT silently use a non-`origin` remote.
+- The remote host does not match any pattern above.
 - The project is not a git repository (no `.git/` directory).
-- The project uses a non-VCS-derivable tracker (Jira, Linear, Beads). These cannot be inferred from a git remote and require step 3.
+- The project uses a non-VCS-derivable tracker (Jira, Linear, Beads). These cannot be inferred from a git remote.
 
 ### 3. Detect Available Trackers (tooling probe)
 

@@ -41,17 +41,34 @@ The skill MUST read both `spec.md` and `design.md` from the resolved spec direct
 
 ### Requirement: Tracker Detection
 
-The skill SHALL detect the issue tracker following this strict precedence order, where each step short-circuits the next when it produces an unambiguous answer: (1) saved preference, (2) git-remote inference, (3) tooling probe, (4) `tasks.md` fallback. Steps 1 and 4 are covered by the **Preference Persistence** and **tasks.md fallback** requirements; this requirement specifies steps 2 and 3.
+The skill SHALL detect the issue tracker following this strict precedence order, where each step short-circuits the next when it produces an unambiguous answer: (1) saved preference, (2) git-remote inference, (3) tooling probe, (4) `tasks.md` fallback. Step 1 is covered by the **Preference Persistence** requirement and step 4 by the **tasks.md fallback** requirement; this requirement specifies steps 2 and 3.
 
-**Step 2 — Git-remote inference.** When the project is a git repository, the skill SHALL run `git remote get-url origin` (falling back to `git config --get remote.origin.url` if needed), parse the host, and match against the table below. A unique match MUST be used directly without prompting. The skill MUST also extract the `owner` and `repo` from the URL when inference succeeds — these populate tracker-specific configuration without a follow-up prompt. URL parsing MUST handle both HTTPS (`https://github.com/owner/repo.git`) and SSH (`git@github.com:owner/repo.git`) forms, stripping any trailing `.git`.
+When step 1 finds a saved preference whose tooling is no longer available, the skill MUST skip directly to step 3 — it MUST NOT fall through to step 2. A saved Jira/Linear/Beads preference must not be silently replaced by whatever the git remote happens to point to.
 
-| Remote host pattern | Tracker |
-|---------------------|---------|
-| `github.com` | GitHub |
-| `gitlab.com`, `gitlab.*` | GitLab |
-| `gitea.*`, `*.gitea.*` | Gitea |
+**Step 2 — Git-remote inference.** When the project is a git repository, the skill SHALL run `git remote get-url origin`, parse the URL, normalize the host, and match against the host-pattern table below. A unique match MUST be used directly without prompting.
 
-Inference SHALL fall through to step 3 in any of these cases: the project is not a git repository, the remote host does not match any pattern, the project has multiple remotes pointing to different platforms (and `origin` is not a known platform), or the user's project uses a non-VCS-derivable tracker (Jira, Linear, Beads).
+**URL parsing.** The skill MUST handle these git remote URL forms: HTTPS (`https://host/owner/repo.git`), HTTPS with auth (`https://user:token@host/owner/repo.git`), SSH scp form (`git@host:owner/repo.git`), SSH URL form with optional port (`ssh://git@host:2222/owner/repo.git`), and git protocol (`git://host/owner/repo`).
+
+Parsing rules:
+
+1. The skill MUST strip the userinfo portion (everything from `://` or `git@` up to the next `@` or `:`) before host matching, to prevent auth tokens from leaking into matches or logs.
+2. The skill MUST lowercase the extracted host and strip any trailing dot.
+3. The skill MUST strip any trailing `.git` from the path component before extracting `owner` and `repo`.
+4. The skill MUST extract `owner` and `repo` from both `:owner/repo` (scp form) and `/owner/repo` (URL form) — these populate tracker-specific configuration without a follow-up prompt.
+
+**Host matching rule.** Match the normalized host against patterns using exact-FQDN or leading-label matching, NOT substring or unanchored matching:
+
+| Pattern | Matches | Tracker |
+|---------|---------|---------|
+| Host equals `github.com` | `github.com` only | GitHub |
+| Host equals `gitlab.com` OR FQDN leading label is `gitlab` | `gitlab.com`, `gitlab.example.com` | GitLab |
+| FQDN leading label is `gitea` | `gitea.com`, `gitea.stump.rocks`, etc. | Gitea |
+
+"FQDN leading label is `X`" means the host starts with `X.` followed by at least one more label — equivalent to the regex `^X\.[a-z0-9.-]+$`. This rule MUST reject substring matches like `notgitea.example.com` and `gitlab.com.malicious.example`.
+
+Hosts that fall through to step 3 include but are not limited to: GitHub Enterprise on a custom domain, `codeberg.org`, `git.sr.ht`, corporate forges, and any host not matching the table above. The table is a conservative whitelist — growth happens via explicit additions, not regex laxity.
+
+Inference SHALL also fall through to step 3 when: the project is not a git repository; the project has multiple remotes pointing to different platforms and `origin`'s host does not match a known pattern (the skill MUST NOT silently use a non-`origin` remote); the project uses a non-VCS-derivable tracker (Jira, Linear, Beads).
 
 **Step 3 — Tooling probe.** When inference does not yield an unambiguous tracker, the skill SHALL probe for available trackers via `ToolSearch` and CLI availability checks. The six supported trackers are:
 
@@ -64,30 +81,60 @@ Inference SHALL fall through to step 3 in any of these cases: the project is not
 
 The full precedence flow is documented in `references/shared-patterns.md` § "Tracker Detection".
 
-#### Scenario: Inferred from git remote
+#### Scenario: Inferred from HTTPS GitHub origin
 
 - **WHEN** the project's `origin` remote URL is `https://github.com/joestump/example.git` and no saved preference exists
 - **THEN** the skill SHALL use GitHub as the tracker without prompting, and SHALL pre-populate `owner=joestump` and `repo=example` in the tracker configuration
 
-#### Scenario: SSH remote URL parsed
+#### Scenario: SSH scp-form URL parsed
 
 - **WHEN** the project's `origin` remote URL is `git@gitea.example.com:team/repo.git`
 - **THEN** the skill SHALL infer Gitea as the tracker, extract `owner=team` and `repo=repo`, and strip the trailing `.git`
+
+#### Scenario: SSH URL form with port
+
+- **WHEN** the project's `origin` remote URL is `ssh://git@gitlab.example.com:2222/team/repo.git`
+- **THEN** the skill SHALL infer GitLab via the leading-label rule, extract `owner=team` and `repo=repo`, and ignore the port
+
+#### Scenario: HTTPS URL with auth token stripped
+
+- **WHEN** the project's `origin` remote URL is `https://x-access-token:TOKEN@github.com/owner/repo.git` (CI environment)
+- **THEN** the skill SHALL strip the userinfo before host matching, infer GitHub from the bare host, and SHALL NOT log or save the token
+
+#### Scenario: Substring match rejected
+
+- **WHEN** the project's `origin` remote URL is `https://gitlab.com.malicious.example/owner/repo.git`
+- **THEN** the host matching rule SHALL reject this as not equal to `gitlab.com` and not having a leading `gitlab` label, and the skill SHALL fall through to step 3
 
 #### Scenario: Remote host unknown — fall through to probe
 
 - **WHEN** the project's `origin` remote URL is `https://corporate-forge.example.com/team/repo.git` (no host pattern match)
 - **THEN** the skill SHALL fall through to step 3 (tooling probe) and detect available trackers there
 
+#### Scenario: Codeberg falls through
+
+- **WHEN** the project's `origin` remote URL is `https://codeberg.org/owner/repo.git`
+- **THEN** the skill SHALL fall through to step 3 — codeberg.org is a Gitea-based forge but its hostname does not match the conservative whitelist
+
 #### Scenario: Not a git repository
 
 - **WHEN** the project root has no `.git/` directory
 - **THEN** the skill SHALL skip step 2 entirely and proceed directly to step 3
 
-#### Scenario: Multiple remotes on different platforms
+#### Scenario: Multiple remotes — origin matches
 
 - **WHEN** the project has `origin → github.com/...` and `mirror → gitea.example.com/...`
 - **THEN** the skill SHALL use `origin` for inference and pick GitHub, treating `mirror` as informational only
+
+#### Scenario: Multiple remotes — origin does not match
+
+- **WHEN** the project has `origin → corporate-forge.example.com/...` and `mirror → github.com/...`
+- **THEN** the skill SHALL fall through to step 3 — it MUST NOT silently use the `mirror` remote's GitHub host
+
+#### Scenario: Saved tracker tooling vanished — skip step 2
+
+- **WHEN** a saved preference names `linear` but the Linear MCP server is no longer available, and the project's `origin` remote points to `github.com`
+- **THEN** the skill SHALL warn the user and skip directly to step 3 (tooling probe), NOT to step 2 — silently switching from Linear to GitHub via remote inference is not permitted
 
 #### Scenario: Multiple trackers detected (probe step)
 
