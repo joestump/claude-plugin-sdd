@@ -18,6 +18,7 @@ const {
   transformAdrReferences,
   fixMarkdownLinks,
 } = require('./transform-utils');
+const { buildGraph, renderNeighborMermaid } = require('./graph-data');
 
 const SPECS_SOURCE = path.join(__dirname, '../../docs/openspec/specs');
 const SPECS_DEST = path.join(__dirname, '../../docs-generated/specs');
@@ -46,6 +47,28 @@ const ADR_EMOJI = '\ud83d\udcdd';
 const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
 
 const ADR_MAPPING = buildAdrMapping(ADRS_SOURCE);
+
+// Build the artifact graph once at module init -- used to render
+// per-page mini-DAGs showing each spec's direct neighbors (per
+// ADR-0023 / SPEC-0018). The same graph is rebuilt by
+// transform-adrs.js; the cost is negligible (file reads + a narrow
+// YAML parser) and keeping the two scripts independent avoids a
+// shared-state ordering hazard at build time.
+const ARTIFACT_GRAPH = buildGraph({
+  adrsSource: ADRS_SOURCE,
+  specsSource: SPECS_SOURCE,
+});
+
+// Domain directory -> canonical SPEC-XXXX id, derived from the graph's
+// spec nodes (which carry their source `dir` alongside the parsed id).
+// design.md files don't carry the SPEC-XXXX in their own H1, so we look
+// up by the directory both spec.md and design.md share.
+const SPEC_DOMAIN_TO_ID = {};
+for (const node of Object.values(ARTIFACT_GRAPH.nodes)) {
+  if (node.kind === 'spec' && node.dir) {
+    SPEC_DOMAIN_TO_ID[node.dir] = node.id;
+  }
+}
 
 /** Escape double quotes for YAML frontmatter values */
 function escapeYaml(str) {
@@ -144,6 +167,31 @@ function transformRequirementTables(content) {
   });
 }
 
+/**
+ * Render a "Related Artifacts" section with a Mermaid mini-DAG of the
+ * artifact's direct neighbors. Returns the empty string when the
+ * artifact has no neighborhood (e.g., a brand-new spec with no edges
+ * authored or derived). MUST be appended AFTER `escapeMdxUnsafe` so the
+ * Mermaid fence stays raw.
+ */
+function buildMiniDagSection(artifactId) {
+  if (!artifactId) return '';
+  const mermaid = renderNeighborMermaid(artifactId, ARTIFACT_GRAPH);
+  if (!mermaid) return '';
+  return [
+    '',
+    '',
+    '## Related Artifacts',
+    '',
+    `Direct relationships declared in YAML frontmatter (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Run \`/sdd:graph chain ${artifactId}\` for the transitive view.`,
+    '',
+    '```mermaid',
+    mermaid,
+    '```',
+    '',
+  ].join('\n');
+}
+
 function transformSpec(srcPath, destPath, domain, fileType, domainConfig, flat) {
   let content = fs.readFileSync(srcPath, 'utf-8');
   const config = domainConfig[domain] || { order: 99, label: domain };
@@ -190,8 +238,15 @@ ${metadataHeader}
 
 `;
 
+  // Both spec.md and design.md describe the same SPEC-XXXX artifact and
+  // get the same neighbor graph; the mini-DAG renders identically on
+  // each, which matches user expectation that "this artifact's
+  // relationships" is an attribute of the artifact, not the page.
+  const artifactId = SPEC_DOMAIN_TO_ID[domain] || null;
+  const miniDag = buildMiniDagSection(artifactId);
+
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
-  fs.writeFileSync(destPath, frontmatter + escapeMdxUnsafe(content));
+  fs.writeFileSync(destPath, frontmatter + escapeMdxUnsafe(content) + miniDag);
 }
 
 function generateCategoryJson(destDir, domain, domainConfig) {

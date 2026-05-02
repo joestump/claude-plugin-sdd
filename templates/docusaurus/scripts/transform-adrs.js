@@ -133,7 +133,7 @@ function buildMiniDagSection(artifactId) {
     '',
     '## Related Artifacts',
     '',
-    `Direct relationships declared in YAML frontmatter (per [ADR-0023](/decisions/0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Run \`/sdd:graph chain ${artifactId}\` for the transitive view.`,
+    `Direct relationships declared in YAML frontmatter (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Run \`/sdd:graph chain ${artifactId}\` for the transitive view.`,
     '',
     '```mermaid',
     mermaid,
