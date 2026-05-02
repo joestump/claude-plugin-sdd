@@ -24,6 +24,7 @@ This project uses the [SDD plugin](https://github.com/joestump/claude-plugin-sdd
 | `/sdd:enrich` | Add branch naming and PR conventions to existing issues |
 | `/sdd:work` | Pick up tracker issues and implement them in parallel using git worktrees |
 | `/sdd:review` | Review and merge PRs using reviewer-responder agent pairs |
+| `/sdd:graph` | Build and query the artifact graph (validate, impact, ancestors, chain, orphans, cycles, backfill) |
 
 Run `/sdd:prime [topic]` at the start of a session to load relevant ADRs and specs into context.
 
