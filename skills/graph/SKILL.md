@@ -115,9 +115,43 @@ Optional `--scope <subtree>` restricts category 1 to source files under the give
 
 Lists any cycles detected during validation. Note: traversal/diagnostic verbs only run after validation passes (the hard-error gate in `main()`), so this verb's output in v1 is always "No cycles detected." The verb exists for tooling that wants to confirm cycle-freeness without running full validation.
 
-### Backfill (Story 7 — not yet implemented)
+### `backfill`
 
-`backfill` will be added in Story 7. Currently returns a "not yet implemented" error.
+Parses prose in `## Related`, `## More Information`, `## Overview`, `## Decision Outcome`, and `## Consequences` sections to propose frontmatter edges, then writes only what the user explicitly accepts.
+
+**Sub-commands** (selected by mutually-exclusive flags):
+
+| Flag | Behavior |
+|------|----------|
+| (none) | Print proposals as a markdown report. Read-only — nothing is written. |
+| `--apply <ID> [<ID>...]` | Write the proposed edges for the listed artifacts to their frontmatter. Existing edge fields are merged (deduped) rather than overwritten. |
+| `--reject <ID> [<ID>...]` | Record rejections in `.sdd-graph-backfill-skip`. Skipped proposals stay hidden until `--reset`. |
+| `--reset` | Delete the skip file so previously-rejected proposals re-appear in `propose`. |
+
+**Heuristics** for inferring edge types from prose:
+
+| Prose pattern | Inferred field | Notes |
+|---------------|----------------|-------|
+| "supersedes X" / "replaces X" | `supersedes` | hard replacement |
+| "extends X" / "modifies X" / "builds on X" | `extends` | builds-without-replacing |
+| "enables X" / "unblocks X" | `enables` | downstream-unlocking |
+| Bare ADR ref in `## More Information` / `## Related` (no qualifying verb) | `related` | weak association |
+| ADR mentions SPEC in `## Decision Outcome` / `## Consequences` | `governs` | code path the decision shapes |
+| Spec's `## Overview` mentions ADR | `implements` | spec realizes the decision |
+| Spec's `## Overview` mentions another spec | `requires` | capability dependency |
+
+**Rejection memory.** `.sdd-graph-backfill-skip` (line-delimited `node_id|field|target_id` records) is operational state, not configuration — it MAY be `.gitignore`d if you don't want rejection decisions versioned. The file is ASCII-safe and conflict-resilient (no merge churn within a single sorted record set).
+
+**Orchestration.** When the user runs `/sdd:graph backfill`, the skill should:
+
+1. Run `python3 {skill-dir}/lib/graph.py backfill` (read-only) to enumerate proposals.
+2. For each artifact in the report, present the proposal to the user via `AskUserQuestion` with options Accept / Edit / Reject.
+3. On Accept: run `python3 {skill-dir}/lib/graph.py backfill --apply <ID>`.
+4. On Edit: use `Read` + `Edit` to modify the artifact's frontmatter directly. Do NOT use `--apply` for the edited proposal — write exactly what the user agreed to.
+5. On Reject: run `python3 {skill-dir}/lib/graph.py backfill --reject <ID>`.
+6. After the loop, run `validate` to confirm the resulting graph still passes.
+
+The helper enforces SPEC-0018 REQ "Backfill Mode" guarantees: nothing is written without `--apply`, and `--reject` is the only path that mutates the skip file.
 
 ## Output formats
 

@@ -1843,9 +1843,378 @@ def cmd_cycles(graph: Graph) -> str:
 
 _ALL_VERBS = ("validate", "impact", "ancestors", "chain", "orphans", "cycles", "backfill")
 _TRAVERSAL_VERBS = frozenset({"impact", "ancestors", "chain"})
-_VERB_STORY = {
-    "backfill": 7,
-}
+_VERB_STORY: dict[str, int] = {}
+
+
+# ---------------------------------------------------------------------------
+# Backfill mode (Story 7)
+# ---------------------------------------------------------------------------
+
+# Sections we scan for artifact references, per SPEC-0018 REQ "Backfill Mode".
+_BACKFILL_SECTIONS = (
+    "Related",
+    "More Information",
+    "Overview",
+    "Decision Outcome",
+    "Consequences",
+)
+_SECTION_HEADING_RE = re.compile(r"^##+\s+(.+?)\s*$", re.MULTILINE)
+_ARTIFACT_REF_RE = re.compile(r"\b(ADR|SPEC)-(\d{4})\b")
+# Verbs that hint at a stronger relationship than `related`. Order matters
+# since later patterns override earlier ones at the same prose location.
+_EXTENDS_HINT_RE = re.compile(
+    r"\b(?:extends|extend|modifies|modify|builds on|building on|builds upon|"
+    r"builds atop|builds-on|enhances|builds out)\b",
+    re.IGNORECASE,
+)
+_SUPERSEDES_HINT_RE = re.compile(r"\b(?:supersedes|superseded by|replaces|replaced by)\b", re.IGNORECASE)
+_ENABLES_HINT_RE = re.compile(r"\b(?:enables|unblocks|paves the way for)\b", re.IGNORECASE)
+
+_SKIP_FILE_NAME = ".sdd-graph-backfill-skip"
+
+
+@dataclass
+class BackfillProposal:
+    """One artifact's worth of proposed edges from prose parsing."""
+
+    node_id: str
+    path: str
+    proposals: list[tuple[str, str]]  # list of (field, target_id)
+    rationale: dict[tuple[str, str], str] = field(default_factory=dict)
+
+
+def _backfill_section_iter(text: str) -> list[tuple[str, str]]:
+    """Return [(section_title, section_body), ...] for every ## heading."""
+    headings = list(_SECTION_HEADING_RE.finditer(text))
+    out: list[tuple[str, str]] = []
+    for i, m in enumerate(headings):
+        title = m.group(1).strip()
+        start = m.end()
+        end = headings[i + 1].start() if i + 1 < len(headings) else len(text)
+        out.append((title, text[start:end]))
+    return out
+
+
+def _propose_edges_from_prose(
+    text: str, node_id: str, kind: str
+) -> tuple[list[tuple[str, str]], dict[tuple[str, str], str]]:
+    """Parse artifact-reference prose and propose edges per SPEC-0018.
+
+    Returns (proposed_edges, rationale_map):
+      - proposed_edges: list of (edge_field, target_id) tuples
+      - rationale_map: {(edge_field, target_id): "snippet of source prose"}
+
+    Heuristics (per SPEC-0018 REQ "Backfill Mode" sources):
+      - `## Related` / `## More Information` for ADRs:
+        - "supersedes X" → supersedes
+        - "extends/modifies/builds on X" → extends
+        - "enables X" → enables
+        - bare reference (no qualifying verb) → related
+      - `## Decision Outcome` / `## Consequences` for ADRs:
+        - SPEC-XXXX references → governs (the ADR governs that spec)
+      - `## Overview` for specs:
+        - ADR-XXXX references → implements (the spec realizes the ADR)
+        - SPEC-XXXX references → requires (capability dependency)
+      - "Supersedes X" anywhere → supersedes
+    """
+    proposals: list[tuple[str, str]] = []
+    rationale: dict[tuple[str, str], str] = {}
+    seen: set[tuple[str, str]] = set()
+
+    def add(field: str, target: str, snippet: str) -> None:
+        target = target.strip()
+        if target == node_id or (field, target) in seen:
+            return
+        seen.add((field, target))
+        proposals.append((field, target))
+        rationale[(field, target)] = snippet[:200].replace("\n", " ").strip()
+
+    sections = _backfill_section_iter(text)
+    for title, body in sections:
+        title_lower = title.lower()
+        if title_lower not in {s.lower() for s in _BACKFILL_SECTIONS}:
+            continue
+
+        for ref_match in _ARTIFACT_REF_RE.finditer(body):
+            ref_kind = ref_match.group(1)
+            target = ref_match.group(0)
+            # Window around the reference for verb detection.
+            window_start = max(0, ref_match.start() - 80)
+            window_end = min(len(body), ref_match.end() + 40)
+            window = body[window_start:window_end]
+            snippet = body[max(0, ref_match.start() - 50):ref_match.end() + 30]
+
+            field: str | None = None
+            if _SUPERSEDES_HINT_RE.search(window):
+                field = "supersedes"
+            elif _EXTENDS_HINT_RE.search(window):
+                field = "extends"
+            elif _ENABLES_HINT_RE.search(window):
+                field = "enables"
+
+            if field is None:
+                # No qualifying verb: pick by section + kind defaults.
+                if kind == "adr":
+                    if title_lower in ("decision outcome", "consequences"):
+                        if ref_kind == "SPEC":
+                            field = "governs"
+                        else:
+                            continue  # ADR-to-ADR refs in these sections aren't graph-load-bearing
+                    else:
+                        # Related / More Information default
+                        if ref_kind == "ADR":
+                            field = "related"
+                        else:
+                            field = "governs"  # ADR mentioning a SPEC = it governs it
+                elif kind == "spec":
+                    if title_lower == "overview":
+                        if ref_kind == "ADR":
+                            field = "implements"
+                        else:
+                            field = "requires"
+                    else:
+                        if ref_kind == "ADR":
+                            field = "implements"
+                        else:
+                            field = "requires"
+            if field is None:
+                continue
+
+            # Schema enforcement: skip fields that aren't allowed for this kind.
+            if kind == "adr" and field not in ADR_EDGE_FIELDS:
+                continue
+            if kind == "spec" and field not in SPEC_EDGE_FIELDS:
+                continue
+            add(field, target, snippet)
+
+    return proposals, rationale
+
+
+def _load_skip_list(root: Path) -> set[tuple[str, str, str]]:
+    """Load `.sdd-graph-backfill-skip` rejection memory.
+
+    File format: one record per line, `node_id|field|target_id`. Lines
+    starting with `#` and blank lines are ignored.
+    """
+    f = root / _SKIP_FILE_NAME
+    skip: set[tuple[str, str, str]] = set()
+    if not f.is_file():
+        return skip
+    for line in f.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("|", 2)
+        if len(parts) == 3:
+            skip.add((parts[0], parts[1], parts[2]))
+    return skip
+
+
+def _save_skip_list(root: Path, skip: set[tuple[str, str, str]]) -> None:
+    f = root / _SKIP_FILE_NAME
+    lines = [
+        "# Rejected backfill proposals. One per line: <node_id>|<field>|<target_id>",
+        "# Generated by /sdd:graph backfill --reject. Clear with --reset.",
+    ]
+    for node_id, field, target in sorted(skip):
+        lines.append(f"{node_id}|{field}|{target}")
+    f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _gather_proposals(graph: Graph, root: Path) -> list[BackfillProposal]:
+    """Compute proposals for every ADR and spec in the graph."""
+    skip = _load_skip_list(root)
+    out: list[BackfillProposal] = []
+    # Existing authored edges so we don't re-propose what's already declared.
+    existing: set[tuple[str, str, str]] = {
+        (e.source, e.type, e.target) for e in graph.edges if not e.derived
+    }
+    for node_id, node in sorted(graph.nodes.items()):
+        if node.kind not in ("adr", "spec"):
+            continue
+        text = _read_text(Path(node.path))
+        edges, rationale = _propose_edges_from_prose(text, node_id, node.kind)
+        # Filter out already-authored and skipped.
+        filtered: list[tuple[str, str]] = []
+        filtered_rationale: dict[tuple[str, str], str] = {}
+        for field, target in edges:
+            if (node_id, field, target) in existing:
+                continue
+            if (node_id, field, target) in skip:
+                continue
+            filtered.append((field, target))
+            filtered_rationale[(field, target)] = rationale.get((field, target), "")
+        if filtered:
+            out.append(
+                BackfillProposal(
+                    node_id=node_id,
+                    path=node.path,
+                    proposals=filtered,
+                    rationale=filtered_rationale,
+                )
+            )
+    return out
+
+
+def cmd_backfill_propose(graph: Graph, root: Path) -> str:
+    """Render proposals as a human-readable markdown report."""
+    proposals = _gather_proposals(graph, root)
+    if not proposals:
+        return (
+            "# /sdd:graph backfill\n\n"
+            "No proposals — every artifact's prose-encoded references either "
+            "already appear in frontmatter or are recorded in the skip list.\n"
+        )
+    out = [
+        "# /sdd:graph backfill",
+        "",
+        f"{len(proposals)} artifact(s) have proposed edges. Review each proposal "
+        "and run one of:",
+        "",
+        "- `python3 .../graph.py backfill --apply <ID>` to write the proposed",
+        "  frontmatter (merges with any existing edge fields)",
+        "- `python3 .../graph.py backfill --reject <ID>` to record a rejection",
+        "  in `.sdd-graph-backfill-skip`",
+        "- Skip this run; nothing is written without explicit consent.",
+        "",
+    ]
+    for prop in proposals:
+        out.append(f"## {prop.node_id}")
+        out.append(f"`{prop.path}`")
+        out.append("")
+        out.append("**Proposed frontmatter additions:**")
+        out.append("")
+        out.append("```yaml")
+        by_field: dict[str, list[str]] = {}
+        for field, target in prop.proposals:
+            by_field.setdefault(field, []).append(target)
+        for f in sorted(by_field):
+            tgts = ", ".join(sorted(set(by_field[f])))
+            out.append(f"{f}: [{tgts}]")
+        out.append("```")
+        out.append("")
+        out.append("**Rationale (snippets from prose):**")
+        out.append("")
+        for (field, target) in prop.proposals:
+            snippet = prop.rationale.get((field, target), "")
+            if snippet:
+                out.append(f"- `{field}: {target}` — _\"...{snippet}...\"_")
+        out.append("")
+    return "\n".join(out)
+
+
+def cmd_backfill_apply(graph: Graph, root: Path, node_ids: list[str]) -> tuple[str, int]:
+    """Apply proposals for the listed artifact IDs.
+
+    Reads existing frontmatter, merges proposed edges into existing edge
+    fields (deduping), writes back. Returns a markdown report.
+    """
+    proposals = {p.node_id: p for p in _gather_proposals(graph, root)}
+    out = ["# /sdd:graph backfill --apply", ""]
+    exit_code = 0
+    for node_id in node_ids:
+        prop = proposals.get(node_id)
+        if prop is None:
+            out.append(f"- `{node_id}`: no pending proposal (already applied, rejected, or unknown ID)")
+            exit_code = 1
+            continue
+        try:
+            applied = _apply_to_file(Path(prop.path), prop.proposals)
+        except Exception as exc:
+            out.append(f"- `{node_id}`: failed to apply — {exc}")
+            exit_code = 1
+            continue
+        out.append(f"- `{node_id}`: wrote {len(applied)} edge(s) to `{prop.path}`")
+    out.append("")
+    return "\n".join(out), exit_code
+
+
+def cmd_backfill_reject(graph: Graph, root: Path, node_ids: list[str]) -> tuple[str, int]:
+    """Record rejections in the skip list."""
+    proposals = {p.node_id: p for p in _gather_proposals(graph, root)}
+    skip = _load_skip_list(root)
+    rejected = 0
+    for node_id in node_ids:
+        prop = proposals.get(node_id)
+        if prop is None:
+            continue
+        for field, target in prop.proposals:
+            skip.add((node_id, field, target))
+            rejected += 1
+    _save_skip_list(root, skip)
+    return (
+        f"# /sdd:graph backfill --reject\n\n"
+        f"Recorded {rejected} rejected edge(s) in `{_SKIP_FILE_NAME}`.\n",
+        0,
+    )
+
+
+def cmd_backfill_reset(root: Path) -> tuple[str, int]:
+    """Clear the skip list."""
+    f = root / _SKIP_FILE_NAME
+    if f.is_file():
+        f.unlink()
+    return (
+        f"# /sdd:graph backfill --reset\n\n"
+        f"Cleared `{_SKIP_FILE_NAME}` (if present).\n",
+        0,
+    )
+
+
+def _apply_to_file(file_path: Path, proposals: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Merge proposals into the file's frontmatter; write the file.
+
+    Returns the list of (field, target) edges actually added (after dedupe
+    against the file's existing edge fields).
+    """
+    text = file_path.read_text(encoding="utf-8")
+    m = _FRONTMATTER_RE.match(text)
+    if m:
+        existing_body = m.group(1)
+        rest = text[m.end():]
+    else:
+        existing_body = ""
+        rest = text
+    existing_fm = parse_frontmatter(text) if m else {}
+    # Build new edges grouped by field, merging with existing lists.
+    by_field: dict[str, list[str]] = {}
+    applied: list[tuple[str, str]] = []
+    for field, target in proposals:
+        existing_list = existing_fm.get(field) if isinstance(existing_fm.get(field), list) else None
+        existing_set = set(existing_list) if existing_list else set()
+        if target in existing_set:
+            continue
+        applied.append((field, target))
+        by_field.setdefault(field, []).append(target)
+    if not applied:
+        return []
+    # Generate new frontmatter text. Preserve every existing line, then
+    # append/extend edge fields. For simplicity, we replace edge-field
+    # lines outright when we have something to add for that field.
+    edge_field_set = ALL_EDGE_FIELDS
+    preserved_lines: list[str] = []
+    seen_keys: set[str] = set()
+    for line in existing_body.splitlines():
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#"):
+            preserved_lines.append(line)
+            continue
+        key = line.split(":", 1)[0].strip() if ":" in line else None
+        if key in edge_field_set and key in by_field:
+            # We'll re-emit this field with merged values below.
+            seen_keys.add(key)
+            continue
+        preserved_lines.append(line)
+    # Emit merged edge-field lines (existing values + new).
+    new_field_lines: list[str] = []
+    for field in sorted(by_field):
+        existing_list = existing_fm.get(field) if isinstance(existing_fm.get(field), list) else []
+        merged = sorted(set(list(existing_list or []) + by_field[field]))
+        new_field_lines.append(f"{field}: [{', '.join(merged)}]")
+    new_body = "\n".join(preserved_lines + new_field_lines)
+    new_text = f"---\n{new_body}\n---\n{rest.lstrip(chr(10))}"
+    file_path.write_text(new_text, encoding="utf-8")
+    return applied
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1878,6 +2247,20 @@ def main(argv: list[str] | None = None) -> int:
     fmt_group.add_argument(
         "--json", action="store_true", dest="json_out",
         help=f"emit a stable, versioned JSON payload (schema_version={JSON_SCHEMA_VERSION!r})",
+    )
+    # Backfill-specific flags (only meaningful with `backfill` verb).
+    backfill_group = parser.add_mutually_exclusive_group()
+    backfill_group.add_argument(
+        "--apply", nargs="+", metavar="ID",
+        help="apply proposed edges for the given artifact IDs (writes frontmatter)",
+    )
+    backfill_group.add_argument(
+        "--reject", nargs="+", metavar="ID",
+        help="record rejections for the given artifact IDs in .sdd-graph-backfill-skip",
+    )
+    backfill_group.add_argument(
+        "--reset", action="store_true",
+        help="clear the .sdd-graph-backfill-skip file (re-propose previously rejected edges)",
     )
     args = parser.parse_args(argv)
 
@@ -1989,6 +2372,23 @@ def main(argv: list[str] | None = None) -> int:
             print(_cycles_json(g), end="")
         else:
             print(cmd_cycles(g), end="")
+        return 0
+
+    if args.verb == "backfill":
+        if args.reset:
+            output, code = cmd_backfill_reset(root)
+            print(output, end="")
+            return code
+        if args.apply:
+            output, code = cmd_backfill_apply(g, root, args.apply)
+            print(output, end="")
+            return code
+        if args.reject:
+            output, code = cmd_backfill_reject(g, root, args.reject)
+            print(output, end="")
+            return code
+        # Default: propose (read-only).
+        print(cmd_backfill_propose(g, root), end="")
         return 0
 
     raise AssertionError(  # pragma: no cover — verbs/dispatch mismatch
