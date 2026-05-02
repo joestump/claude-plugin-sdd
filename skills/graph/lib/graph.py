@@ -1843,7 +1843,6 @@ def cmd_cycles(graph: Graph) -> str:
 
 _ALL_VERBS = ("validate", "impact", "ancestors", "chain", "orphans", "cycles", "backfill")
 _TRAVERSAL_VERBS = frozenset({"impact", "ancestors", "chain"})
-_VERB_STORY: dict[str, int] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -1860,8 +1859,8 @@ _BACKFILL_SECTIONS = (
 )
 _SECTION_HEADING_RE = re.compile(r"^##+\s+(.+?)\s*$", re.MULTILINE)
 _ARTIFACT_REF_RE = re.compile(r"\b(ADR|SPEC)-(\d{4})\b")
-# Verbs that hint at a stronger relationship than `related`. Order matters
-# since later patterns override earlier ones at the same prose location.
+# Verbs that hint at a stronger relationship than `related`. Priority order
+# is fixed by check order in _propose_edges_from_prose: supersedes > extends > enables.
 _EXTENDS_HINT_RE = re.compile(
     r"\b(?:extends|extend|modifies|modify|builds on|building on|builds upon|"
     r"builds atop|builds-on|enhances|builds out)\b",
@@ -1870,7 +1869,55 @@ _EXTENDS_HINT_RE = re.compile(
 _SUPERSEDES_HINT_RE = re.compile(r"\b(?:supersedes|superseded by|replaces|replaced by)\b", re.IGNORECASE)
 _ENABLES_HINT_RE = re.compile(r"\b(?:enables|unblocks|paves the way for)\b", re.IGNORECASE)
 
+# Code-fence stripping. Code blocks (```...```) and inline backtick spans
+# (`...`) often contain artifact references that are documentation
+# examples, not real graph edges (e.g., `/sdd:plan SPEC-0003` invocation
+# samples). Strip these before scanning prose.
+_FENCED_BLOCK_RE = re.compile(r"```.*?```", re.DOTALL)
+_INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+
+# Allowed target kinds per edge field. Cross-kind violations (e.g., an ADR
+# declaring `extends: [SPEC-XXXX]`) are rejected by the backfill heuristic
+# so apply can never write a schema-illegal edge.
+_FIELD_TARGET_KINDS: dict[tuple[str, str], frozenset[str]] = {
+    ("adr", "supersedes"): frozenset({"ADR"}),
+    ("adr", "extends"): frozenset({"ADR"}),
+    ("adr", "enables"): frozenset({"ADR"}),
+    ("adr", "governs"): frozenset({"SPEC"}),
+    ("adr", "related"): frozenset({"ADR"}),
+    ("spec", "implements"): frozenset({"ADR"}),
+    ("spec", "requires"): frozenset({"SPEC"}),
+    ("spec", "extends"): frozenset({"SPEC"}),
+    ("spec", "supersedes"): frozenset({"SPEC"}),
+}
+
+# Field-strength order for de-duplicating same-target proposals: a stronger
+# field wins when both are inferred for the same (source, target) pair.
+_FIELD_STRENGTH: dict[str, int] = {
+    "supersedes": 5,
+    "extends": 4,
+    "enables": 3,
+    "governs": 3,
+    "implements": 3,
+    "requires": 3,
+    "related": 1,
+}
+
 _SKIP_FILE_NAME = ".sdd-graph-backfill-skip"
+
+
+def _strip_code_blocks(text: str) -> str:
+    """Replace fenced and inline code spans with whitespace.
+
+    Preserves line numbering by emitting newlines for each newline that was
+    inside a stripped fenced block, so window-based regex offsets in the
+    caller still align with line context.
+    """
+    def fenced_repl(m: re.Match) -> str:
+        return "\n" * m.group(0).count("\n")
+    text = _FENCED_BLOCK_RE.sub(fenced_repl, text)
+    text = _INLINE_CODE_RE.sub(lambda m: " " * len(m.group(0)), text)
+    return text
 
 
 @dataclass
@@ -1919,16 +1966,24 @@ def _propose_edges_from_prose(
     """
     proposals: list[tuple[str, str]] = []
     rationale: dict[tuple[str, str], str] = {}
-    seen: set[tuple[str, str]] = set()
+    # Track strongest field seen per target so weaker proposals don't
+    # accumulate alongside stronger ones (e.g., a target listed in both
+    # an "extends X" sentence and a bare "Related: X" line shouldn't
+    # produce both `extends:` AND `related:` entries).
+    by_target: dict[str, tuple[int, str]] = {}
 
     def add(field: str, target: str, snippet: str) -> None:
         target = target.strip()
-        if target == node_id or (field, target) in seen:
+        if target == node_id:
             return
-        seen.add((field, target))
-        proposals.append((field, target))
+        strength = _FIELD_STRENGTH.get(field, 0)
+        prev = by_target.get(target)
+        if prev is not None and prev[0] >= strength:
+            return  # already have an equal or stronger field for this target
+        by_target[target] = (strength, field)
         rationale[(field, target)] = snippet[:200].replace("\n", " ").strip()
 
+    text = _strip_code_blocks(text)
     sections = _backfill_section_iter(text)
     for title, body in sections:
         title_lower = title.lower()
@@ -1980,13 +2035,22 @@ def _propose_edges_from_prose(
             if field is None:
                 continue
 
-            # Schema enforcement: skip fields that aren't allowed for this kind.
+            # Schema enforcement: skip fields that aren't allowed for this
+            # kind, AND fields whose target kind doesn't match the rules in
+            # _FIELD_TARGET_KINDS (e.g., `extends` is same-kind-only).
             if kind == "adr" and field not in ADR_EDGE_FIELDS:
                 continue
             if kind == "spec" and field not in SPEC_EDGE_FIELDS:
                 continue
+            allowed_target_kinds = _FIELD_TARGET_KINDS.get((kind, field))
+            if allowed_target_kinds is not None and ref_kind not in allowed_target_kinds:
+                continue
             add(field, target, snippet)
 
+    # Materialize proposals from the per-target strongest-wins map, sorted
+    # for byte-identical reproducibility.
+    for target, (_strength, field) in sorted(by_target.items()):
+        proposals.append((field, target))
     return proposals, rationale
 
 
@@ -2130,23 +2194,35 @@ def cmd_backfill_apply(graph: Graph, root: Path, node_ids: list[str]) -> tuple[s
 
 
 def cmd_backfill_reject(graph: Graph, root: Path, node_ids: list[str]) -> tuple[str, int]:
-    """Record rejections in the skip list."""
+    """Record rejections in the skip list.
+
+    Returns exit code 1 if any requested node ID has no current pending
+    proposal — the caller asked for a rejection that records nothing.
+    """
     proposals = {p.node_id: p for p in _gather_proposals(graph, root)}
     skip = _load_skip_list(root)
     rejected = 0
+    missing: list[str] = []
     for node_id in node_ids:
         prop = proposals.get(node_id)
         if prop is None:
+            missing.append(node_id)
             continue
         for field, target in prop.proposals:
             skip.add((node_id, field, target))
             rejected += 1
     _save_skip_list(root, skip)
-    return (
-        f"# /sdd:graph backfill --reject\n\n"
-        f"Recorded {rejected} rejected edge(s) in `{_SKIP_FILE_NAME}`.\n",
-        0,
-    )
+    out = [f"# /sdd:graph backfill --reject", ""]
+    out.append(f"Recorded {rejected} rejected edge(s) in `{_SKIP_FILE_NAME}`.")
+    code = 0
+    if missing:
+        out.append("")
+        out.append("Warnings:")
+        for m in missing:
+            out.append(f"- `{m}`: no pending proposal — nothing recorded for this ID")
+        code = 1
+    out.append("")
+    return "\n".join(out), code
 
 
 def cmd_backfill_reset(root: Path) -> tuple[str, int]:
@@ -2212,7 +2288,10 @@ def _apply_to_file(file_path: Path, proposals: list[tuple[str, str]]) -> list[tu
         merged = sorted(set(list(existing_list or []) + by_field[field]))
         new_field_lines.append(f"{field}: [{', '.join(merged)}]")
     new_body = "\n".join(preserved_lines + new_field_lines)
-    new_text = f"---\n{new_body}\n---\n{rest.lstrip(chr(10))}"
+    # Preserve a single blank line between the closing `---` and the body
+    # (or the first character of the body if no leading whitespace existed).
+    rest_no_leading_newlines = rest.lstrip("\n")
+    new_text = f"---\n{new_body}\n---\n\n{rest_no_leading_newlines}"
     file_path.write_text(new_text, encoding="utf-8")
     return applied
 
@@ -2271,18 +2350,8 @@ def main(argv: list[str] | None = None) -> int:
         else "ascii"
     )
 
-    if args.verb in _VERB_STORY:
-        story = _VERB_STORY[args.verb]
-        print(
-            f"error: verb '{args.verb}' is not yet implemented "
-            f"(planned for Story {story} of the artifact-graph chain).",
-            file=sys.stderr,
-        )
-        print(
-            "see docs/adrs/ADR-0023-frontmatter-dag-and-graph-skill.md for the roadmap.",
-            file=sys.stderr,
-        )
-        return 2
+    # All v1 verbs are now implemented. The not-yet-implemented gate that
+    # used to live here for Stories 3-7 in-progress is no longer needed.
 
     if args.verb in _TRAVERSAL_VERBS and not args.id:
         print(f"error: verb '{args.verb}' requires an artifact ID argument.", file=sys.stderr)
@@ -2336,7 +2405,14 @@ def main(argv: list[str] | None = None) -> int:
             print_validation(g)
         return 1 if g.has_errors() else 0
 
-    if g.has_errors():
+    # Hard-error gate: traversal/diagnostic verbs require a clean graph.
+    # Backfill is exempt — its whole purpose is migrating prose-only
+    # projects whose graphs may be incomplete or partially broken.
+    # Within backfill, only `--apply` is gated (writing edges to a graph
+    # that already has hard errors would compound state); `propose`,
+    # `--reject`, and `--reset` run unconditionally.
+    backfill_writes = args.verb == "backfill" and args.apply is not None
+    if g.has_errors() and args.verb != "backfill":
         if fmt == "json":
             print(
                 _error_envelope_json(
@@ -2353,6 +2429,14 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print("error: graph has hard errors — refusing to answer query verbs.", file=sys.stderr)
             print("run `python3 graph.py validate` to see the errors.", file=sys.stderr)
+        return 1
+    if g.has_errors() and backfill_writes:
+        print(
+            "error: graph has hard errors — refuse to apply backfill "
+            "writes onto a broken graph. Run `validate` to see the errors, "
+            "fix or accept them, then re-run --apply.",
+            file=sys.stderr,
+        )
         return 1
 
     if args.verb in _TRAVERSAL_VERBS:
