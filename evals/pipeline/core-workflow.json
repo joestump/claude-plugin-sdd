@@ -1,0 +1,64 @@
+{
+  "id": "core-workflow",
+  "description": "spec -> plan -> work -> review on a disposable local-tmp repo. Verifies that each skill consumes the prior skill's artifacts cleanly: the spec is parseable by /sdd:plan, the issue bodies are parseable by /sdd:work, and the work branch is reviewable by /sdd:review.",
+  "setup": {
+    "repo_strategy": "local-tmp-init",
+    "seed": {
+      "claude_md": "# Pipeline Eval Test Repo\n\nDisposable repo seeded by the SDD plugin's pipeline eval suite. Do not push to a remote; do not open issues against any real tracker. The absence of a tracker section below is intentional -- it forces the `tasks.md` fallback per SPEC \"tasks-md-fallback\".\n\n## SDD Configuration\n\n### Branch Conventions\n- **Prefix**: feature/\n- **Slug length**: 40\n\n### PR Conventions\n- **Close keyword**: Closes\n- **Spec reference**: Include SPEC-XXXX in PR body\n\n### Review\n- **Max pairs**: 1\n- **Merge strategy**: squash\n",
+      "files": []
+    }
+  },
+  "steps": [
+    {
+      "step": 1,
+      "skill": "spec",
+      "prompt": "Create a spec for a small webhook-delivery service: it accepts JSON payloads at POST /webhook, validates an HMAC-SHA256 signature header, and forwards verified payloads to a configurable downstream URL with at-most-once-per-request retry semantics.",
+      "verify": [
+        "A directory under docs/openspec/specs/ was created and contains a spec.md file",
+        "spec.md has a top-level heading matching '# SPEC-XXXX: <title>'",
+        "spec.md uses RFC 2119 keywords (MUST, SHOULD, MAY) at least three times",
+        "spec.md contains at least one '#### Scenario:' subsection per requirement"
+      ]
+    },
+    {
+      "step": 2,
+      "skill": "plan",
+      "prompt": "Plan the spec we just created into trackable issues. Use the tasks.md fallback configured in CLAUDE.md. Don't open any GitHub or Gitea issues.",
+      "verify": [
+        "tasks.md exists at the repo root",
+        "tasks.md contains at least one epic entry and at least three story entries",
+        "Each story entry includes a Branch line matching the feature/{N}-{slug} convention from CLAUDE.md",
+        "Each story entry includes a PR Convention section with a 'Closes #N' close keyword",
+        "Each story entry references the spec by its SPEC-XXXX id"
+      ]
+    },
+    {
+      "step": 3,
+      "skill": "work",
+      "prompt": "Pick the foundation story (or the first story if no foundation was detected) from tasks.md and implement it. Use a worktree under .git/worktrees/. Stop after the implementation is committed locally; do not push or open a PR.",
+      "verify": [
+        "A new git branch matching feature/{N}-{slug} exists locally",
+        "At least one commit was made on that branch with files implementing the chosen story",
+        "The commit message references the story id from tasks.md",
+        "If a worktree was created, it lives under the main repo's .git/worktrees/ directory"
+      ]
+    },
+    {
+      "step": 4,
+      "skill": "review",
+      "prompt": "Review the work branch we just created using a single reviewer-responder agent pair. Operate offline against the local branch (no remote, no real PR). Produce review feedback as a markdown file at .sdd-pipeline-review.md and have the responder either rebut or apply changes.",
+      "verify": [
+        ".sdd-pipeline-review.md exists at the repo root with a 'Reviewer' section and a 'Responder' section",
+        "The review references the story id from tasks.md and the SPEC-XXXX id from step 1",
+        "The responder section either contains rebuttals or a list of follow-up commit hashes on the work branch"
+      ]
+    }
+  ],
+  "final_assertions": [
+    "Step 2's plan references the SPEC-XXXX id created in step 1 (verifies spec -> plan handoff)",
+    "Step 3's branch name matches a Branch line from a story entry in tasks.md (verifies plan -> work handoff)",
+    "Step 4's review references both the SPEC-XXXX id and the work branch (verifies work -> review handoff)",
+    "No outbound network calls were made to api.github.com, gitea.*, or gitlab.* (the scenario must not pollute real trackers)",
+    "The temp repo was cleaned up after the run (the runner removes the working tree on completion)"
+  ]
+}

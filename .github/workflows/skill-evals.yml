@@ -16,6 +16,7 @@ on:
         options:
           - quick
           - full
+          - pipeline
 
 permissions:
   contents: read
@@ -234,8 +235,95 @@ jobs:
           path: eval-results/full.json
           if-no-files-found: warn
 
+  eval-pipeline:
+    # Cross-skill pipeline scenarios (per SPEC-0017 REQ "Cross-Skill Pipeline
+    # Testing"). Expensive -- each scenario invokes 4+ skills end-to-end on
+    # a disposable repo. Runs ONLY on release-targeting PRs or manual
+    # workflow_dispatch with mode=pipeline. Not part of per-PR quick mode.
+    needs: determine-mode
+    if: |
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'pipeline') ||
+      (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release/'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run pipeline scenarios
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Run every scenario in evals/pipeline/*.json against a disposable
+            test repository, per SPEC-0017 REQ "Cross-Skill Pipeline Testing".
+
+            For each scenario file:
+            1. Read the scenario JSON (id, description, setup, steps,
+               final_assertions).
+            2. Create a disposable test repo per setup.repo_strategy:
+               - "local-tmp-init": mktemp -d, cd into it, git init, write
+                 setup.seed.claude_md to ./CLAUDE.md, write each
+                 setup.seed.files entry, git add + initial commit.
+               - "gh-template": gh repo create with --template, clone, then
+                 enter the clone. Record the repo URL for cleanup.
+            3. Execute each step in order:
+               a. cd into the test repo.
+               b. Invoke the named skill via the matching slash command
+                  (e.g., step.skill="spec" -> /sdd:spec) using step.prompt.
+               c. Check each assertion in step.verify against the repo
+                  state. Record pass/fail with a short reason.
+               d. If a verify check fails, record it but continue to the
+                  next step so we surface as much information as possible.
+            4. Run final_assertions against the final repo state.
+            5. Clean up:
+               - local-tmp-init: rm -rf the temp dir.
+               - gh-template: gh repo delete --yes the created repo.
+
+            Output results to eval-results/pipeline.json:
+            {
+              "tier": "pipeline",
+              "timestamp": "<ISO 8601>",
+              "scenarios": [
+                {
+                  "id": "<scenario-id>",
+                  "passed": <boolean>,
+                  "steps": [
+                    {
+                      "step": <number>,
+                      "skill": "<name>",
+                      "passed": <boolean>,
+                      "verify_results": [
+                        { "text": "<assertion>", "passed": <boolean>, "reason": "<why>" }
+                      ]
+                    }
+                  ],
+                  "final_assertion_results": [
+                    { "text": "<assertion>", "passed": <boolean>, "reason": "<why>" }
+                  ]
+                }
+              ],
+              "summary": { "scenarios": <n>, "passed": <n>, "failed": <n> }
+            }
+
+            IMPORTANT: pipeline scenarios MUST NOT push branches, open PRs,
+            or create issues against any real tracker. The seeded CLAUDE.md
+            in each scenario configures the tasks.md fallback to enforce
+            this. If you detect outbound calls to api.github.com,
+            gitea.*, or gitlab.*, fail the scenario and record the
+            attempted call in the verify_results.
+
+      - name: Upload pipeline results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-pipeline
+          path: eval-results/pipeline.json
+          if-no-files-found: warn
+
   report:
-    needs: [eval-tier3, eval-changed, eval-full]
+    needs: [eval-tier3, eval-changed, eval-full, eval-pipeline]
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
