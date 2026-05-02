@@ -2,9 +2,9 @@
 
 ---
 name: graph
-description: Build and query the SDD artifact graph. Use when the user wants to validate frontmatter edges, find impact/ancestors/chain for an ADR or spec, detect orphans or cycles, or backfill edges from prose. Currently supports validate / impact / ancestors / chain; orphans/cycles/backfill land in later stories.
+description: Build and query the SDD artifact graph. Use when the user wants to validate frontmatter edges, find impact/ancestors/chain for an ADR or spec, detect orphans or cycles, or backfill edges from prose. Currently supports validate / impact / ancestors / chain / orphans / cycles; backfill lands in Story 7.
 allowed-tools: Bash, Read, Glob, Grep, Task
-argument-hint: <verb> [<artifact-id>]
+argument-hint: <verb> [<artifact-id>] [--scope <subtree>]
 ---
 
 # /sdd:graph — Artifact Graph Skill
@@ -83,9 +83,21 @@ The vertical-stack approximation of multi-parent fan-in (vs. a side-by-side merg
 
 Single contiguous bidirectional diagram: ancestors above (rendered as top-down chains with the target's title suppressed at the bottom of each), the queried artifact in the middle (rendered once as `<title> (queried)`), and impact below (rendered as a top-down indented tree). The two regions are visually joined by a single `│` continuation through the queried node — no markdown subheadings, no `▼` glyphs.
 
-### Diagnostic verbs (Story 4 — not yet implemented)
+### `orphans`
 
-`orphans` and `cycles` will be added in Story 4. Currently they return a "not yet implemented" error.
+Surfaces three categories of orphan as flat markdown tables (default for flat results per SPEC-0018):
+
+1. **Source files without governing artifacts** — non-markdown source files in the project tree that contain no `Governing:` comment block. Discovered by a dedicated walk so these files do not become graph nodes (they remain invisible to traversal queries) but DO surface here. The walk uses the same exclusions as the graph builder (`.git`, `node_modules`, `vendor`, build/cache dirs, `docs/`, `skills/`, `references/`, etc.). Markdown files are skipped — they participate via frontmatter (ADRs, specs) or are out of scope for v1 (READMEs, ad-hoc docs).
+2. **Specs with no implementing code** — specs that no source file's governing comment references.
+3. **ADRs with no implementing spec** — ADRs that no spec declares `implements:` against.
+
+Optional `--scope <subtree>` restricts category 1 to source files under the given path. Categories 2 and 3 always cover the full graph.
+
+**Operator-facing framing.** A spec is flagged whenever no `Governing:` comment in source code references it; comment-less code is invisible by design (per SPEC-0018 § "Files without governing comments"). For repos that haven't yet attached governing comments to source code, expect every spec and ADR to be flagged. The output includes a one-line preamble explaining this so first-time readers know the verb is working as intended, not reporting a real catastrophe.
+
+### `cycles`
+
+Lists any cycles detected during validation. Note: traversal/diagnostic verbs only run after validation passes (the hard-error gate in `main()`), so this verb's output in v1 is always "No cycles detected." The verb exists for tooling that wants to confirm cycle-freeness without running full validation.
 
 ### Backfill (Story 7 — not yet implemented)
 
