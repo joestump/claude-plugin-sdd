@@ -2,9 +2,9 @@
 
 ---
 name: graph
-description: Build and query the SDD artifact graph. Use when the user wants to validate frontmatter edges, find impact/ancestors/chain for an ADR or spec, detect orphans or cycles, or backfill edges from prose. Currently supports validate / impact / ancestors / chain / orphans / cycles; backfill lands in Story 7.
+description: Build and query the SDD artifact graph. Use when the user wants to validate frontmatter edges, find impact/ancestors/chain for an ADR or spec, detect orphans or cycles, or backfill edges from prose. Currently supports validate / impact / ancestors / chain / orphans / cycles, with workspace-mode aggregation; backfill lands in Story 7.
 allowed-tools: Bash, Read, Glob, Grep, Task
-argument-hint: <verb> [<artifact-id>] [--scope <subtree>]
+argument-hint: <verb> [<artifact-id>] [--scope <subtree>] [--module <name>]
 ---
 
 # /sdd:graph — Artifact Graph Skill
@@ -23,11 +23,11 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
 
 1. **Parse the verb and flags from `$ARGUMENTS`**.
 
-   Currently supported: `validate`, `impact <id>`, `ancestors <id>`, `chain <id>`. Diagnostic verbs (`orphans`, `cycles`) and `backfill` are recognized at the argparse layer and return a clear "not yet implemented (planned for Story N)" message with exit code 2. They land in Stories 4 and 7.
+   Currently supported: `validate`, `impact <id>`, `ancestors <id>`, `chain <id>`, `orphans`, `cycles`. Backfill (`backfill`) is recognized at the argparse layer and returns a clear "not yet implemented (planned for Story 7)" message with exit code 2.
 
-   Traversal verbs (`impact`, `ancestors`, `chain`) require an artifact ID argument (e.g., `ADR-0023`, `SPEC-0018`). If the ID is unknown, the helper exits 1 and suggests the closest matches.
+   Traversal verbs require an artifact ID argument (e.g., `ADR-0023`, `SPEC-0018`, or `[api]/SPEC-0001` in workspace aggregate mode). If the ID is unknown, the helper exits 1 and suggests closest matches.
 
-   The `--module <name>` flag for workspace-mode aggregation is not yet wired through the helper — it lands in Story 5 along with cross-module ID prefixing.
+   The `--module <name>` flag scopes a workspace-mode invocation to a single module: the helper builds only that module's graph with unprefixed IDs. Without `--module` in a workspace project, the helper aggregates all modules with `[module]/ID` prefixes. On single-module projects (no `.gitmodules` and no `### Workspace Modules` table), `--module` is rejected with a clear error.
 
 2. **Locate the helper script**.
 
@@ -62,6 +62,22 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
    - Exit `0`: graph validates clean (no hard errors). Warnings, if any, are visible in the output.
    - Exit `1`: hard errors. The graph is not queryable until they are fixed. Do not proceed to other verbs.
    - Exit `2`: invocation error (bad arguments, missing root). This is a skill bug — surface it as such.
+
+## Workspace mode
+
+Per SPEC-0014 § "Workspace Detection," the helper auto-detects workspace mode:
+
+1. Look for `.gitmodules` in the project root (parses `[submodule "name"]` and `path =` entries).
+2. Fall back to a `### Workspace Modules` table in the project-root `CLAUDE.md` (Module / Root columns).
+3. Otherwise treat the project as single-module.
+
+For each discovered module, the helper resolves ADR/spec paths via the **Artifact Path Resolution** pattern (reads the module's `CLAUDE.md` for declarations, falls back to `docs/adrs/` and `docs/openspec/specs/`).
+
+**Aggregate mode** (no `--module` in a workspace): the helper builds each module's graph independently, prefixes every node ID with `[module]/`, and merges into a single graph. Cross-module edges authored as `requires: ["[shared]/SPEC-0001"]` resolve against the merged graph; cycle detection and ID resolution operate over the full aggregate so cross-module cycles are caught.
+
+**Module-scoped mode** (`--module foo`): the helper builds only that module's graph with unprefixed IDs. Cross-module references in that module's frontmatter become unresolved-ID hard errors — this is intentional (use aggregate mode if you want cross-module behavior).
+
+**Single-module mode** (no workspace detected): the helper operates on the project root with unprefixed IDs, identical to pre-Story-5 behavior.
 
 ## Verbs
 

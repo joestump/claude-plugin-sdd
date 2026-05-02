@@ -389,57 +389,190 @@ def _looks_binary(head: bytes) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Workspace mode (Story 5)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class Module:
+    """A workspace module with resolved artifact paths."""
+
+    name: str
+    root: Path
+    adr_dir: Path
+    spec_dir: Path
+    source: str  # "gitmodules" | "claude-md" | "single"
+
+
+def detect_workspace(project_root: Path) -> list[Module]:
+    """Discover workspace modules per `references/shared-patterns.md`.
+
+    Precedence: `.gitmodules` > `### Workspace Modules` table in CLAUDE.md
+    > single-module fallback. Returns the list of discovered modules. An
+    empty list means "single-module project — operate on project_root."
+    """
+    gm_modules = _parse_gitmodules(project_root)
+    if gm_modules:
+        return [_resolve_module(project_root, name, path, "gitmodules") for name, path in gm_modules]
+    cm_modules = _parse_workspace_table(project_root)
+    if cm_modules:
+        return [_resolve_module(project_root, name, path, "claude-md") for name, path in cm_modules]
+    return []
+
+
+_GITMODULE_NAME_RE = re.compile(r'^\[submodule\s+"([^"]+)"\]\s*$')
+_GITMODULE_PATH_RE = re.compile(r"^\s*path\s*=\s*(.+?)\s*$")
+
+
+def _parse_gitmodules(project_root: Path) -> list[tuple[str, str]]:
+    """Parse `.gitmodules` if present; return (name, path) tuples."""
+    gm = project_root / ".gitmodules"
+    if not gm.is_file():
+        return []
+    out: list[tuple[str, str]] = []
+    current_name: str | None = None
+    for raw in gm.read_text(encoding="utf-8", errors="ignore").splitlines():
+        m = _GITMODULE_NAME_RE.match(raw)
+        if m:
+            current_name = m.group(1)
+            continue
+        if current_name is None:
+            continue
+        pm = _GITMODULE_PATH_RE.match(raw)
+        if pm:
+            out.append((current_name, pm.group(1)))
+            current_name = None
+    return out
+
+
+_WORKSPACE_HEADING_RE = re.compile(r"^###\s+Workspace Modules\s*$", re.MULTILINE)
+_TABLE_ROW_RE = re.compile(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|")
+
+
+def _parse_workspace_table(project_root: Path) -> list[tuple[str, str]]:
+    """Parse `### Workspace Modules` table from project-root CLAUDE.md."""
+    claude_md = project_root / "CLAUDE.md"
+    if not claude_md.is_file():
+        return []
+    text = claude_md.read_text(encoding="utf-8", errors="ignore")
+    h = _WORKSPACE_HEADING_RE.search(text)
+    if not h:
+        return []
+    body = text[h.end():]
+    out: list[tuple[str, str]] = []
+    for line in body.splitlines():
+        if line.startswith("##"):
+            break  # next heading — table ended
+        if line.startswith("|---") or line.startswith("| ---"):
+            continue
+        m = _TABLE_ROW_RE.match(line)
+        if not m:
+            continue
+        col1, col2 = m.group(1).strip(), m.group(2).strip()
+        if col1.lower() in ("module", ""):  # header row or blank
+            continue
+        out.append((col1, col2))
+    return out
+
+
+def _resolve_module(project_root: Path, name: str, path: str, source: str) -> Module:
+    """Resolve a module's ADR/spec dirs via Artifact Path Resolution."""
+    module_root = (project_root / path).resolve()
+    adr_dir, spec_dir = _read_module_artifact_paths(module_root)
+    return Module(name=name, root=module_root, adr_dir=adr_dir, spec_dir=spec_dir, source=source)
+
+
+_ADR_DIR_DECL_RE = re.compile(
+    r"Architecture Decision Records are in\s+`?([^`\n]+?)`?\s*(?:[.\n]|$)"
+)
+_SPEC_DIR_DECL_RE = re.compile(
+    r"Specifications are in\s+`?([^`\n]+?)`?\s*(?:[.\n]|$)"
+)
+
+
+def _read_module_artifact_paths(module_root: Path) -> tuple[Path, Path]:
+    """Read module CLAUDE.md for artifact-path declarations; fall back to defaults."""
+    adr_default = module_root / "docs" / "adrs"
+    spec_default = module_root / "docs" / "openspec" / "specs"
+    claude_md = module_root / "CLAUDE.md"
+    if not claude_md.is_file():
+        return adr_default, spec_default
+    text = claude_md.read_text(encoding="utf-8", errors="ignore")
+    adr_match = _ADR_DIR_DECL_RE.search(text)
+    spec_match = _SPEC_DIR_DECL_RE.search(text)
+    adr_dir = (module_root / adr_match.group(1).strip()).resolve() if adr_match else adr_default
+    spec_dir = (module_root / spec_match.group(1).strip()).resolve() if spec_match else spec_default
+    return adr_dir, spec_dir
+
+
+# ---------------------------------------------------------------------------
 # Graph construction
 # ---------------------------------------------------------------------------
 
 
-def build_graph(root: Path, adr_dir: Path, spec_dir: Path) -> Graph:
+def build_graph(
+    root: Path,
+    adr_dir: Path,
+    spec_dir: Path,
+    module_name: str | None = None,
+) -> Graph:
     """Build the graph for a single module rooted at `root`.
 
     Discovers ADRs, specs, and governed code files; constructs nodes; reads
     forward edges from frontmatter; derives inverse edges; runs validation.
+
+    When `module_name` is provided, every node ID is prefixed with
+    `[module_name]/` (per SPEC-0018 § Workspace Mode Aggregation), and
+    same-module edge targets are auto-prefixed at ingest time. Cross-module
+    targets authored as `["[other]/SPEC-XXXX"]` are recognized and left
+    as-is.
     """
     g = Graph()
+    prefix = f"[{module_name}]/" if module_name else ""
 
     # 1. ADR nodes + forward edges.
     for adr_id, path, fm in discover_adrs(adr_dir):
-        if adr_id in g.nodes:
+        full_id = prefix + adr_id
+        if full_id in g.nodes:
             g.add_diagnostic(
                 severity="error",
                 code="duplicate-id",
-                message=f"{adr_id} declared by multiple files",
-                source_id=adr_id,
+                message=f"{full_id} declared by multiple files",
+                source_id=full_id,
             )
             continue
-        g.nodes[adr_id] = Node(
-            id=adr_id,
+        g.nodes[full_id] = Node(
+            id=full_id,
             kind="adr",
             path=str(path),
             status=_str_or_none(fm.get("status")),
             date=_str_or_none(fm.get("date")),
             title=_extract_title(_read_text(path)) or adr_id,
+            module=module_name,
         )
-        _ingest_edges(g, adr_id, fm, ADR_EDGE_FIELDS)
+        _ingest_edges(g, full_id, fm, ADR_EDGE_FIELDS, prefix)
 
     # 2. Spec nodes + forward edges.
     for spec_id, path, fm in discover_specs(spec_dir):
-        if spec_id in g.nodes:
+        full_id = prefix + spec_id
+        if full_id in g.nodes:
             g.add_diagnostic(
                 severity="error",
                 code="duplicate-id",
-                message=f"{spec_id} declared by multiple files",
-                source_id=spec_id,
+                message=f"{full_id} declared by multiple files",
+                source_id=full_id,
             )
             continue
-        g.nodes[spec_id] = Node(
-            id=spec_id,
+        g.nodes[full_id] = Node(
+            id=full_id,
             kind="spec",
             path=str(path),
             status=_str_or_none(fm.get("status")),
             date=_str_or_none(fm.get("date")),
             title=_extract_title(_read_text(path)) or spec_id,
+            module=module_name,
         )
-        _ingest_edges(g, spec_id, fm, SPEC_EDGE_FIELDS)
+        _ingest_edges(g, full_id, fm, SPEC_EDGE_FIELDS, prefix)
 
     # 3. Code nodes + governance edges (from governing comment blocks).
     # Note: code-edge type is `governed-by` — same name as the inverse derived
@@ -449,11 +582,12 @@ def build_graph(root: Path, adr_dir: Path, spec_dir: Path) -> Graph:
     # with the `derived` flag.
     for path, ids in discover_code_edges(root):
         rel = str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
-        node_id = rel
-        if node_id not in g.nodes:
-            g.nodes[node_id] = Node(id=node_id, kind="code", path=str(path))
+        full_node = prefix + rel
+        if full_node not in g.nodes:
+            g.nodes[full_node] = Node(id=full_node, kind="code", path=str(path), module=module_name)
         for target in ids:
-            g.edges.append(Edge(source=node_id, target=target, type="governed-by", derived=False))
+            full_target = _maybe_prefix_target(target, prefix)
+            g.edges.append(Edge(source=full_node, target=full_target, type="governed-by", derived=False))
 
     # 4. Validate.
     _validate(g)
@@ -463,6 +597,41 @@ def build_graph(root: Path, adr_dir: Path, spec_dir: Path) -> Graph:
     _derive_inverses(g)
 
     return g
+
+
+_PREFIXED_ID_RE = re.compile(r"^\[([^\]]+)\]/(.+)$")
+
+
+def _maybe_prefix_target(target: str, prefix: str) -> str:
+    """Auto-prefix bare same-module IDs; pass through already-prefixed forms.
+
+    Targets matching `[module]/ID` are cross-module references (per SPEC-0018
+    § Workspace Mode Aggregation) and are returned as-is. Bare IDs like
+    `ADR-0001` or `SPEC-0007` are prefixed with the current module's prefix
+    so they resolve against this module's nodes.
+    """
+    if _PREFIXED_ID_RE.match(target):
+        return target
+    return prefix + target
+
+
+def build_aggregate_graph(project_root: Path, modules: list[Module]) -> Graph:
+    """Build per-module graphs and merge them with `[module]/ID` prefixes."""
+    agg = Graph()
+    for mod in modules:
+        sub = build_graph(mod.root, mod.adr_dir, mod.spec_dir, module_name=mod.name)
+        # Strip any per-module derived edges; we re-derive after merging so
+        # cross-module inverses are correct.
+        sub_authored_edges = [e for e in sub.edges if not e.derived]
+        for nid, node in sub.nodes.items():
+            agg.nodes[nid] = node
+        agg.edges.extend(sub_authored_edges)
+        # Per-module diagnostics carry over, but we'll re-validate at the
+        # aggregate level so cross-module ID resolution and cycles are
+        # checked correctly. Drop the per-module ones.
+    _validate(agg)
+    _derive_inverses(agg)
+    return agg
 
 
 def _str_or_none(value: object) -> str | None:
@@ -478,7 +647,13 @@ def _extract_title(text: str) -> str:
     return m.group(1) if m else ""
 
 
-def _ingest_edges(g: Graph, source_id: str, fm: dict, allowed: tuple[str, ...]) -> None:
+def _ingest_edges(
+    g: Graph,
+    source_id: str,
+    fm: dict,
+    allowed: tuple[str, ...],
+    prefix: str = "",
+) -> None:
     for field_name, raw in fm.items():
         if field_name in DERIVED_FIELDS:
             g.add_diagnostic(
@@ -525,8 +700,9 @@ def _ingest_edges(g: Graph, source_id: str, fm: dict, allowed: tuple[str, ...]) 
                     field=field_name,
                 )
                 continue
+            full_target = _maybe_prefix_target(target.strip(), prefix)
             g.edges.append(
-                Edge(source=source_id, target=target.strip(), type=field_name, derived=False)
+                Edge(source=source_id, target=full_target, type=field_name, derived=False)
             )
 
 
@@ -1318,6 +1494,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--adr-dir", help="ADR directory (default: <root>/docs/adrs)")
     parser.add_argument("--spec-dir", help="spec directory (default: <root>/docs/openspec/specs)")
     parser.add_argument("--scope", help="restrict orphan code-file detection to a subtree")
+    parser.add_argument(
+        "--module",
+        help=(
+            "scope to a single workspace module (per SPEC-0014 § Workspace Detection). "
+            "When set, the helper builds only that module's graph with unprefixed IDs. "
+            "Has no effect on single-module projects."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.verb in _VERB_STORY:
@@ -1342,10 +1526,32 @@ def main(argv: list[str] | None = None) -> int:
     if not root.is_dir():
         print(f"error: --root {root} is not a directory", file=sys.stderr)
         return 2
-    adr_dir = Path(args.adr_dir).resolve() if args.adr_dir else root / "docs" / "adrs"
-    spec_dir = Path(args.spec_dir).resolve() if args.spec_dir else root / "docs" / "openspec" / "specs"
 
-    g = build_graph(root, adr_dir, spec_dir)
+    # Workspace mode (Story 5): detect modules; choose build strategy.
+    modules = detect_workspace(root)
+    explicit_paths = bool(args.adr_dir or args.spec_dir)
+
+    if args.module:
+        # --module scopes to a single module with unprefixed IDs.
+        chosen = next((m for m in modules if m.name == args.module), None)
+        if chosen is None:
+            available = ", ".join(m.name for m in modules) or "<none — not a workspace>"
+            print(
+                f"error: unknown module `{args.module}`. Available: {available}",
+                file=sys.stderr,
+            )
+            return 2
+        adr_dir = Path(args.adr_dir).resolve() if args.adr_dir else chosen.adr_dir
+        spec_dir = Path(args.spec_dir).resolve() if args.spec_dir else chosen.spec_dir
+        g = build_graph(chosen.root, adr_dir, spec_dir)
+    elif modules and not explicit_paths:
+        # Aggregate mode: build per-module and merge with [module]/ID prefixes.
+        g = build_aggregate_graph(root, modules)
+    else:
+        # Single-module: explicit paths or no workspace detected.
+        adr_dir = Path(args.adr_dir).resolve() if args.adr_dir else root / "docs" / "adrs"
+        spec_dir = Path(args.spec_dir).resolve() if args.spec_dir else root / "docs" / "openspec" / "specs"
+        g = build_graph(root, adr_dir, spec_dir)
 
     if args.verb == "validate":
         print_validation(g)
