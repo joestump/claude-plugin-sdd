@@ -419,6 +419,71 @@ For markdown files: `<!-- Governing: ... -->`
 - MUST NOT create separate PRs for retroactive governing comment addition
 - Governing comments MUST be added in the same PR that implements the feature
 
+## Graph Edge Resolution
+
+<!-- Governing: ADR-0023 (Frontmatter DAG and /sdd:graph Skill), SPEC-0018 REQ "Frontmatter Edge Schema", SPEC-0018 REQ "Inverse Edge Derivation" -->
+
+Canonical pattern for declaring and resolving artifact-to-artifact relationships in the SDD plugin. ADRs and specs declare relationships in YAML frontmatter; reverse edges are derived by `/sdd:graph` at build time and MUST NOT be authored. This pattern is paired with `Governing Comment Format` (above), which covers the code-to-artifact direction; together they form the complete graph.
+
+### Forward edges (authored in frontmatter)
+
+**ADRs** MAY declare:
+
+| Field | Direction | Meaning |
+|-------|-----------|---------|
+| `supersedes` | ADR → ADR | Hard replacement — target moves to status `superseded` |
+| `extends` | ADR → ADR | Builds on without replacing |
+| `enables` | ADR → ADR | Unblocks a downstream decision |
+| `governs` | ADR → spec | Names specs this decision governs |
+| `related` | ADR ↔ ADR | Weak association (symmetric — see derivation table) |
+
+**Specs** MAY declare:
+
+| Field | Direction | Meaning |
+|-------|-----------|---------|
+| `implements` | spec → ADR | ADRs this spec realizes |
+| `requires` | spec → spec | Capability dependency on another spec |
+| `extends` | spec → spec | Behavioral extension of another spec |
+| `supersedes` | spec → spec | Hard replacement — target moves to status `deprecated` |
+
+All fields are optional and are lists of artifact IDs. Artifacts with no declared edges are valid.
+
+### Reverse edges (derived at build time)
+
+For every forward edge declared in frontmatter, `/sdd:graph` derives a corresponding reverse edge. Derived edges MUST NOT be authored — the graph builder rejects them with a warning. The complete derivation table:
+
+| Forward edge | Direction | Derived inverse |
+|--------------|-----------|-----------------|
+| `supersedes` | ADR → ADR, spec → spec | `superseded-by` |
+| `extends` | ADR → ADR, spec → spec | `extended-by` |
+| `enables` | ADR → ADR | `enabled-by` |
+| `governs` | ADR → spec | `governed-by` |
+| `related` | ADR ↔ ADR | `related` (symmetric) |
+| `implements` | spec → ADR | `implemented-by` |
+| `requires` | spec → spec | `depended-on-by` |
+
+### Cross-module references (workspace mode)
+
+When referencing artifacts in another module (per `Workspace Detection`), use the quoted `[module]/ID` syntax. The unquoted form parses as YAML nested lists and MUST be rejected:
+
+```yaml
+# Correct — quoted scalar
+requires: ["[shared-lib]/SPEC-0001"]
+governs: ["[api]/SPEC-0007", "[worker]/SPEC-0003"]
+
+# Incorrect — parses as YAML nested list, rejected by graph builder
+requires: [[shared-lib]/SPEC-0001]
+```
+
+### Rules
+
+- Forward edges MUST be authored in YAML frontmatter, not in prose `## Related` or `## More Information` sections (those remain valid for human-readable context but do not contribute to the graph).
+- Reverse edges (`governed-by`, `implemented-by`, `superseded-by`, `extended-by`, `enabled-by`, `depended-on-by`) MUST NOT be authored — `/sdd:graph` derives them.
+- Edge fields MUST be lists, even with a single value: `governs: [SPEC-0001]`, not `governs: SPEC-0001`.
+- Cycles in any non-symmetric edge type are a hard error reported by `/sdd:graph` validation.
+- When an artifact references another artifact in prose AND in frontmatter, the frontmatter is authoritative for graph traversal; the prose remains for human context.
+- Backfilling existing artifacts is supported via `/sdd:graph backfill`, which parses `## Related`, `## More Information`, `## Overview`, `## Decision Outcome`, and `## Consequences` sections to propose edges for per-file review.
+
 ## Foundation Story Detection
 
 <!-- Governing: ADR-0017 (Parallel Agent Coordination), SPEC-0015 REQ "Foundation Story Detection" -->

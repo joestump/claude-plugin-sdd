@@ -58,6 +58,15 @@ Follow the standard team handoff protocol from the plugin's `references/shared-p
 status: proposed
 date: {YYYY-MM-DD}
 decision-makers: {list}
+# Optional graph edges (per ADR-0023 / SPEC-0018). All fields are lists of artifact IDs.
+# Only include the fields that apply; omit unused fields entirely. Forward-only:
+# inverse edges (superseded-by, governed-by, implemented-by, etc.) are derived by
+# /sdd:graph at build time and MUST NOT be authored.
+# supersedes: [ADR-XXXX]              # hard replacement; target moves to status: superseded
+# extends: [ADR-XXXX]                 # builds on without replacing
+# enables: [ADR-XXXX]                 # this decision unblocks another
+# governs: [SPEC-XXXX]                # specs this decision governs
+# related: [ADR-XXXX]                 # weak association, no semantic claim
 ---
 
 # ADR-XXXX: {short title, representative of solved problem and found solution}
@@ -134,3 +143,23 @@ Use flowchart, sequence, or C4 diagrams as appropriate.}
 - Focus on the "why" -- what problem does this solve and why this solution?
 - Reference existing ADRs if this supersedes or relates to them
 - Every ADR SHOULD include at least one Mermaid diagram illustrating the architecture or decision flow. Use flowchart, sequence, or C4 diagrams as appropriate.
+
+## Graph Edge Frontmatter (per ADR-0023 / SPEC-0018)
+
+<!-- Governing: ADR-0023 (Frontmatter DAG and /sdd:graph Skill), SPEC-0018 REQ "Frontmatter Edge Schema" -->
+
+ADRs MAY declare relationships to other artifacts via optional frontmatter fields. All edge fields MUST be lists of artifact IDs (e.g., `[ADR-0008, ADR-0009]`). All edge fields are OPTIONAL — an ADR with no declared edges is valid.
+
+| Field | Meaning | Example |
+|-------|---------|---------|
+| `supersedes` | Hard replacement — the referenced ADR moves to status `superseded` | `supersedes: [ADR-0003]` |
+| `extends` | Builds on without replacing | `extends: [ADR-0008, ADR-0009]` |
+| `enables` | Unblocks a downstream decision | `enables: [ADR-0016]` |
+| `governs` | Names specs this decision governs | `governs: [SPEC-0007, SPEC-0010]` |
+| `related` | Weak association, no semantic claim | `related: [ADR-0010]` |
+
+**Forward-only convention.** Only forward edges are authored. Reverse edges (`superseded-by`, `governed-by`, `enabled-by`, `extended-by`) are derived by `/sdd:graph` at build time and MUST NOT appear in frontmatter — the graph builder will reject them with a warning. See `references/shared-patterns.md` § "Graph Edge Resolution" for the full forward→inverse derivation table.
+
+**Cross-module edges (workspace mode).** When referencing artifacts in another module, use the quoted `[module]/ID` syntax: `governs: ["[api]/SPEC-0001"]`. The unquoted form `[[api]/SPEC-0001]` parses as YAML nested lists and will be rejected.
+
+**When to add edges.** Add edges as the relationship becomes structurally meaningful — typically at the same time you would have written "Related: ADR-XXXX" in `## More Information`. Backfilling existing ADRs is supported via `/sdd:graph backfill`, which proposes edges parsed from prose for per-file review.

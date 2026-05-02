@@ -251,6 +251,19 @@ Example endpoint table with auth-by-default:
 ## spec.md Template
 
 ```markdown
+---
+status: draft
+date: {YYYY-MM-DD}
+# Optional graph edges (per ADR-0023 / SPEC-0018). All fields are lists of artifact IDs.
+# Only include the fields that apply; omit unused fields entirely. Forward-only:
+# inverse edges (governed-by, implemented-by, depended-on-by, etc.) are derived by
+# /sdd:graph at build time and MUST NOT be authored.
+# implements: [ADR-XXXX]              # ADRs this spec realizes
+# requires: [SPEC-XXXX]               # capability dependency on another spec
+# extends: [SPEC-XXXX]                # behavioral extension of another spec
+# supersedes: [SPEC-XXXX]             # hard replacement; target moves to status: deprecated
+---
+
 # SPEC-XXXX: {Capability Title}
 
 ## Overview
@@ -372,3 +385,24 @@ Example endpoint table with auth-by-default:
 - For backend specs with database interactions: MUST inject transaction, connection lifecycle, and parameterized query requirements
 - ALL backend quality guidelines MUST be language-agnostic — use "structured logging" not "slog", "error wrapping" not "%w", "project manifest" not "go.mod", "parallel workers" not "goroutines"
 - MUST NOT inject backend quality requirements for non-backend specs (static docs, pure frontend, CSS, declarative config)
+
+## Graph Edge Frontmatter (per ADR-0023 / SPEC-0018)
+
+<!-- Governing: ADR-0023 (Frontmatter DAG and /sdd:graph Skill), SPEC-0018 REQ "Frontmatter Edge Schema" -->
+
+Specs MAY declare relationships to other artifacts via optional frontmatter fields. All edge fields MUST be lists of artifact IDs. All edge fields are OPTIONAL — a spec with no declared edges is valid.
+
+| Field | Meaning | Example |
+|-------|---------|---------|
+| `implements` | ADRs this spec realizes | `implements: [ADR-0009, ADR-0011]` |
+| `requires` | Capability dependency on another spec | `requires: [SPEC-0007]` |
+| `extends` | Behavioral extension of another spec | `extends: [SPEC-0007]` |
+| `supersedes` | Hard replacement — referenced spec moves to status `deprecated` | `supersedes: [SPEC-0XXX]` |
+
+**Forward-only convention.** Only forward edges are authored. Reverse edges (`governed-by`, `implemented-by`, `depended-on-by`, `extended-by`) are derived by `/sdd:graph` at build time and MUST NOT appear in frontmatter — the graph builder will reject them with a warning. See `references/shared-patterns.md` § "Graph Edge Resolution" for the full forward→inverse derivation table.
+
+**Cross-module edges (workspace mode).** When referencing artifacts in another module, use the quoted `[module]/ID` syntax: `requires: ["[shared-lib]/SPEC-0001"]`. The unquoted form `[[shared-lib]/SPEC-0001]` parses as YAML nested lists and will be rejected.
+
+**`status` and `date` fields.** The frontmatter `status` field uses the spec status enum (`draft | review | approved | implemented | deprecated`); see `/sdd:status` for transitions. The `date` field (YYYY-MM-DD) is consumed by `/sdd:list` and `/sdd:docs` for sorting and display.
+
+**When to add edges.** Add edges as relationships become structural — typically when a spec realizes an ADR (always declare `implements`), depends on another capability (`requires`), or extends an existing spec (`extends`). Backfilling existing specs is supported via `/sdd:graph backfill`.

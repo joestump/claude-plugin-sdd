@@ -36,7 +36,7 @@ ADRs and specs SHALL declare relationships to other artifacts via optional field
 | `implements` | ADRs this spec realizes | `implements: [ADR-0009, ADR-0011]` |
 | `requires` | Capability dependency on another spec | `requires: [SPEC-0007]` |
 | `extends` | Behavioral extension of another spec | `extends: [SPEC-0007]` |
-| `supersedes` | Hard replacement — referenced spec moves to status `superseded` | `supersedes: [SPEC-0XXX]` |
+| `supersedes` | Hard replacement — referenced spec moves to status `deprecated` (the spec status enum has no `superseded`; per `/sdd:status`) | `supersedes: [SPEC-0XXX]` |
 
 The schema MUST be artifact-level only in v1. Requirement-level edges (e.g., a `SPEC-0014 REQ "Cross-Module Aggregation"` declaring it is governed by `ADR-0016`) are explicitly out of scope for this spec.
 
