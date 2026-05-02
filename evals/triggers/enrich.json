@@ -1,0 +1,23 @@
+[
+  {"query": "enrich our existing issues with branch and PR conventions", "should_trigger": true},
+  {"query": "/sdd:enrich", "should_trigger": true},
+  {"query": "add the feature/N-slug branch convention to all open issues from SPEC-0017", "should_trigger": true},
+  {"query": "the issues are missing PR Convention sections — add them retroactively", "should_trigger": true},
+  {"query": "format these existing issues with our standard branch and PR sections", "should_trigger": true},
+  {"query": "I planned without conventions; backfill them now on the open stories", "should_trigger": true},
+  {"query": "/sdd:enrich SPEC-0014 issues with branch + PR boilerplate", "should_trigger": true},
+  {"query": "add Closes #N keyword guidance to the open stories", "should_trigger": true},
+  {"query": "enrich the issue bodies with the metadata SDD's other skills expect", "should_trigger": true},
+  {"query": "format these issues so /sdd:work can pick them up cleanly", "should_trigger": true},
+
+  {"query": "plan SPEC-0015 into issues", "should_trigger": false},
+  {"query": "organize issues into projects on the tracker", "should_trigger": false},
+  {"query": "enrich my data with metadata from this third-party API", "should_trigger": false},
+  {"query": "what's the difference between enrich and organize in the SDD plugin?", "should_trigger": false},
+  {"query": "list issues with branch conventions filled in", "should_trigger": false},
+  {"query": "audit our open issues for missing fields", "should_trigger": false},
+  {"query": "review my PR template before I save it", "should_trigger": false},
+  {"query": "enrich the readme with examples", "should_trigger": false},
+  {"query": "create a GitHub issue template for bug reports", "should_trigger": false},
+  {"query": "update the project README with the new branch convention", "should_trigger": false}
+]

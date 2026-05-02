@@ -1,0 +1,23 @@
+[
+  {"query": "set up SDD plugin context in this new repo", "should_trigger": true},
+  {"query": "/sdd:init", "should_trigger": true},
+  {"query": "initialize sdd for this project", "should_trigger": true},
+  {"query": "add the SDD CLAUDE.md sections so I can start tracking decisions", "should_trigger": true},
+  {"query": "I just installed the plugin; configure SDD here", "should_trigger": true},
+  {"query": "wire up CLAUDE.md so /sdd:prime works in this codebase", "should_trigger": true},
+  {"query": "bootstrap the design plugin in our new microservice", "should_trigger": true},
+  {"query": "add the architecture configuration block to CLAUDE.md", "should_trigger": true},
+  {"query": "I want to start using the SDD plugin here — what's the setup step?", "should_trigger": true},
+  {"query": "scaffold the SDD context for this repo", "should_trigger": true},
+
+  {"query": "git init", "should_trigger": false},
+  {"query": "npm init -y", "should_trigger": false},
+  {"query": "create my CLAUDE.md from scratch with my own conventions", "should_trigger": false},
+  {"query": "what does SDD stand for?", "should_trigger": false},
+  {"query": "init a new Vite project", "should_trigger": false},
+  {"query": "plan SPEC-0015 into stories", "should_trigger": false},
+  {"query": "discover the implicit architecture in this codebase", "should_trigger": false},
+  {"query": "load architecture context for this session", "should_trigger": false},
+  {"query": "create ADR-0001 for our initial choices", "should_trigger": false},
+  {"query": "initialize a new database migration", "should_trigger": false}
+]

@@ -1,0 +1,23 @@
+[
+  {"query": "organize our existing GitHub issues into a project board", "should_trigger": true},
+  {"query": "/sdd:organize", "should_trigger": true},
+  {"query": "retroactively group these issues into tracker projects by spec", "should_trigger": true},
+  {"query": "we have 50 stale issues; group them under the right epics", "should_trigger": true},
+  {"query": "set up a Gitea project board for the open issues from SPEC-0017", "should_trigger": true},
+  {"query": "I planned without using projects; organize the existing issues now", "should_trigger": true},
+  {"query": "tag and group all open issues into Linear projects by spec", "should_trigger": true},
+  {"query": "make project columns for our backlog issues, grouped by epic", "should_trigger": true},
+  {"query": "retroactively label issues by spec and group them into a project", "should_trigger": true},
+  {"query": "organize the disparate issues into coherent epics across the tracker", "should_trigger": true},
+
+  {"query": "/sdd:plan SPEC-0015 into stories", "should_trigger": false},
+  {"query": "enrich existing issues with branch conventions", "should_trigger": false},
+  {"query": "organize my desk before the standup", "should_trigger": false},
+  {"query": "what's the difference between organize and plan?", "should_trigger": false},
+  {"query": "list all open issues in the tracker", "should_trigger": false},
+  {"query": "create a new GitHub project board from scratch", "should_trigger": false},
+  {"query": "organize my dotfiles repo into directories", "should_trigger": false},
+  {"query": "review PR #88 and merge if good", "should_trigger": false},
+  {"query": "organize a team offsite for next quarter", "should_trigger": false},
+  {"query": "audit our ADRs for drift", "should_trigger": false}
+]

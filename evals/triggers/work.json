@@ -1,0 +1,23 @@
+[
+  {"query": "pick up issue #64 and start implementing it", "should_trigger": true},
+  {"query": "/sdd:work", "should_trigger": true},
+  {"query": "implement the foundation stories from the auth-rewrite plan, in parallel", "should_trigger": true},
+  {"query": "spawn agents to work on issues #45, #46, #47 in worktrees", "should_trigger": true},
+  {"query": "/sdd:work issue 64", "should_trigger": true},
+  {"query": "start work on the next open story in the tracker", "should_trigger": true},
+  {"query": "let's tackle these issues with parallel git worktrees", "should_trigger": true},
+  {"query": "implement the highest-priority issue and open a PR when done", "should_trigger": true},
+  {"query": "pick up the next planned story and code it up", "should_trigger": true},
+  {"query": "fan out work across multiple SPEC-0017 stories using worktrees", "should_trigger": true},
+
+  {"query": "what's a git worktree?", "should_trigger": false},
+  {"query": "review the existing PRs", "should_trigger": false},
+  {"query": "plan SPEC-0015 into stories", "should_trigger": false},
+  {"query": "I'm working from home today; don't bother me", "should_trigger": false},
+  {"query": "open a worktree for this branch with git worktree add", "should_trigger": false},
+  {"query": "what does /sdd:work output when it finishes?", "should_trigger": false},
+  {"query": "list the open issues on this repo", "should_trigger": false},
+  {"query": "audit the codebase against our specs", "should_trigger": false},
+  {"query": "let's work on the design before coding anything", "should_trigger": false},
+  {"query": "make this code work — it's throwing an error", "should_trigger": false}
+]

@@ -1,0 +1,23 @@
+[
+  {"query": "discover the implicit architecture in this legacy codebase", "should_trigger": true},
+  {"query": "/sdd:discover", "should_trigger": true},
+  {"query": "reverse-engineer ADRs from this existing repo", "should_trigger": true},
+  {"query": "I inherited this code; figure out the architectural decisions baked in", "should_trigger": true},
+  {"query": "what implicit invariants does this code enforce? extract them as candidate ADRs", "should_trigger": true},
+  {"query": "scan the codebase and propose ADRs for the patterns you find", "should_trigger": true},
+  {"query": "extract design artifacts from the existing implementation", "should_trigger": true},
+  {"query": "we have a 5-year-old service with no docs; tease out the architecture", "should_trigger": true},
+  {"query": "find the undocumented decisions in the auth module", "should_trigger": true},
+  {"query": "produce candidate ADRs and specs from this code", "should_trigger": true},
+
+  {"query": "discover all the bugs in this code", "should_trigger": false},
+  {"query": "create a new ADR for our caching choice", "should_trigger": false},
+  {"query": "init this repo for SDD usage", "should_trigger": false},
+  {"query": "what's discovery in agile?", "should_trigger": false},
+  {"query": "search Discovery+ for nature documentaries", "should_trigger": false},
+  {"query": "audit our existing ADRs against the code", "should_trigger": false},
+  {"query": "discover Kubernetes services in this cluster", "should_trigger": false},
+  {"query": "what does /sdd:discover output?", "should_trigger": false},
+  {"query": "find the entry point of this Go program", "should_trigger": false},
+  {"query": "use net discovery to find devices on the LAN", "should_trigger": false}
+]

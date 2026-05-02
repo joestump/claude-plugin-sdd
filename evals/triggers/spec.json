@@ -1,0 +1,23 @@
+[
+  {"query": "create a spec for the webhook delivery service", "should_trigger": true},
+  {"query": "/sdd:spec", "should_trigger": true},
+  {"query": "we need to formalize the auth requirements; turn ADR-0019 into a SPEC", "should_trigger": true},
+  {"query": "write up the requirements for the new payment processor with RFC 2119 keywords", "should_trigger": true},
+  {"query": "draft the specification document for the artifact-graph feature", "should_trigger": true},
+  {"query": "given this design discussion, produce a SPEC-formatted requirements doc", "should_trigger": true},
+  {"query": "make a spec for the new caching layer covering all WHEN/THEN scenarios", "should_trigger": true},
+  {"query": "we need a structured spec, not just a brain dump — formalize this", "should_trigger": true},
+  {"query": "spec out the rate-limiting feature with explicit invariants and design rationale", "should_trigger": true},
+  {"query": "I have an accepted ADR; write the spec that implements it", "should_trigger": true},
+
+  {"query": "create an ADR for the caching choice", "should_trigger": false},
+  {"query": "list all specs in this repo", "should_trigger": false},
+  {"query": "what's the difference between an ADR and a SPEC?", "should_trigger": false},
+  {"query": "plan SPEC-0017 into stories", "should_trigger": false},
+  {"query": "review my code for SPEC-0014 compliance", "should_trigger": false},
+  {"query": "write a unit test spec for this function", "should_trigger": false},
+  {"query": "specifically, what does the term 'governing artifact' mean here?", "should_trigger": false},
+  {"query": "generate Swagger from my OpenAPI spec file", "should_trigger": false},
+  {"query": "spec out a meal plan for the week", "should_trigger": false},
+  {"query": "draw up a tech spec template for our org's confluence", "should_trigger": false}
+]

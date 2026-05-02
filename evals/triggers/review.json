@@ -1,0 +1,23 @@
+[
+  {"query": "review PR #88", "should_trigger": true},
+  {"query": "/sdd:review 93", "should_trigger": true},
+  {"query": "kick off a reviewer-responder pair for the open SPEC-0017 PRs", "should_trigger": true},
+  {"query": "review and merge the open PRs from this sprint", "should_trigger": true},
+  {"query": "do an adversarial review of my PR before I merge", "should_trigger": true},
+  {"query": "/sdd:review and merge if it looks clean", "should_trigger": true},
+  {"query": "review PRs #88 and #93 in parallel using two reviewer pairs", "should_trigger": true},
+  {"query": "spec-aware review of PR #93 please", "should_trigger": true},
+  {"query": "run the reviewer-responder cycle on the auth-rewrite PR", "should_trigger": true},
+  {"query": "review PR #88 and post structured feedback as comments", "should_trigger": true},
+
+  {"query": "review my code for typos and grammar", "should_trigger": false},
+  {"query": "review my decision to use Redis as a session store", "should_trigger": false},
+  {"query": "what does adversarial review mean in this plugin?", "should_trigger": false},
+  {"query": "review of last quarter's spending", "should_trigger": false},
+  {"query": "/sdd:audit our ADRs for drift", "should_trigger": false},
+  {"query": "review the morning news headlines", "should_trigger": false},
+  {"query": "look at this code and tell me if the algorithm is right", "should_trigger": false},
+  {"query": "approve PR #88 directly via gh pr review --approve", "should_trigger": false},
+  {"query": "merge PR #88 already, I've reviewed it manually", "should_trigger": false},
+  {"query": "review my essay for the Substack post", "should_trigger": false}
+]

@@ -1,0 +1,23 @@
+[
+  {"query": "load the architecture context for this session", "should_trigger": true},
+  {"query": "/sdd:prime", "should_trigger": true},
+  {"query": "prime the SDD context before I start working on the auth flow", "should_trigger": true},
+  {"query": "give me the relevant ADRs and specs for the artifact-graph topic", "should_trigger": true},
+  {"query": "before I dive in, load context on the docs-generation feature", "should_trigger": true},
+  {"query": "show me ADRs and specs relevant to the worktree work", "should_trigger": true},
+  {"query": "I'm about to refactor the spec parser; load relevant artifacts", "should_trigger": true},
+  {"query": "/sdd:prime worktrees", "should_trigger": true},
+  {"query": "prep my session with the SDD artifacts that govern this module", "should_trigger": true},
+  {"query": "warm up your context with the design decisions I'll need today", "should_trigger": true},
+
+  {"query": "list all ADRs in this repo", "should_trigger": false},
+  {"query": "what's the prime number after 17?", "should_trigger": false},
+  {"query": "prime the pump on the espresso machine", "should_trigger": false},
+  {"query": "init the SDD plugin in a new repo", "should_trigger": false},
+  {"query": "load my dotfiles config", "should_trigger": false},
+  {"query": "what does /sdd:prime do?", "should_trigger": false},
+  {"query": "discover the implicit architecture in this code", "should_trigger": false},
+  {"query": "audit ADR coverage against the implementation", "should_trigger": false},
+  {"query": "prime the language model with system instructions", "should_trigger": false},
+  {"query": "give me a primer on event sourcing", "should_trigger": false}
+]

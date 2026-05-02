@@ -1,0 +1,23 @@
+[
+  {"query": "check this PR against our ADRs for drift", "should_trigger": true},
+  {"query": "/sdd:check", "should_trigger": true},
+  {"query": "does this implementation comply with SPEC-0017?", "should_trigger": true},
+  {"query": "quick drift check on the new auth code in skills/auth/", "should_trigger": true},
+  {"query": "verify the docs-generation refactor still aligns with ADR-0023", "should_trigger": true},
+  {"query": "is this code consistent with our governing artifacts?", "should_trigger": true},
+  {"query": "scan this branch for SDD compliance violations", "should_trigger": true},
+  {"query": "I'm about to commit; check it against the specs first", "should_trigger": true},
+  {"query": "compare my changes to ADR-0019 — am I deviating?", "should_trigger": true},
+  {"query": "drift-check the recent changes in skills/work/", "should_trigger": true},
+
+  {"query": "git status", "should_trigger": false},
+  {"query": "check my PR for typos and grammar", "should_trigger": false},
+  {"query": "audit our ADRs against the code", "should_trigger": false},
+  {"query": "review PR #88", "should_trigger": false},
+  {"query": "lint the code with golangci-lint", "should_trigger": false},
+  {"query": "what does drift mean in the SDD context?", "should_trigger": false},
+  {"query": "check the weather in Dublin tomorrow", "should_trigger": false},
+  {"query": "list all ADRs", "should_trigger": false},
+  {"query": "checkpoint the state of this branch as a tag", "should_trigger": false},
+  {"query": "run the test suite and report failures", "should_trigger": false}
+]

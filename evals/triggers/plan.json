@@ -1,0 +1,23 @@
+[
+  {"query": "Plan SPEC-0015 into trackable issues for joestump/joe-links", "should_trigger": true},
+  {"query": "/sdd:plan SPEC-0017", "should_trigger": true},
+  {"query": "break this approved spec into stories the team can pick up", "should_trigger": true},
+  {"query": "create GitHub issues for the auth-rewrite spec, foundation stories first", "should_trigger": true},
+  {"query": "now that SPEC-0014 is accepted, turn it into work for next sprint", "should_trigger": true},
+  {"query": "plan SPEC-0015 and SPEC-0016 together as one epic; they share a foundation", "should_trigger": true},
+  {"query": "I have a finished spec — what's next, do we just start coding or is there a planning step?", "should_trigger": true},
+  {"query": "decompose the artifact-graph spec into stories with branch and PR conventions filled in", "should_trigger": true},
+  {"query": "use tasks.md fallback (no tracker) and plan SPEC-0018 into 4–5 stories", "should_trigger": true},
+  {"query": "set up the issue tickets for our spec; we use Gitea, not GitHub", "should_trigger": true},
+
+  {"query": "plan a one-week vacation to Lisbon for two people, including hotel and flights", "should_trigger": false},
+  {"query": "what's the difference between an epic and a story in agile?", "should_trigger": false},
+  {"query": "create an ADR for our decision to use Redis as the session store", "should_trigger": false},
+  {"query": "list all open ADRs in this repo", "should_trigger": false},
+  {"query": "review PR #88 for me", "should_trigger": false},
+  {"query": "explain what the /sdd:plan skill actually does — I'm reading the README", "should_trigger": false},
+  {"query": "how do I configure GitHub issue templates in .github/ISSUE_TEMPLATE/?", "should_trigger": false},
+  {"query": "write a function that plans the shortest route between two points on a graph", "should_trigger": false},
+  {"query": "estimate how long this sprint should take based on past velocity", "should_trigger": false},
+  {"query": "help me plan my morning routine so I'm not late for standup", "should_trigger": false}
+]

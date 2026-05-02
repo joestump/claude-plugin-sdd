@@ -1,0 +1,23 @@
+[
+  {"query": "audit all our ADRs and specs against the codebase", "should_trigger": true},
+  {"query": "/sdd:audit", "should_trigger": true},
+  {"query": "do a thorough drift audit across the whole repo", "should_trigger": true},
+  {"query": "we're prepping for release; run a comprehensive design alignment check", "should_trigger": true},
+  {"query": "find every place the code has drifted from the governing artifacts", "should_trigger": true},
+  {"query": "produce an audit report with all violations grouped by severity", "should_trigger": true},
+  {"query": "comprehensive audit of design alignment for the auth module", "should_trigger": true},
+  {"query": "scrub our specs for orphaned requirements that no code implements", "should_trigger": true},
+  {"query": "run the full SDD audit, not the quick check", "should_trigger": true},
+  {"query": "audit triage time — let's see what's drifted in the last quarter", "should_trigger": true},
+
+  {"query": "audit npm dependencies for vulnerabilities", "should_trigger": false},
+  {"query": "audit my code for performance bottlenecks", "should_trigger": false},
+  {"query": "/sdd:check the new auth code for drift", "should_trigger": false},
+  {"query": "list all ADRs", "should_trigger": false},
+  {"query": "what does scrum mode do in /sdd:audit?", "should_trigger": false},
+  {"query": "show audit log entries from yesterday", "should_trigger": false},
+  {"query": "review PR #88 for me", "should_trigger": false},
+  {"query": "check this PR against SPEC-0014", "should_trigger": false},
+  {"query": "do a security audit on the auth code", "should_trigger": false},
+  {"query": "audit our cloud spending for last quarter", "should_trigger": false}
+]

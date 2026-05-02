@@ -1,0 +1,23 @@
+[
+  {"query": "create an ADR for our decision to use Redis as the session store instead of Postgres", "should_trigger": true},
+  {"query": "/sdd:adr", "should_trigger": true},
+  {"query": "we just agreed to ship HTMX over React for the new dashboard — write that up as an architecture decision record", "should_trigger": true},
+  {"query": "I need to ADR this: we're going with event sourcing for the orders service", "should_trigger": true},
+  {"query": "document the rationale for picking Go over Rust for the worker pool", "should_trigger": true},
+  {"query": "after that design discussion, can you capture the JWT-vs-sessions decision as an ADR?", "should_trigger": true},
+  {"query": "record the decision to use OIDC via Pocket ID for all internal services", "should_trigger": true},
+  {"query": "make a new architecture decision record for the JSON-over-HTTP-vs-gRPC choice", "should_trigger": true},
+  {"query": "write up why we're sunsetting MariaDB in favor of standardizing on Postgres — should be an ADR", "should_trigger": true},
+  {"query": "log this decision as an ADR with consequences and alternatives sections filled out", "should_trigger": true},
+
+  {"query": "plan SPEC-0015 into stories for the team", "should_trigger": false},
+  {"query": "list all the ADRs in this repo, grouped by status", "should_trigger": false},
+  {"query": "what does ADR-0023 say about cross-module references?", "should_trigger": false},
+  {"query": "update ADR-0012 status from proposed to accepted", "should_trigger": false},
+  {"query": "review my decision tree implementation — I think the recursion is wrong", "should_trigger": false},
+  {"query": "what's an ADR? I keep seeing the term but I'm not sure what they're for", "should_trigger": false},
+  {"query": "write an Address Resolution Protocol parser in Python", "should_trigger": false},
+  {"query": "address bar in the browser is broken on the staging build", "should_trigger": false},
+  {"query": "should I order pizza or pasta for dinner tonight?", "should_trigger": false},
+  {"query": "audit our existing ADRs for drift against the codebase", "should_trigger": false}
+]

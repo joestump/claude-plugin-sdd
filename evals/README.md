@@ -17,6 +17,7 @@ Automated evaluation framework for the 15 SDD plugin skills.
 - `tier2.json` - Tier 2 evals only (10 prompts)
 - `tier3.json` - Tier 3 evals only (14 prompts)
 - `pipeline/` - Cross-skill end-to-end scenarios (release-only, see [`pipeline/README.md`](pipeline/README.md))
+- `triggers/` - Per-skill trigger eval sets for description optimization via `run_loop.py` (see [`triggers/README.md`](triggers/README.md))
 - `benchmarks/` - Persisted benchmark results on merge
 
 ## Running Evals Locally

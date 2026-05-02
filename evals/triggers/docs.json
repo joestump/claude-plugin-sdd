@@ -1,0 +1,23 @@
+[
+  {"query": "generate the docs site from our ADRs and specs", "should_trigger": true},
+  {"query": "/sdd:docs", "should_trigger": true},
+  {"query": "scaffold a Docusaurus site that mirrors our design artifacts", "should_trigger": true},
+  {"query": "rebuild the documentation site with the latest ADRs", "should_trigger": true},
+  {"query": "set up a docs site so we can publish our architecture decisions", "should_trigger": true},
+  {"query": "create a static site with all our governing artifacts", "should_trigger": true},
+  {"query": "deploy our SDD docs to GitHub Pages", "should_trigger": true},
+  {"query": "regenerate the docs after I added ADR-0024", "should_trigger": true},
+  {"query": "wire up our existing Docusaurus site with the SDD plugin's transforms", "should_trigger": true},
+  {"query": "publish our ADRs as a browsable docs site", "should_trigger": true},
+
+  {"query": "write API docs for this Go function", "should_trigger": false},
+  {"query": "create an ADR documenting the docusaurus choice", "should_trigger": false},
+  {"query": "what's Docusaurus, technically?", "should_trigger": false},
+  {"query": "list all the docs in this repo", "should_trigger": false},
+  {"query": "generate Swagger docs from my OpenAPI YAML", "should_trigger": false},
+  {"query": "where do the docs live in this repo?", "should_trigger": false},
+  {"query": "deploy my README to a single GitHub Pages site", "should_trigger": false},
+  {"query": "audit ADR coverage against the implementation", "should_trigger": false},
+  {"query": "build the project docs with mkdocs", "should_trigger": false},
+  {"query": "where can I find docs for the artifact-graph feature?", "should_trigger": false}
+]

@@ -1,0 +1,23 @@
+[
+  {"query": "list all ADRs in this repo", "should_trigger": true},
+  {"query": "/sdd:list", "should_trigger": true},
+  {"query": "show me every accepted spec", "should_trigger": true},
+  {"query": "what ADRs are still in proposed state?", "should_trigger": true},
+  {"query": "give me a table of all ADRs with their status and date", "should_trigger": true},
+  {"query": "I want to see all specs grouped by domain", "should_trigger": true},
+  {"query": "what decisions have we made on this codebase?", "should_trigger": true},
+  {"query": "show specs and ADRs together with their statuses", "should_trigger": true},
+  {"query": "give me an overview of our governing artifacts", "should_trigger": true},
+  {"query": "list every ADR that's not yet accepted, with links", "should_trigger": true},
+
+  {"query": "create a new ADR for the Redis decision", "should_trigger": false},
+  {"query": "list the open PRs on this repo", "should_trigger": false},
+  {"query": "ls -la", "should_trigger": false},
+  {"query": "list the dependencies in package.json", "should_trigger": false},
+  {"query": "what's the difference between an ADR and a SPEC?", "should_trigger": false},
+  {"query": "update ADR-0012 status to accepted", "should_trigger": false},
+  {"query": "audit our ADRs against the code", "should_trigger": false},
+  {"query": "list directories under skills/", "should_trigger": false},
+  {"query": "list of contributors to this repo", "should_trigger": false},
+  {"query": "list the steps to brew a Chemex", "should_trigger": false}
+]

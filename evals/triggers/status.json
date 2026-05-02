@@ -1,0 +1,23 @@
+[
+  {"query": "mark ADR-0012 as accepted", "should_trigger": true},
+  {"query": "/sdd:status ADR-0023 accepted", "should_trigger": true},
+  {"query": "ADR-0008 is no longer relevant; supersede it", "should_trigger": true},
+  {"query": "update SPEC-0014's status to active now that it's implemented", "should_trigger": true},
+  {"query": "deprecate ADR-0005 — we're moving away from JWT", "should_trigger": true},
+  {"query": "set the status of all the proposed ADRs to accepted now that the team approved them", "should_trigger": true},
+  {"query": "approve the spec — change its status from draft to active", "should_trigger": true},
+  {"query": "change ADR-0019's status; we just accepted it in the design review", "should_trigger": true},
+  {"query": "I need to bump the status field on ADR-0012 to deprecated", "should_trigger": true},
+  {"query": "transition this spec from draft to approved in the frontmatter", "should_trigger": true},
+
+  {"query": "create a new ADR for the JWT decision", "should_trigger": false},
+  {"query": "list all ADR statuses", "should_trigger": false},
+  {"query": "check the build status", "should_trigger": false},
+  {"query": "what's the project status going into Q3?", "should_trigger": false},
+  {"query": "what does deprecated mean for an ADR?", "should_trigger": false},
+  {"query": "git status", "should_trigger": false},
+  {"query": "show me the HTTP status code for unauthorized", "should_trigger": false},
+  {"query": "is the ADR-0012 PR ready to merge yet?", "should_trigger": false},
+  {"query": "rerun the status check workflow on PR #88", "should_trigger": false},
+  {"query": "review the status of our open PRs and tell me what to do next", "should_trigger": false}
+]
