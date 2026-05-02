@@ -59,7 +59,7 @@ sidebar_position: 1
 
 # Architecture Graph
 
-The artifact graph captures explicit relationships between ADRs and specs declared in YAML frontmatter (per [ADR-0023](/decisions/0023-frontmatter-dag-and-graph-skill) and [SPEC-0018](/specs/artifact-graph/spec)). Edges describe \`supersedes\`, \`extends\`, \`enables\`, \`governs\`, \`implements\`, \`requires\`, and \`related\` relationships between artifacts. The page below reflects the authored edges only; derived inverses (\`governed-by\`, \`implemented-by\`, etc.) are computed at query time by the \`/sdd:graph\` skill.
+The artifact graph captures explicit relationships between ADRs and specs declared in YAML frontmatter (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) and [SPEC-0018](/specs/artifact-graph/spec)). Edges describe \`supersedes\`, \`extends\`, \`enables\`, \`governs\`, \`implements\`, \`requires\`, and \`related\` relationships between artifacts. The page below reflects the authored edges only; derived inverses (\`governed-by\`, \`implemented-by\`, etc.) are computed at query time by the \`/sdd:graph\` skill.
 
 ## Stats
 

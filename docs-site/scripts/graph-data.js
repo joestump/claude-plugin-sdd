@@ -281,9 +281,36 @@ function renderNeighborMermaid(targetId, { nodes, edges }) {
   return lines.join('\n');
 }
 
+/**
+ * Render a "Related Artifacts" Markdown section with a Mermaid mini-DAG
+ * of the artifact's direct neighbors. Returns the empty string when the
+ * artifact has no neighborhood (e.g., a brand-new ADR/spec with no
+ * edges authored or derived) so transforms can unconditionally append
+ * the result. MUST be appended AFTER any MDX-escape pass so the Mermaid
+ * fence stays raw.
+ */
+function buildMiniDagSection(artifactId, graph) {
+  if (!artifactId) return '';
+  const mermaid = renderNeighborMermaid(artifactId, graph);
+  if (!mermaid) return '';
+  return [
+    '',
+    '',
+    '## Related Artifacts',
+    '',
+    `Direct relationships declared in YAML frontmatter (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Run \`/sdd:graph chain ${artifactId}\` for the transitive view.`,
+    '',
+    '```mermaid',
+    mermaid,
+    '```',
+    '',
+  ].join('\n');
+}
+
 module.exports = {
   buildGraph,
   parseFrontmatter,
   renderFullMermaid,
   renderNeighborMermaid,
+  buildMiniDagSection,
 };

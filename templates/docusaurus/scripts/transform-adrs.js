@@ -16,9 +16,18 @@ const {
   transformAdrReferences,
   fixMarkdownLinks,
 } = require('./transform-utils');
+const { buildGraph, buildMiniDagSection } = require('./graph-data');
 
 const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
 const ADRS_DEST = path.join(__dirname, '../../docs-generated/decisions');
+const SPECS_SOURCE_FOR_GRAPH = path.join(__dirname, '../../docs/openspec/specs');
+
+// Build the artifact graph once at module init — used to render per-page
+// mini-DAGs showing each ADR's direct neighbors (per ADR-0023 / SPEC-0018).
+const ARTIFACT_GRAPH = buildGraph({
+  adrsSource: ADRS_SOURCE,
+  specsSource: SPECS_SOURCE_FOR_GRAPH,
+});
 
 // Read baseUrl from docusaurus.config.ts
 const configPath = path.join(__dirname, '../docusaurus.config.ts');
@@ -160,8 +169,13 @@ slug: /decisions/${slug}${sidebarClassName}
 ${badgeHeader}
 `;
 
+  // Extract canonical artifact ID for the per-page mini-DAG.
+  const adrIdMatch = fileName.match(/^(ADR-\d{4})/);
+  const artifactId = adrIdMatch ? adrIdMatch[1] : null;
+  const miniDag = buildMiniDagSection(artifactId, ARTIFACT_GRAPH);
+
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
-  fs.writeFileSync(destPath, frontmatter + escapeMdxUnsafe(escapedContent));
+  fs.writeFileSync(destPath, frontmatter + escapeMdxUnsafe(escapedContent) + miniDag);
 }
 
 function main() {
