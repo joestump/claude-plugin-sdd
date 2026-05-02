@@ -21,6 +21,7 @@ A Claude Code plugin for architecture governance: ADRs, specifications, sprint p
 | **Work** | `/sdd:work [SPEC-XXXX \| issue numbers \| (empty = propose from backlog)] [--max-agents N] [--draft] [--dry-run] [--no-tests] [--module <name>]` | Pick up tracker issues and implement them in parallel using git worktrees |
 | **Review** | `/sdd:review [SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run] [--module <name>]` | Review and merge PRs using reviewer-responder agent pairs |
 | **Status** | `/sdd:status [ID] [status]` | Change the status of an ADR or spec |
+| **Graph** | `/sdd:graph <verb> [<artifact-id>] [--scope <subtree>] [--module <name>] [--table\|--mermaid\|--json]` | Build and query the artifact graph: `validate`, `impact`, `ancestors`, `chain`, `orphans`, `cycles`, `backfill`. ASCII DAG default; `--json` is the stable contract for downstream consumers |
 
 ## Install
 
@@ -42,7 +43,7 @@ Add to your project's `.claude/settings.json`:
 }
 ```
 
-Then restart Claude Code. The plugin's 15 skills will be available as `/sdd:init`, `/sdd:prime`, `/sdd:adr`, `/sdd:spec`, `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:work`, `/sdd:review`, `/sdd:check`, `/sdd:audit`, `/sdd:discover`, `/sdd:docs`, `/sdd:list`, and `/sdd:status`.
+Then restart Claude Code. The plugin's 16 skills will be available as `/sdd:init`, `/sdd:prime`, `/sdd:adr`, `/sdd:spec`, `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:work`, `/sdd:review`, `/sdd:check`, `/sdd:audit`, `/sdd:discover`, `/sdd:docs`, `/sdd:list`, `/sdd:status`, and `/sdd:graph`.
 
 ## Configuration
 
