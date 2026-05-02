@@ -47,14 +47,12 @@ When step 1 finds a saved preference whose tooling is no longer available, the s
 
 **Step 2 — Git-remote inference.** When the project is a git repository, the skill SHALL run `git remote get-url origin`, parse the URL, normalize the host, and match against the host-pattern table below. A unique match MUST be used directly without prompting.
 
-**URL parsing.** The skill MUST handle these git remote URL forms: HTTPS (`https://host/owner/repo.git`), HTTPS with auth (`https://user:token@host/owner/repo.git`), SSH scp form (`git@host:owner/repo.git`), SSH URL form with optional port (`ssh://git@host:2222/owner/repo.git`), and git protocol (`git://host/owner/repo`).
+**URL parsing.** The skill MUST handle URL-style remotes (`https://`, `ssh://`, `git://`) and SSH scp-form remotes (`git@host:owner/repo.git`) with form-specific host extraction:
 
-Parsing rules:
+- **URL-style:** After the scheme `://`, strip any userinfo (everything up to and including the first `@`) — this prevents auth tokens from leaking into matches or logs. The host is the next segment up to `/` or `:`. Discard any `:port` suffix.
+- **SSH scp-form:** The portion before `@` is the SSH login user (typically `git`), NOT auth credentials — discard it but do not treat it as a token. The host is between `@` and the first `:`. The path follows the first `:`.
 
-1. The skill MUST strip the userinfo portion (everything from `://` or `git@` up to the next `@` or `:`) before host matching, to prevent auth tokens from leaking into matches or logs.
-2. The skill MUST lowercase the extracted host and strip any trailing dot.
-3. The skill MUST strip any trailing `.git` from the path component before extracting `owner` and `repo`.
-4. The skill MUST extract `owner` and `repo` from both `:owner/repo` (scp form) and `/owner/repo` (URL form) — these populate tracker-specific configuration without a follow-up prompt.
+After host extraction, the skill MUST: (a) lowercase the host and strip any trailing dot; (b) strip any trailing `.git` from the path; (c) extract `owner` and `repo` from the path. Both `owner/repo` (after the first `:` for scp form) and `/owner/repo` (after the first `/` for URL form) MUST be supported. These populate tracker-specific configuration without a follow-up prompt.
 
 **Host matching rule.** Match the normalized host against patterns using exact-FQDN or leading-label matching, NOT substring or unanchored matching:
 
@@ -64,7 +62,7 @@ Parsing rules:
 | Host equals `gitlab.com` OR FQDN leading label is `gitlab` | `gitlab.com`, `gitlab.example.com` | GitLab |
 | FQDN leading label is `gitea` | `gitea.com`, `gitea.stump.rocks`, etc. | Gitea |
 
-"FQDN leading label is `X`" means the host starts with `X.` followed by at least one more label — equivalent to the regex `^X\.[a-z0-9.-]+$`. This rule MUST reject substring matches like `notgitea.example.com` and `gitlab.com.malicious.example`.
+**"FQDN leading label is `X`" is defined as:** split the normalized host on `.` to obtain a list of labels; match if and only if (a) the first label exactly equals `X`, and (b) the host has at least two labels (i.e., not bare `X` alone). This rule MUST be implemented by label-list comparison, NOT by regex against the full host string. Examples: `gitlab.example.com` matches; `gitlab` (single label) does not; `notgitlab.example.com` does not. A host like `gitlab.com.malicious.example` does technically match the leading-label rule — this is acceptable because (a) a developer whose `origin` points to such a host configured it themselves, (b) the tracker pick does not transmit credentials, and (c) attackers cannot register `gitlab.com` itself.
 
 Hosts that fall through to step 3 include but are not limited to: GitHub Enterprise on a custom domain, `codeberg.org`, `git.sr.ht`, corporate forges, and any host not matching the table above. The table is a conservative whitelist — growth happens via explicit additions, not regex laxity.
 
@@ -103,8 +101,8 @@ The full precedence flow is documented in `references/shared-patterns.md` § "Tr
 
 #### Scenario: Substring match rejected
 
-- **WHEN** the project's `origin` remote URL is `https://gitlab.com.malicious.example/owner/repo.git`
-- **THEN** the host matching rule SHALL reject this as not equal to `gitlab.com` and not having a leading `gitlab` label, and the skill SHALL fall through to step 3
+- **WHEN** the project's `origin` remote URL is `https://notgitlab.example.com/owner/repo.git`
+- **THEN** the host matching rule SHALL reject this — the first label is `notgitlab`, not `gitlab` — and the skill SHALL fall through to step 3
 
 #### Scenario: Remote host unknown — fall through to probe
 
