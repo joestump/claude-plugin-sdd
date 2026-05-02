@@ -58,8 +58,17 @@ python3 ~/.claude/plugins/marketplaces/anthropic-agent-skills/skills/skill-creat
   --runs-per-query 3 \
   --trigger-threshold 0.5 \
   --holdout 0.3 \
-  --model claude-haiku-4-5
+  --model claude-sonnet-4-6
 ```
+
+### Picking `--model`
+
+`run_loop.py`'s `--model` flag controls which model the trigger-test runs use, which in turn determines whose decision boundary the optimizer is tuning against. **Choose the model your team actually runs in their Claude Code sessions** — typically Sonnet 4.6 (the default).
+
+If you optimize against Haiku and your team runs Sonnet, the resulting `best_description` is locally optimal on Haiku and may behave differently in real sessions. Two reasonable strategies:
+
+- **Single model (recommended):** run optimization with the same model your team uses day-to-day. Sonnet 4.6 is the right default for most users.
+- **Two-pass:** iterate quickly on the corpus with `claude-haiku-4-5` (cheaper, faster), then do the final commit-worthy pass with the production model.
 
 `run_loop.py` writes a `best_description` to stdout (and an HTML report to a temp dir). **Do not auto-commit the result** — per SPEC-0017 REQ "Description Optimization", the before/after must be reviewed by a human before updating `SKILL.md`.
 
