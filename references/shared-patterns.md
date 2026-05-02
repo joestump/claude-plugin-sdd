@@ -246,11 +246,60 @@ Skills MAY tolerate minor natural-language variations in key names (e.g., "Branc
 
 ## Tracker Detection
 
-### Check for Saved Preference
+Tracker detection follows a strict precedence order: **saved preference → git remote inference → tooling probe → fallback**. Each step short-circuits the next when it produces an unambiguous answer.
 
-Read the `### SDD Configuration` section in the project-root `CLAUDE.md` (following the Config Resolution pattern above). If it contains a `#### Tracker` subsection with a `- **Type**: {tracker}` entry, use that tracker directly. If it also has tracker-specific keys (Owner, Repo, Project Key, etc.), use those settings. If the saved tracker's tools are no longer available, warn the user and fall through to detection.
+### 1. Check for Saved Preference
 
-### Detect Available Trackers
+Read the `### SDD Configuration` section in the project-root `CLAUDE.md` (following the Config Resolution pattern above). If it contains a `#### Tracker` subsection with a `- **Type**: {tracker}` entry, use that tracker directly. If it also has tracker-specific keys (Owner, Repo, Project Key, etc.), use those settings. If the saved tracker's tools are no longer available, warn the user and **skip directly to step 3 (tooling probe)** — do NOT fall through to step 2 (git-remote inference), since a vanished tracker for a non-VCS platform (Jira, Linear, Beads) must not be silently replaced by whatever the git remote happens to point to.
+
+### 2. Infer From Git Remote
+
+If the project is a git repository, run `git remote get-url origin`, parse the URL, and match the host against the table below. A unique match is treated as a strong signal — the skill MUST use that tracker without prompting.
+
+**URL parsing.** The skill MUST handle these git remote URL forms with form-specific parsing:
+
+| Form | Example | Host extraction |
+|------|---------|-----------------|
+| URL-style (`https://`, `ssh://`, `git://`) | `https://x-access-token:TOKEN@github.com/owner/repo.git`, `ssh://git@github.com:2222/owner/repo.git`, `git://github.com/owner/repo` | After the scheme `://`, strip any userinfo (everything up to and including the first `@`). The host is the next segment up to `/` or `:`. Discard any `:port` suffix. |
+| SSH scp-form | `git@github.com:owner/repo.git` | The portion before `@` is the SSH login user (typically `git`), NOT auth credentials — discard it but do not treat it as a token. The host is between `@` and the first `:`. The path follows the first `:`. |
+
+Common parsing steps applied after host extraction:
+
+1. Lowercase the extracted host. Strip any trailing dot.
+2. Strip any trailing `.git` from the path component.
+3. Extract `owner` and `repo` from the path — both forms `owner/repo` (after the first `:` for scp form) and `/owner/repo` (after the first `/` for URL form) MUST be supported. These populate tracker-specific configuration without a follow-up prompt.
+
+The userinfo strip MUST happen before host matching to prevent auth tokens from leaking into matches or accidental logs. For URL-style remotes, this means anything between `://` and the first `@` is discarded. For scp-form remotes, there is no userinfo concept — the `<user>@` prefix is part of the SSH connection syntax and is simply not treated as a token (and not logged separately).
+
+**Host matching rule.** Match the normalized host against patterns using exact-FQDN or leading-label matching, NOT substring or unanchored matching:
+
+| Pattern | Matches | Tracker |
+|---------|---------|---------|
+| Host equals `github.com` | `github.com` only | GitHub |
+| Host equals `gitlab.com` OR FQDN leading label is `gitlab` | `gitlab.com`, `gitlab.example.com` | GitLab |
+| FQDN leading label is `gitea` | `gitea.com`, `gitea.stump.rocks`, etc. | Gitea |
+
+**"FQDN leading label is `X`" is defined as:** split the normalized host on `.` to obtain a list of labels; match if and only if (a) the first label exactly equals `X`, and (b) the host has at least two labels (i.e., is not just `X` alone). This rule MUST be implemented by label-list comparison, NOT by regex against the full host string. Examples:
+
+- `gitlab.example.com` → labels `["gitlab", "example", "com"]` → first label is `gitlab`, ≥2 labels → MATCH
+- `gitlab` → labels `["gitlab"]` → only 1 label → NO MATCH
+- `notgitlab.example.com` → first label is `notgitlab` → NO MATCH
+- `gitlab.com.malicious.example` → first label is `gitlab` → MATCH (this is intentional: a host whose first label is `gitlab` is treated as GitLab regardless of what follows; if a malicious actor controls a host beginning with `gitlab.`, they can already do worse things than confuse a tracker pick. The conservative whitelist remains conservative because attackers cannot register `gitlab.com` itself.)
+
+**Hosts that fall through to step 3** include but are not limited to: `github.com` GitHub Enterprise on a custom domain, `codeberg.org` (Gitea-based public forge), `git.sr.ht` (Sourcehut), corporate forges, and any host not matching the table above. These cases are intentional — the table is a conservative whitelist; growth happens via explicit additions, not regex laxity.
+
+The skill MUST extract `owner` and `repo` per the parsing rules above when inference succeeds — these populate tracker-specific configuration without a follow-up prompt.
+
+**Ambiguity cases** that fall through to step 3:
+
+- The repo has multiple remotes pointing to different platforms (e.g., `origin → github.com`, `mirror → gitea.example.com`). The skill MUST prefer `origin` if its host matches a known pattern; if `origin` itself does not match (e.g., `origin → corporate-forge.example.com`, `mirror → github.com`), the skill MUST fall through to step 3 — it MUST NOT silently use a non-`origin` remote.
+- The remote host does not match any pattern above.
+- The project is not a git repository (no `.git/` directory).
+- The project uses a non-VCS-derivable tracker (Jira, Linear, Beads). These cannot be inferred from a git remote.
+
+### 3. Detect Available Trackers (tooling probe)
+
+Used when steps 1–2 do not produce an unambiguous answer.
 
 - **Beads**: Look for a `.beads/` directory in the project root, or run `bd --version`.
 - **GitHub**: Use `ToolSearch` to probe for MCP tools matching `github`, or check `gh` CLI via `gh --version`.
@@ -259,7 +308,7 @@ Read the `### SDD Configuration` section in the project-root `CLAUDE.md` (follow
 - **Jira**: Use `ToolSearch` to probe for MCP tools matching `jira`.
 - **Linear**: Use `ToolSearch` to probe for MCP tools matching `linear`.
 
-### Choose Tracker
+### 4. Choose Tracker
 
 - Multiple trackers found → use `AskUserQuestion` to let the user pick. Include an option to save the choice as default.
 - Exactly one found → use it. Ask if they want to save it as default.
