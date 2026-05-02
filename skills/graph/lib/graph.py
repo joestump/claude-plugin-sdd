@@ -772,15 +772,12 @@ def _validate(g: Graph) -> None:
 def _validate_id_resolution(g: Graph) -> None:
     """Every artifact ID in a frontmatter edge MUST exist as a node.
 
-    TODO(Story 5): When workspace mode lands, this check must understand
-    `[module]/SPEC-XXXX` cross-module references. Today the parser
-    coerces both quoted (`["[shared-lib]/SPEC-0001"]`) and unquoted
-    (`[[shared-lib]/SPEC-0001]`) forms into the same string target, so
-    the unquoted-YAML case from SPEC-0018 REQ "Workspace Mode
-    Aggregation" Scenario "Cross-module edge with unquoted YAML rejected"
-    falls out as a generic `unresolved-id` rather than the specified
-    hard error about YAML nested-list parsing. Detect-and-distinguish in
-    Story 5.
+    Cross-module references (`[module]/SPEC-XXXX`) resolve against the
+    aggregate graph in workspace mode (per SPEC-0018 § Workspace Mode
+    Aggregation). The unquoted YAML form (`[[module]/SPEC-XXXX]`) is
+    intercepted at parse time by `_UNQUOTED_CROSS_MODULE_RE` and
+    surfaced as a `malformed-yaml` hard error before reaching this
+    check.
     """
     for edge in g.edges:
         if edge.derived:

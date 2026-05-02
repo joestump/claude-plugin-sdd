@@ -16,9 +16,18 @@ const {
   transformAdrReferences,
   fixMarkdownLinks,
 } = require('./transform-utils');
+const { buildGraph, renderNeighborMermaid } = require('./graph-data');
 
 const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
 const ADRS_DEST = path.join(__dirname, '../../docs-generated/decisions');
+const SPECS_SOURCE_FOR_GRAPH = path.join(__dirname, '../../docs/openspec/specs');
+
+// Build the artifact graph once at module init — used to render per-page
+// mini-DAGs showing each ADR's direct neighbors (per ADR-0023 / SPEC-0018).
+const ARTIFACT_GRAPH = buildGraph({
+  adrsSource: ADRS_SOURCE,
+  specsSource: SPECS_SOURCE_FOR_GRAPH,
+});
 
 // Read baseUrl from docusaurus.config.ts
 const configPath = path.join(__dirname, '../docusaurus.config.ts');
@@ -108,6 +117,31 @@ function fixCrossSectionPaths(content) {
   return content.replace(/\]\(\.\.\/openspec\/specs\//g, '](../specs/');
 }
 
+/**
+ * Render a "Related Artifacts" section with a Mermaid mini-DAG of the
+ * artifact's direct neighbors. Returns the empty string when the
+ * artifact has no neighborhood (e.g., a brand-new ADR with no edges
+ * authored or derived). MUST be appended AFTER `escapeMdxUnsafe` so the
+ * Mermaid fence stays raw.
+ */
+function buildMiniDagSection(artifactId) {
+  if (!artifactId) return '';
+  const mermaid = renderNeighborMermaid(artifactId, ARTIFACT_GRAPH);
+  if (!mermaid) return '';
+  return [
+    '',
+    '',
+    '## Related Artifacts',
+    '',
+    `Direct relationships declared in YAML frontmatter (per [ADR-0023](/decisions/0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Run \`/sdd:graph chain ${artifactId}\` for the transitive view.`,
+    '',
+    '```mermaid',
+    mermaid,
+    '```',
+    '',
+  ].join('\n');
+}
+
 function transformAdr(srcPath, destPath, fileName) {
   let content = fs.readFileSync(srcPath, 'utf-8');
 
@@ -160,8 +194,13 @@ slug: /decisions/${slug}${sidebarClassName}
 ${badgeHeader}
 `;
 
+  // Extract canonical artifact ID for the per-page mini-DAG.
+  const adrIdMatch = fileName.match(/^(ADR-\d{4})/);
+  const artifactId = adrIdMatch ? adrIdMatch[1] : null;
+  const miniDag = buildMiniDagSection(artifactId);
+
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
-  fs.writeFileSync(destPath, frontmatter + escapeMdxUnsafe(escapedContent));
+  fs.writeFileSync(destPath, frontmatter + escapeMdxUnsafe(escapedContent) + miniDag);
 }
 
 function main() {
