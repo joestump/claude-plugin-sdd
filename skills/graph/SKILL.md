@@ -4,7 +4,7 @@
 name: graph
 description: Build and query the SDD artifact graph. Use when the user wants to validate frontmatter edges, find impact/ancestors/chain for an ADR or spec, detect orphans or cycles, or backfill edges from prose. Story 2 ships the `validate` verb; traversal verbs land in subsequent stories.
 allowed-tools: Bash, Read, Glob, Grep, Task
-argument-hint: validate [--module <name>]
+argument-hint: validate
 ---
 
 # /sdd:graph — Artifact Graph Skill
@@ -23,7 +23,9 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
 
 1. **Parse the verb and flags from `$ARGUMENTS`**.
 
-   Currently supported: `validate`. Other verbs (`impact`, `ancestors`, `chain`, `orphans`, `cycles`, `backfill`) are added in Stories 3-7 and will return a "not implemented yet" error if invoked now.
+   Currently supported: `validate`. Other v1 verbs (`impact`, `ancestors`, `chain`, `orphans`, `cycles`, `backfill`) are recognized at the argparse layer and return a clear "not yet implemented (planned for Story N)" message with exit code 2 if invoked now. They land in Stories 3-7.
+
+   The `--module <name>` flag for workspace-mode aggregation is not yet wired through the helper — it lands in Story 5 along with cross-module ID prefixing. Until then, the helper operates on a single `--root`. If the user passes `--module`, surface that this flag is Story 5 work and proceed without it.
 
 2. **Locate the helper script**.
 
@@ -97,6 +99,8 @@ The helper also reports authoring-time mistakes that are not in the canonical sp
 ```
 
 The helper is stdlib-only — no PyYAML dependency. The frontmatter parser is intentionally narrow: it handles scalars and inline-bracket lists, which is all the SPEC-0018 schema declares. Extending it to nested mappings or block-list YAML is future work that should not be undertaken speculatively.
+
+**Python version.** Requires Python 3.10+ (uses PEP 604 union syntax `str | None` and `Path.is_relative_to`).
 
 ## Cross-references
 

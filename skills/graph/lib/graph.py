@@ -6,16 +6,22 @@ Story 2 scope: file discovery, frontmatter parsing, governing-comment parsing,
 graph construction, inverse-edge derivation, validation. Verbs (impact,
 ancestors, chain, orphans, cycles, backfill) are added in Stories 3-7.
 
-Invoke: python3 graph.py <verb> [--root PATH] [--module NAME]
+Invoke: python3 graph.py <verb> [--root PATH]
 
 Currently supported verbs:
     validate    Build the graph and report validation diagnostics. Exits
                 non-zero if any hard error is detected.
 
+Other v1 verbs (impact, ancestors, chain, orphans, cycles, backfill) are
+accepted at the argparse layer and return a clear "not yet implemented"
+message rather than an opaque argparse error. They land in Stories 3-7.
+
 Exit codes:
     0  success, no hard errors (warnings may be present)
     1  hard error in graph (unresolved ID, cycle, malformed input)
-    2  invocation error (bad arguments, missing root)
+    2  invocation error (bad arguments, missing root, unimplemented verb)
+
+Requires Python 3.10+ (uses `str | None` syntax and other PEP 604 unions).
 
 This file uses stdlib only — no PyYAML dependency. The frontmatter parser is
 intentionally narrow: it handles scalars and inline-bracket lists, which is
@@ -382,6 +388,11 @@ def build_graph(root: Path, adr_dir: Path, spec_dir: Path) -> Graph:
         _ingest_edges(g, spec_id, fm, SPEC_EDGE_FIELDS)
 
     # 3. Code nodes + governance edges (from governing comment blocks).
+    # Note: code-edge type is `governed-by` — same name as the inverse derived
+    # from `governs:` frontmatter, but with `derived=False` because it's
+    # authored in code (per ADR-0020). Downstream verbs that distinguish
+    # provenance can read the source-node `kind` (code vs adr/spec) along
+    # with the `derived` flag.
     for path, ids in discover_code_edges(root):
         rel = str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
         node_id = rel
@@ -477,15 +488,22 @@ def _validate(g: Graph) -> None:
 
 
 def _validate_id_resolution(g: Graph) -> None:
-    """Every artifact ID in a frontmatter edge MUST exist as a node."""
+    """Every artifact ID in a frontmatter edge MUST exist as a node.
+
+    TODO(Story 5): When workspace mode lands, this check must understand
+    `[module]/SPEC-XXXX` cross-module references. Today the parser
+    coerces both quoted (`["[shared-lib]/SPEC-0001"]`) and unquoted
+    (`[[shared-lib]/SPEC-0001]`) forms into the same string target, so
+    the unquoted-YAML case from SPEC-0018 REQ "Workspace Mode
+    Aggregation" Scenario "Cross-module edge with unquoted YAML rejected"
+    falls out as a generic `unresolved-id` rather than the specified
+    hard error about YAML nested-list parsing. Detect-and-distinguish in
+    Story 5.
+    """
     for edge in g.edges:
         if edge.derived:
             continue
-        # Code-edge targets reference artifacts; their IDs must resolve.
-        # Frontmatter-edge targets must also resolve.
         if edge.target not in g.nodes:
-            # Cross-module IDs ([module]/SPEC-XXXX) are deferred to Story 5;
-            # in single-module mode we treat them as unresolved.
             g.add_diagnostic(
                 severity="error",
                 code="unresolved-id",
@@ -530,11 +548,11 @@ def _validate_no_cycles(g: Graph) -> None:
                 parent[child] = (node, edge_type)
                 stack.append((child, 0))
             elif c == 1:
-                cycle = _reconstruct_cycle(child, node, parent, edge_type)
+                cycle = _reconstruct_cycle(child, node, parent)
                 g.add_diagnostic(
                     severity="error",
                     code="cycle",
-                    message=f"cycle detected: {' -> '.join(cycle)}",
+                    message=f"cycle detected ({edge_type}): {' -> '.join(cycle)}",
                 )
 
     for node_id in sorted(g.nodes):
@@ -546,15 +564,20 @@ def _reconstruct_cycle(
     cycle_start: str,
     cur: str,
     parent: dict[str, tuple[str, str] | None],
-    closing_edge_type: str,
 ) -> list[str]:
-    """Walk parent chain from `cur` back to `cycle_start` to materialize the cycle."""
+    """Walk parent chain from `cur` back to `cycle_start` to materialize the cycle.
+
+    The returned list closes the cycle by repeating `cycle_start` at the end —
+    e.g., for A→B→A the result is ["A", "B", "A"], which renders as
+    "A -> B -> A" when joined. The closing edge type is reported in the
+    diagnostic message separately by the caller.
+    """
     chain = [cur]
     while cur != cycle_start and cur in parent and parent[cur] is not None:
         cur = parent[cur][0]  # type: ignore[index]
         chain.append(cur)
     chain.reverse()
-    chain.append(f"{chain[-1]} --[{closing_edge_type}]--> {cycle_start}")
+    chain.append(cycle_start)
     return chain
 
 
@@ -662,13 +685,37 @@ def print_validation(g: Graph) -> None:
 # ---------------------------------------------------------------------------
 
 
+_ALL_VERBS = ("validate", "impact", "ancestors", "chain", "orphans", "cycles", "backfill")
+_VERB_STORY = {
+    "impact": 3,
+    "ancestors": 3,
+    "chain": 3,
+    "orphans": 4,
+    "cycles": 4,
+    "backfill": 7,
+}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="graph", description=__doc__)
-    parser.add_argument("verb", choices=["validate"], help="graph verb to run")
+    parser.add_argument("verb", choices=_ALL_VERBS, help="graph verb to run")
     parser.add_argument("--root", default=".", help="project root (default: cwd)")
     parser.add_argument("--adr-dir", help="ADR directory (default: <root>/docs/adrs)")
     parser.add_argument("--spec-dir", help="spec directory (default: <root>/docs/openspec/specs)")
     args = parser.parse_args(argv)
+
+    if args.verb != "validate":
+        story = _VERB_STORY.get(args.verb, "?")
+        print(
+            f"error: verb '{args.verb}' is not yet implemented "
+            f"(planned for Story {story} of the artifact-graph chain).",
+            file=sys.stderr,
+        )
+        print(
+            "see docs/adrs/ADR-0023-frontmatter-dag-and-graph-skill.md for the roadmap.",
+            file=sys.stderr,
+        )
+        return 2
 
     root = Path(args.root).resolve()
     if not root.is_dir():
