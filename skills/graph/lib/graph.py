@@ -1066,15 +1066,171 @@ def cmd_traversal(graph: Graph, verb: str, target_id: str) -> tuple[str, int]:
 
 
 # ---------------------------------------------------------------------------
+# Diagnostic verbs (Story 4): orphans, cycles
+# ---------------------------------------------------------------------------
+
+
+def cmd_orphans(graph: Graph, scope: str | None = None) -> str:
+    """Render orphan diagnostic per SPEC-0018 REQ "Diagnostic Query Verbs".
+
+    Three orphan categories:
+      a. Source files with no governing comment block — represented by code
+         nodes already in the graph; we surface them when they have no
+         `governed-by` outgoing edges (which would mean their governing
+         comments referenced no resolvable artifacts). NOTE: Story 2's
+         walker only adds code nodes that already contain governing
+         comment blocks, so this category is currently always empty.
+         Truly comment-less files are invisible to the graph today; a
+         future story may walk the entire tree to surface them.
+      b. Specs with no implementing source files — specs that have no
+         derived `governed-by` inverse edges from any code node.
+      c. ADRs with no implementing spec — ADRs that have no derived
+         `implemented-by` inverse edges from any spec.
+
+    Output is a flat markdown table per SPEC-0018 (default for flat
+    results). Optional `scope` filter restricts category (a) to files
+    under the given subtree.
+    """
+    out: list[str] = ["# /sdd:graph orphans", ""]
+
+    code_orphans = _orphan_code(graph, scope)
+    spec_orphans = _orphan_specs(graph)
+    adr_orphans = _orphan_adrs(graph)
+
+    if not (code_orphans or spec_orphans or adr_orphans):
+        out.append("No orphans detected.")
+        out.append("")
+        return "\n".join(out)
+
+    if code_orphans:
+        out.append("## Source files without governing artifacts")
+        out.append("")
+        out.append("| File |")
+        out.append("|------|")
+        for path in code_orphans:
+            out.append(f"| `{path}` |")
+        out.append("")
+
+    if spec_orphans:
+        out.append("## Specs with no implementing code")
+        out.append("")
+        out.append("| Spec | Title |")
+        out.append("|------|-------|")
+        for spec_id in spec_orphans:
+            node = graph.nodes[spec_id]
+            title = _title_for(node).split(": ", 1)[1] if ": " in _title_for(node) else ""
+            out.append(f"| {spec_id} | {title} |")
+        out.append("")
+
+    if adr_orphans:
+        out.append("## ADRs with no implementing spec")
+        out.append("")
+        out.append("| ADR | Title |")
+        out.append("|-----|-------|")
+        for adr_id in adr_orphans:
+            node = graph.nodes[adr_id]
+            title = _title_for(node).split(": ", 1)[1] if ": " in _title_for(node) else ""
+            out.append(f"| {adr_id} | {title} |")
+        out.append("")
+
+    return "\n".join(out)
+
+
+def _orphan_code(graph: Graph, scope: str | None) -> list[str]:
+    """Source files in the graph whose governing comments resolve to nothing.
+
+    Code nodes are added by the walker only when they contain a governing
+    comment block, so the orphan candidates here are the small subset
+    where the comment exists but referenced no resolvable artifact ID.
+    """
+    orphans: list[str] = []
+    for node_id, node in sorted(graph.nodes.items()):
+        if node.kind != "code":
+            continue
+        if scope and not node_id.startswith(scope.rstrip("/") + "/") and node_id != scope:
+            continue
+        # A code node is an orphan if it has no outgoing governed-by edges
+        # (which would happen if all its comment-referenced IDs were
+        # unresolvable — already a hard error from validation).
+        outgoing = [e for e in graph.edges if e.source == node_id and not e.derived]
+        if not outgoing:
+            orphans.append(node_id)
+    return orphans
+
+
+def _orphan_specs(graph: Graph) -> list[str]:
+    """Specs that no code file governs (no derived governed-by from code)."""
+    orphans: list[str] = []
+    for node_id, node in sorted(graph.nodes.items()):
+        if node.kind != "spec":
+            continue
+        # An implementing edge would be a derived `governed-by` from a code
+        # node TO this spec; equivalently, an authored `governed-by` edge
+        # whose target is this spec from a code-kind source.
+        has_code_impl = any(
+            e.target == node_id
+            and e.type == "governed-by"
+            and graph.nodes.get(e.source) is not None
+            and graph.nodes[e.source].kind == "code"
+            for e in graph.edges
+        )
+        if not has_code_impl:
+            orphans.append(node_id)
+    return orphans
+
+
+def _orphan_adrs(graph: Graph) -> list[str]:
+    """ADRs that no spec implements (no authored implements TO this ADR)."""
+    orphans: list[str] = []
+    for node_id, node in sorted(graph.nodes.items()):
+        if node.kind != "adr":
+            continue
+        has_spec_impl = any(
+            e.target == node_id
+            and e.type == "implements"
+            and not e.derived
+            and graph.nodes.get(e.source) is not None
+            and graph.nodes[e.source].kind == "spec"
+            for e in graph.edges
+        )
+        if not has_spec_impl:
+            orphans.append(node_id)
+    return orphans
+
+
+def cmd_cycles(graph: Graph) -> str:
+    """List any cycles detected during validation.
+
+    Per SPEC-0018: "If validation passed, returns an empty result."
+    Note that this verb runs only after validation passes (the main()
+    hard-error gate). Therefore the output is always "No cycles detected."
+    in v1 — cycles would have already failed validation. The verb exists
+    primarily for tooling that wants to confirm cycle-freeness without
+    running full validation.
+    """
+    cycles = [d for d in graph.diagnostics if d.code == "cycle"]
+    out = ["# /sdd:graph cycles", ""]
+    if not cycles:
+        out.append("No cycles detected.")
+        out.append("")
+        return "\n".join(out)
+    out.append("| Cycle |")
+    out.append("|-------|")
+    for d in cycles:
+        out.append(f"| {d.message} |")
+    out.append("")
+    return "\n".join(out)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 
 _ALL_VERBS = ("validate", "impact", "ancestors", "chain", "orphans", "cycles", "backfill")
 _TRAVERSAL_VERBS = frozenset({"impact", "ancestors", "chain"})
+_DIAGNOSTIC_VERBS = frozenset({"orphans", "cycles"})
 _VERB_STORY = {
-    "orphans": 4,
-    "cycles": 4,
     "backfill": 7,
 }
 
@@ -1088,6 +1244,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", default=".", help="project root (default: cwd)")
     parser.add_argument("--adr-dir", help="ADR directory (default: <root>/docs/adrs)")
     parser.add_argument("--spec-dir", help="spec directory (default: <root>/docs/openspec/specs)")
+    parser.add_argument("--scope", help="restrict orphan code-file detection to a subtree")
     args = parser.parse_args(argv)
 
     if args.verb in _VERB_STORY:
@@ -1130,6 +1287,13 @@ def main(argv: list[str] | None = None) -> int:
         output, code = cmd_traversal(g, args.verb, args.id)
         print(output, end="")
         return code
+
+    if args.verb == "orphans":
+        print(cmd_orphans(g, scope=args.scope), end="")
+        return 0
+    if args.verb == "cycles":
+        print(cmd_cycles(g), end="")
+        return 0
 
     raise AssertionError(  # pragma: no cover — verbs/dispatch mismatch
         f"verb '{args.verb}' is in _ALL_VERBS but no dispatch path matches"
