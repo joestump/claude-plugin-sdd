@@ -1329,15 +1329,42 @@ def render_chain(graph: Graph, target_id: str) -> str:
     return "\n".join(out)
 
 
-def cmd_traversal(graph: Graph, verb: str, target_id: str) -> tuple[str, int]:
-    """Dispatch a traversal verb. Returns (output, exit_code)."""
+def cmd_traversal(
+    graph: Graph,
+    verb: str,
+    target_id: str,
+    fmt: str = "ascii",
+) -> tuple[str, int]:
+    """Dispatch a traversal verb in the requested output format.
+
+    `fmt` is one of: "ascii" (default DAG render), "table" (markdown
+    table), "mermaid" (Mermaid flowchart), "json" (versioned schema).
+    Returns (output, exit_code). Errors in JSON mode are surfaced as a
+    JSON error envelope (per SPEC-0018 § Output Formats — the contract
+    must remain machine-parseable on every code path).
+    """
     if target_id not in graph.nodes:
         suggestions = _closest_matches(graph, target_id)
+        if fmt == "json":
+            return _error_envelope_json(
+                verb=verb,
+                code="unknown-artifact",
+                message=f"unknown artifact `{target_id}`",
+                query_id=target_id,
+                suggestions=suggestions,
+            ), 1
         msg = f"error: unknown artifact `{target_id}`."
         if suggestions:
             msg += f" Closest matches: {', '.join(suggestions)}."
         msg += "\n"
         return msg, 1
+    if fmt == "json":
+        return _traversal_json(graph, verb, target_id), 0
+    if fmt == "mermaid":
+        return _traversal_mermaid(graph, verb, target_id), 0
+    if fmt == "table":
+        return _traversal_table(graph, verb, target_id), 0
+    # default: ASCII DAG
     if verb == "ancestors":
         return render_ancestors(graph, target_id), 0
     if verb == "impact":
@@ -1345,6 +1372,291 @@ def cmd_traversal(graph: Graph, verb: str, target_id: str) -> tuple[str, int]:
     if verb == "chain":
         return render_chain(graph, target_id), 0
     return f"error: unknown traversal verb `{verb}`.\n", 2
+
+
+# ---------------------------------------------------------------------------
+# Output formats (Story 6): --table, --mermaid, --json
+# ---------------------------------------------------------------------------
+
+# JSON schema_version. Bump on breaking changes; document the version's
+# shape via a versioned addendum to SPEC-0018 § Output Formats.
+JSON_SCHEMA_VERSION = "1"
+
+
+def _error_envelope_json(
+    verb: str,
+    code: str,
+    message: str,
+    query_id: str | None = None,
+    suggestions: list[str] | None = None,
+) -> str:
+    """Stable JSON error envelope. Every JSON error path uses this shape so
+    machine consumers can parse failure responses without falling back to
+    text scraping. Distinguishable from success responses by the presence
+    of a top-level `error` field instead of `results`.
+    """
+    query: dict[str, object] = {"verb": verb}
+    if query_id is not None:
+        query["id"] = query_id
+    err: dict[str, object] = {"code": code, "message": message}
+    if suggestions:
+        err["suggestions"] = suggestions
+    payload = {
+        "schema_version": JSON_SCHEMA_VERSION,
+        "query": query,
+        "error": err,
+    }
+    return _stable_json(payload)
+
+
+def _traversal_visit(
+    graph: Graph, verb: str, target_id: str
+) -> list[tuple[str, list[Edge]]]:
+    """Compute the result set for a traversal verb.
+
+    For each visited node, return the outgoing edges (authored AND
+    derived) that target either the queried artifact or another visited
+    node. Per SPEC-0018 § Output Formats schema, each result entry's
+    `edges[]` describes how the result relates back into the subgraph —
+    NOT how the queried artifact reaches it.
+
+    Returns `[(node_id, edges), ...]` in artifact-ID-ascending order;
+    edges are sorted by (target, type, derived) for byte-identical
+    reproducibility.
+    """
+    visited: set[str] = set()
+
+    def walk(node_id: str, derived: bool) -> None:
+        if derived:
+            children = _outgoing_derived(graph, node_id)
+        else:
+            children = _outgoing_authored(graph, node_id)
+        for child_id, _edge_type in children:
+            if child_id == target_id or child_id in visited:
+                continue
+            visited.add(child_id)
+            walk(child_id, derived)
+
+    if verb in ("impact", "chain"):
+        walk(target_id, derived=True)
+    if verb in ("ancestors", "chain"):
+        walk(target_id, derived=False)
+
+    in_subgraph = visited | {target_id}
+    out: list[tuple[str, list[Edge]]] = []
+    for node_id in sorted(visited):
+        edges = [
+            e for e in graph.edges
+            if e.source == node_id and e.target in in_subgraph
+        ]
+        edges.sort(key=lambda e: (e.target, e.type, e.derived))
+        out.append((node_id, edges))
+    return out
+
+
+def _traversal_json(graph: Graph, verb: str, target_id: str) -> str:
+    """Emit traversal result in stable, versioned JSON.
+
+    Schema (version 1):
+      {
+        "schema_version": "1",
+        "query": {"verb": <str>, "id": <str>},
+        "results": [
+          {
+            "id": <str>,
+            "type": "adr"|"spec"|"code",
+            "module": <str|null>,
+            "title": <str>,
+            "edges": [
+              {"type": <str>, "target": <str>, "derived": <bool>}
+            ]
+          }
+        ]
+      }
+    """
+    visits = _traversal_visit(graph, verb, target_id)
+    results: list[dict] = []
+    for node_id, edges in visits:
+        node = graph.nodes.get(node_id)
+        results.append(
+            {
+                "id": node_id,
+                "type": node.kind if node else "unknown",
+                "module": node.module if node else None,
+                "title": node.title if node else "",
+                "edges": [
+                    {
+                        "type": e.type,
+                        "target": e.target,
+                        "derived": e.derived,
+                    }
+                    for e in edges
+                ],
+            }
+        )
+    payload = {
+        "schema_version": JSON_SCHEMA_VERSION,
+        "query": {"verb": verb, "id": target_id},
+        "results": results,
+    }
+    return _stable_json(payload)
+
+
+def _stable_json(obj: object) -> str:
+    """Pretty-print JSON deterministically: sort_keys=True, 2-space indent, LF."""
+    import json as _json
+    return _json.dumps(obj, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+
+
+def _traversal_mermaid(graph: Graph, verb: str, target_id: str) -> str:
+    """Emit a Mermaid flowchart block for the traversal subgraph.
+
+    Direction matches the ASCII layout per SPEC-0018: `ancestors`
+    flows BT (bottom-to-top — queried at bottom), `impact` flows TB
+    (top-to-bottom — queried at top), `chain` is TB with the queried
+    node naturally in the middle of the rendered diagram.
+
+    Authored edges use `-->`; derived edges use `-.->`.
+    """
+    direction = "BT" if verb == "ancestors" else "TB"
+    visits = _traversal_visit(graph, verb, target_id)
+    out: list[str] = ["```mermaid", f"flowchart {direction}"]
+
+    # The queried target is always a node.
+    target = graph.nodes.get(target_id)
+    out.append(f"  {_mermaid_id(target_id)}[\"{_mermaid_label(target)}\"]")
+
+    seen_nodes: set[str] = {target_id}
+    for node_id, edges in visits:
+        if node_id not in seen_nodes:
+            node = graph.nodes.get(node_id)
+            out.append(f"  {_mermaid_id(node_id)}[\"{_mermaid_label(node)}\"]")
+            seen_nodes.add(node_id)
+        for e in edges:
+            if e.source not in seen_nodes:
+                src = graph.nodes.get(e.source)
+                out.append(f"  {_mermaid_id(e.source)}[\"{_mermaid_label(src)}\"]")
+                seen_nodes.add(e.source)
+            arrow = "-.->|" if e.derived else "-->|"
+            label_text = e.type
+            if e.derived:
+                label_text += " (derived)"
+            out.append(
+                f"  {_mermaid_id(e.source)} {arrow}\"{label_text}\"| {_mermaid_id(e.target)}"
+            )
+    out.append("```")
+    out.append("")
+    return "\n".join(out)
+
+
+def _mermaid_id(artifact_id: str) -> str:
+    """Sanitize an artifact ID for use as a Mermaid node ID.
+
+    Mermaid IDs accept `[A-Za-z0-9_]` — replace `[`, `]`, `/`, `-` with
+    `_` so module-prefixed IDs and code paths render as valid graph nodes.
+    """
+    return re.sub(r"[^A-Za-z0-9_]", "_", artifact_id)
+
+
+def _mermaid_label(node: Node | None) -> str:
+    """Mermaid-safe node label. Escapes `"` and limits length."""
+    if node is None:
+        return "?"
+    label = _title_for(node)
+    return label.replace('"', '\\"')
+
+
+def _traversal_table(graph: Graph, verb: str, target_id: str) -> str:
+    """Force a markdown table for a hierarchical traversal verb.
+
+    Per SPEC-0018 § Output Formats Scenario "--table override": columns
+    are ID, Type, edge type to the queried artifact, and authored/derived
+    indicator. Each row is one (result, edge-back-to-subgraph) pair —
+    a result with multiple edges back into the subgraph contributes
+    multiple rows.
+    """
+    target = graph.nodes.get(target_id)
+    visits = _traversal_visit(graph, verb, target_id)
+    out = [f"# /sdd:graph {verb} {target_id} (table)", ""]
+    if not visits:
+        out.append(
+            f"{_title_for(target) if target else target_id} "
+            f"has no traversal results for `{verb}`."
+        )
+        out.append("")
+        return "\n".join(out)
+    out.append("| ID | Type | Edge to | Edge type | Authored |")
+    out.append("|----|------|---------|-----------|----------|")
+    for node_id, edges in visits:
+        node = graph.nodes.get(node_id)
+        type_ = node.kind if node else "unknown"
+        for e in edges:
+            authored = "derived" if e.derived else "authored"
+            out.append(
+                f"| {_md_escape(node_id)} | {type_} "
+                f"| {_md_escape(e.target)} | {_md_escape(e.type)} | {authored} |"
+            )
+    out.append("")
+    return "\n".join(out)
+
+
+# --- Diagnostic JSON renderers ---
+
+
+def _orphans_json(graph: Graph, root: Path, scope: str | None) -> str:
+    payload = {
+        "schema_version": JSON_SCHEMA_VERSION,
+        "query": {"verb": "orphans", "scope": scope} if scope else {"verb": "orphans"},
+        "results": {
+            "code_files_without_governing": _orphan_code(graph, root, scope),
+            "specs_without_implementing_code": _orphan_specs(graph),
+            "adrs_without_implementing_spec": _orphan_adrs(graph),
+        },
+    }
+    return _stable_json(payload)
+
+
+def _cycles_json(graph: Graph) -> str:
+    cycles = [
+        {"message": d.message, "code": d.code}
+        for d in graph.diagnostics
+        if d.code == "cycle"
+    ]
+    payload = {
+        "schema_version": JSON_SCHEMA_VERSION,
+        "query": {"verb": "cycles"},
+        "results": cycles,
+    }
+    return _stable_json(payload)
+
+
+# --- Validate JSON renderer ---
+
+
+def _validate_json(graph: Graph) -> str:
+    n_authored = sum(1 for e in graph.edges if not e.derived)
+    n_derived = sum(1 for e in graph.edges if e.derived)
+    payload = {
+        "schema_version": JSON_SCHEMA_VERSION,
+        "query": {"verb": "validate"},
+        "results": {
+            "nodes": len(graph.nodes),
+            "authored_edges": n_authored,
+            "derived_edges": n_derived,
+            "diagnostics": [
+                {
+                    "severity": d.severity,
+                    "code": d.code,
+                    "message": d.message,
+                    "source_id": d.source_id,
+                    "field": d.field,
+                    "target_id": d.target_id,
+                }
+                for d in graph.diagnostics
+            ],
+        },
+    }
+    return _stable_json(payload)
 
 
 # ---------------------------------------------------------------------------
@@ -1554,7 +1866,27 @@ def main(argv: list[str] | None = None) -> int:
             "Has no effect on single-module projects."
         ),
     )
+    fmt_group = parser.add_mutually_exclusive_group()
+    fmt_group.add_argument(
+        "--table", action="store_true",
+        help="force markdown table output (overrides default ASCII DAG for hierarchical verbs)",
+    )
+    fmt_group.add_argument(
+        "--mermaid", action="store_true",
+        help="emit a Mermaid flowchart block (visual format for embedding)",
+    )
+    fmt_group.add_argument(
+        "--json", action="store_true", dest="json_out",
+        help=f"emit a stable, versioned JSON payload (schema_version={JSON_SCHEMA_VERSION!r})",
+    )
     args = parser.parse_args(argv)
+
+    fmt = (
+        "json" if args.json_out
+        else "mermaid" if args.mermaid
+        else "table" if args.table
+        else "ascii"
+    )
 
     if args.verb in _VERB_STORY:
         story = _VERB_STORY[args.verb]
@@ -1615,24 +1947,48 @@ def main(argv: list[str] | None = None) -> int:
         g = build_graph(root, adr_dir, spec_dir)
 
     if args.verb == "validate":
-        print_validation(g)
+        if fmt == "json":
+            print(_validate_json(g), end="")
+        else:
+            print_validation(g)
         return 1 if g.has_errors() else 0
 
     if g.has_errors():
-        print("error: graph has hard errors — refusing to answer query verbs.", file=sys.stderr)
-        print("run `python3 graph.py validate` to see the errors.", file=sys.stderr)
+        if fmt == "json":
+            print(
+                _error_envelope_json(
+                    verb=args.verb,
+                    code="graph-has-errors",
+                    message=(
+                        "graph has hard errors; query verbs refuse to answer "
+                        "until validation is clean. Run `validate` for details."
+                    ),
+                    query_id=args.id,
+                ),
+                end="",
+            )
+        else:
+            print("error: graph has hard errors — refusing to answer query verbs.", file=sys.stderr)
+            print("run `python3 graph.py validate` to see the errors.", file=sys.stderr)
         return 1
 
     if args.verb in _TRAVERSAL_VERBS:
-        output, code = cmd_traversal(g, args.verb, args.id)
+        output, code = cmd_traversal(g, args.verb, args.id, fmt=fmt)
         print(output, end="")
         return code
 
     if args.verb == "orphans":
-        print(cmd_orphans(g, root=root, scope=args.scope), end="")
+        if fmt == "json":
+            print(_orphans_json(g, root, args.scope), end="")
+        else:
+            # Markdown table is default for flat results; --table is a no-op.
+            print(cmd_orphans(g, root=root, scope=args.scope), end="")
         return 0
     if args.verb == "cycles":
-        print(cmd_cycles(g), end="")
+        if fmt == "json":
+            print(_cycles_json(g), end="")
+        else:
+            print(cmd_cycles(g), end="")
         return 0
 
     raise AssertionError(  # pragma: no cover — verbs/dispatch mismatch

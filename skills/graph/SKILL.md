@@ -4,7 +4,7 @@
 name: graph
 description: Build and query the SDD artifact graph. Use when the user wants to validate frontmatter edges, find impact/ancestors/chain for an ADR or spec, detect orphans or cycles, or backfill edges from prose. Currently supports validate / impact / ancestors / chain / orphans / cycles, with workspace-mode aggregation; backfill lands in Story 7.
 allowed-tools: Bash, Read, Glob, Grep, Task
-argument-hint: <verb> [<artifact-id>] [--scope <subtree>] [--module <name>]
+argument-hint: <verb> [<artifact-id>] [--scope <subtree>] [--module <name>] [--table | --mermaid | --json]
 ---
 
 # /sdd:graph — Artifact Graph Skill
@@ -118,6 +118,100 @@ Lists any cycles detected during validation. Note: traversal/diagnostic verbs on
 ### Backfill (Story 7 — not yet implemented)
 
 `backfill` will be added in Story 7. Currently returns a "not yet implemented" error.
+
+## Output formats
+
+Per SPEC-0018 § Output Formats, the helper supports four output formats. Defaults are shape-aware: hierarchical results (`chain`, `impact`, `ancestors`) default to ASCII DAG; flat results (`orphans`, `cycles`) default to markdown table. Format flags are mutually exclusive.
+
+| Flag | Format | Use case |
+|------|--------|----------|
+| (none) | Shape-default | Terminal viewing — ASCII DAG for hierarchical, markdown table for flat |
+| `--table` | Markdown table | Force tabular output on hierarchical verbs (columns: ID, Type, Edge, Authored) |
+| `--mermaid` | Mermaid flowchart | Visual format for embedding in docs / PR descriptions. Authored edges = `-->`; derived edges = `-.->` |
+| `--json` | Versioned JSON | Machine consumption — the contract for any future MCP, IDE plugin, or dashboard |
+
+### JSON schema
+
+Every JSON response includes a top-level `schema_version` field. The current version is `"1"`. Breaking changes require a new schema version and a versioned addendum to SPEC-0018 § Output Formats.
+
+**Traversal verbs** (`impact`, `ancestors`, `chain`):
+
+Each result entry's `edges[]` describes the relationship FROM the result TO the traversal subgraph (the queried artifact and any other visited node) — not the reverse. A result with both an authored `implements` edge and a derived `governed-by` edge to the queried artifact would emit both edges; a result with only one direction emits only that one.
+
+```json
+{
+  "schema_version": "1",
+  "query": {"verb": "impact", "id": "ADR-0023"},
+  "results": [
+    {
+      "id": "SPEC-0018",
+      "type": "spec",
+      "module": null,
+      "title": "SPEC-0018: Artifact Graph",
+      "edges": [
+        {"type": "implements", "target": "ADR-0023", "derived": false}
+      ]
+    }
+  ]
+}
+```
+
+**Error envelope** (any JSON-mode failure):
+
+```json
+{
+  "schema_version": "1",
+  "query": {"verb": "impact", "id": "ADR-9999"},
+  "error": {
+    "code": "unknown-artifact",
+    "message": "unknown artifact `ADR-9999`",
+    "suggestions": ["ADR-0023", "ADR-0022", "ADR-0021"]
+  }
+}
+```
+
+Distinguishable from success responses by the presence of a top-level `error` field instead of `results`. Other error codes: `graph-has-errors` (validation failed; see `validate --json` for details).
+
+**Diagnostic verb `orphans`**:
+
+```json
+{
+  "schema_version": "1",
+  "query": {"verb": "orphans"},
+  "results": {
+    "code_files_without_governing": [...],
+    "specs_without_implementing_code": [...],
+    "adrs_without_implementing_spec": [...]
+  }
+}
+```
+
+**Diagnostic verb `cycles`**:
+
+```json
+{
+  "schema_version": "1",
+  "query": {"verb": "cycles"},
+  "results": []
+}
+```
+
+**`validate`**:
+
+```json
+{
+  "schema_version": "1",
+  "query": {"verb": "validate"},
+  "results": {
+    "nodes": 41,
+    "authored_edges": 2,
+    "derived_edges": 2,
+    "diagnostics": []
+  }
+}
+```
+
+JSON output uses `sort_keys=True` and `indent=2` for byte-identical reproducibility. Each entry is fully self-describing — consumers do not need to re-read markdown to interpret the result.
 
 ## What `validate` reports
 
