@@ -681,15 +681,398 @@ def print_validation(g: Graph) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Traversal verbs (Story 3): impact, ancestors, chain
+# ---------------------------------------------------------------------------
+
+# Edge types omitted from labels when they are the "default" semantic for
+# a source/target-kind pair (SPEC-0018 § Layout rules). All other edge
+# types MUST carry inline labels.
+# Per SPEC-0018 § Layout rules: defaults are EXACTLY these three pairs. All
+# other edge types (including `implements`, `governed-by`, `enables`, etc.)
+# MUST carry an inline label.
+_DEFAULT_LABEL_RULES: dict[tuple[str, str], str] = {
+    ("adr", "spec"): "governs",
+    ("spec", "spec"): "requires",
+    ("adr", "adr"): "extends",
+}
+
+_TITLE_TRUNCATE = 60
+
+
+def _title_for(node: Node) -> str:
+    """Render `ID: normalized truncated title` per SPEC-0018 § Layout rules."""
+    if node.kind == "code":
+        return node.id
+    title = re.sub(r"\s+", " ", node.title).strip()
+    # Strip leading "ADR-XXXX: " / "SPEC-XXXX: " — we render the ID separately.
+    title = re.sub(r"^(ADR|SPEC)-\d{4}:\s*", "", title)
+    if len(title) > _TITLE_TRUNCATE:
+        title = title[: _TITLE_TRUNCATE - 1] + "…"
+    return f"{node.id}: {title}" if title else node.id
+
+
+def _edge_label(
+    graph: Graph,
+    source_id: str,
+    target_id: str,
+    edge_type: str,
+    derived: bool,
+) -> str:
+    """Bracketed label for the edge from `source_id` to `target_id`.
+
+    Returns "" when the edge type is the default for the source/target kind
+    pair AND the edge is authored (not derived). Derived edges always carry
+    a label so the (derived) annotation is visible.
+    """
+    src = graph.nodes.get(source_id)
+    tgt = graph.nodes.get(target_id)
+    src_kind = src.kind if src else "?"
+    tgt_kind = tgt.kind if tgt else "?"
+    default = _DEFAULT_LABEL_RULES.get((src_kind, tgt_kind))
+    parts: list[str] = []
+    if edge_type and edge_type != default:
+        parts.append(edge_type)
+    if derived:
+        parts.append("derived")
+    return f" [{', '.join(parts)}]" if parts else ""
+
+
+def _outgoing_authored(graph: Graph, node_id: str) -> list[tuple[str, str]]:
+    """Authored outgoing edges (forward direction). Sorted by (target, type)."""
+    src = graph.nodes.get(node_id)
+    if src is not None and src.kind == "code":
+        return []  # code nodes have only their governing edges, treated separately
+    out = [(e.target, e.type) for e in graph.edges if e.source == node_id and not e.derived]
+    return sorted(out)
+
+
+def _outgoing_derived(graph: Graph, node_id: str) -> list[tuple[str, str]]:
+    """Derived outgoing edges (inverse direction). Sorted by (target, type)."""
+    out = [(e.target, e.type) for e in graph.edges if e.source == node_id and e.derived]
+    return sorted(out)
+
+
+_ID_NUMBER_RE = re.compile(r"^(ADR|SPEC)-(\d+)$", re.IGNORECASE)
+
+
+def _normalize_id(query: str) -> str:
+    """Zero-pad the numeric portion of an artifact ID for fair comparison.
+
+    Turns `ADR-99` into `ADR-0099` and `spec-7` into `SPEC-0007`. Returns
+    the input upper-cased if it doesn't match the pattern.
+    """
+    m = _ID_NUMBER_RE.match(query)
+    if not m:
+        return query.upper()
+    prefix, num = m.group(1).upper(), m.group(2)
+    return f"{prefix}-{int(num):04d}"
+
+
+def _closest_matches(graph: Graph, query: str, n: int = 3) -> list[str]:
+    """Suggest close matches for an unknown ID.
+
+    Tiered scoring:
+      0. exact match (after upper-case + zero-pad normalization)
+      1. prefix match
+      2. substring match
+      3. for ID-shape queries (ADR/SPEC + number), numeric proximity
+         within the same prefix family
+    """
+    candidates = sorted(graph.nodes.keys())
+    qu = query.upper()
+    qn = _normalize_id(query)
+    q_match = _ID_NUMBER_RE.match(query)
+    q_prefix = q_match.group(1).upper() if q_match else None
+    q_num = int(q_match.group(2)) if q_match else None
+
+    scored: list[tuple[int, int, str]] = []
+    for c in candidates:
+        cu = c.upper()
+        if cu == qu or cu == qn:
+            scored.append((0, 0, c))
+            continue
+        if cu.startswith(qu) or cu.startswith(qn):
+            scored.append((1, 0, c))
+            continue
+        if qu in cu or qn in cu:
+            scored.append((2, 0, c))
+            continue
+        c_match = _ID_NUMBER_RE.match(c)
+        if c_match and q_match and c_match.group(1).upper() == q_prefix:
+            c_num = int(c_match.group(2))
+            scored.append((3, abs(c_num - q_num), c))
+    scored.sort()
+    return [c for _, _, c in scored[:n]]
+
+
+
+
+# --- Connector glyphs (U+2500–U+257F block, per SPEC-0018) ---
+
+def _connector(is_last: bool, derived: bool) -> str:
+    """Return the branch-and-arrow connector for a child line."""
+    branch = "└" if is_last else "├"
+    arrow = "─ ─►" if derived else "──►"
+    return branch + arrow
+
+
+def _continuation(is_last: bool) -> str:
+    """Return the prefix continuation for a subtree below a child line.
+
+    Per SPEC-0018 § Reproducibility: exactly two spaces of indentation per
+    nesting level. The branch glyph occupies one of those when present.
+    """
+    return "  " if is_last else "│ "
+
+
+# --- Top-down tree renderer (used by impact, and by chain's lower half) ---
+
+
+def _render_subtree(
+    graph: Graph,
+    node_id: str,
+    follow: str,  # "authored" or "derived"
+    prefix: str,
+    out: list[str],
+    visited: set[str],
+) -> None:
+    if follow == "authored":
+        children = _outgoing_authored(graph, node_id)
+    else:
+        children = _outgoing_derived(graph, node_id)
+    for i, (child_id, edge_type) in enumerate(children):
+        is_last = i == len(children) - 1
+        derived = follow == "derived"
+        connector = _connector(is_last, derived)
+        label = _edge_label(graph, node_id, child_id, edge_type, derived)
+        child_node = graph.nodes.get(child_id)
+        title = _title_for(child_node) if child_node else child_id
+        if child_id in visited:
+            out.append(f"{prefix}{connector}{label} {title} (already shown)")
+            continue
+        visited.add(child_id)
+        out.append(f"{prefix}{connector}{label} {title}")
+        _render_subtree(graph, child_id, follow, prefix + _continuation(is_last), out, visited)
+
+
+def render_impact(graph: Graph, target_id: str) -> str:
+    """Render top-down tree: target at top, dependents below (SPEC-0018)."""
+    target = graph.nodes[target_id]
+    if not _outgoing_derived(graph, target_id):
+        return (
+            f"# /sdd:graph impact {target_id}\n\n"
+            f"{_title_for(target)} has no impact — nothing in the graph depends on it.\n"
+        )
+    out = [f"# /sdd:graph impact {target_id}", "", _title_for(target)]
+    visited: set[str] = {target_id}
+    _render_subtree(graph, target_id, follow="derived", prefix="", out=out, visited=visited)
+    out.append("")
+    return "\n".join(out)
+
+
+# --- Vertical-chain renderer (used by ancestors, and by chain's upper half) ---
+
+
+def _render_chain_path(
+    graph: Graph,
+    path: list[tuple[str, str, bool]],
+    omit_last_title: bool = False,
+) -> str:
+    """Render one path as a vertical chain.
+
+    `path` is ordered top-down: most-distant ancestor first, queried target
+    last. Each entry is (node_id, edge_type_FROM_THIS_TO_NEXT, derived).
+    The last entry has empty edge fields.
+
+    When `omit_last_title=True`, the last node's title line is suppressed
+    (used by the chain verb to avoid duplicating the queried-target name —
+    the trailing `│` continuation flows visually into the middle section).
+
+    Per SPEC-0018 § Layout rules, the `▼` glyph is reserved for diagnostic
+    verbs and MUST NOT appear in traversal output. Vertical flow is shown
+    by `│` (authored) or `┆` (derived) glyphs only.
+    """
+    lines: list[str] = []
+    for i, (nid, edge_type_to_next, derived_to_next) in enumerate(path):
+        if not (omit_last_title and i == len(path) - 1):
+            node = graph.nodes.get(nid)
+            lines.append(_title_for(node) if node else nid)
+        if i < len(path) - 1:
+            next_id = path[i + 1][0]
+            label = _edge_label(graph, nid, next_id, edge_type_to_next, derived_to_next)
+            line_char = "┆" if derived_to_next else "│"
+            lines.append(f"{line_char}{label}")
+            lines.append(line_char)
+    return "\n".join(lines)
+
+
+def _enumerate_ancestor_paths(
+    graph: Graph,
+    target_id: str,
+    max_depth: int = 32,
+) -> list[list[tuple[str, str, bool]]]:
+    """Return paths from target to each leaf, formatted for vertical render.
+
+    Each path is top-down: most-distant ancestor first, target last. Edge
+    type and derived flag are stored on the *source* of each edge (i.e.,
+    the entry above the arrow), reflecting the visual flow. The final
+    (target) entry has empty edge fields.
+    """
+    raw_paths: list[list[tuple[str, str, bool]]] = []
+
+    def dfs(node: str, path: list[tuple[str, str, bool]]) -> None:
+        children = _outgoing_authored(graph, node)
+        if not children or len(path) >= max_depth:
+            raw_paths.append(list(path))
+            return
+        for child_id, edge_type in children:
+            if any(step[0] == child_id for step in path):
+                continue
+            path.append((child_id, edge_type, False))
+            dfs(child_id, path)
+            path.pop()
+
+    # Start from target; collect forward paths target → ancestor1 → ancestor2 → ...
+    # Each entry is (node_id, edge_type_to_child, False); the final entry of
+    # each leaf path has empty edge fields.
+    dfs(target_id, [(target_id, "", False)])
+    raw_paths.sort(key=lambda p: tuple((s[0], s[1]) for s in p))
+
+    # Convert each raw forward path into a top-down (ancestor → target) form.
+    # Forward path stores edges as (current_id, edge_type_to_child). To
+    # render top-down with target at bottom, we reverse, and shift each
+    # entry's edge info so that entry[i].edge describes the edge FROM
+    # entry[i] TO entry[i+1] in the rendered (top-down) order. Because the
+    # rendered direction is the inverse of the forward direction, we
+    # convert the original edge type to its derived inverse and mark it as
+    # derived (the visual arrow flows ancestor → target, which is the
+    # inverse of the authored relationship).
+    rendered: list[list[tuple[str, str, bool]]] = []
+    for fwd in raw_paths:
+        if len(fwd) <= 1:
+            continue
+        rev = list(reversed(fwd))
+        # rev[0] is the leaf (most-distant ancestor); rev[-1] is target.
+        # In the forward path, edge_type at fwd[i] refers to the edge
+        # fwd[i-1] → fwd[i]. After reversal, that same edge corresponds to
+        # rev[i+1] → rev[i] visually — i.e., its inverse.
+        out_path: list[tuple[str, str, bool]] = []
+        for i, (nid, _et, _d) in enumerate(rev):
+            if i == len(rev) - 1:
+                out_path.append((nid, "", False))
+                continue
+            # Edge from rev[i] to rev[i+1] is the inverse of fwd[len-1-i].edge_type.
+            forward_edge_type = rev[i][1]  # the original edge type at this raw position
+            inverse_type = INVERSE_OF.get(forward_edge_type, forward_edge_type)
+            out_path.append((nid, inverse_type, True))
+        rendered.append(out_path)
+    return rendered
+
+
+def render_ancestors(graph: Graph, target_id: str) -> str:
+    """Render ancestor paths with target at BOTTOM of a single diagram (SPEC-0018).
+
+    Each enumerated path is rendered top-down with its title sequence and
+    edge labels, then a shared `│` continuation drops into the queried
+    target which appears once at the bottom. For multi-parent cases (the
+    queried node has multiple direct ancestors), each ancestor stack is
+    visually separated by a blank line above the shared queried-line.
+
+    The spec's "single contiguous diagram" wording is honored by emitting
+    the queried node exactly once. The vertical-stack approximation of
+    multi-parent fan-in (vs. a side-by-side merging Y) is a tractable
+    ASCII-only rendering — see PR description for the trade-off.
+    """
+    target = graph.nodes[target_id]
+    paths = _enumerate_ancestor_paths(graph, target_id)
+    if not paths:
+        return (
+            f"# /sdd:graph ancestors {target_id}\n\n"
+            f"{_title_for(target)} has no declared ancestors.\n"
+        )
+    chunks = [_render_chain_path(graph, p, omit_last_title=True) for p in paths]
+    body = "\n\n".join(chunks)
+    return (
+        f"# /sdd:graph ancestors {target_id}\n\n"
+        f"{body}\n"
+        f"{_title_for(target)} (queried)\n"
+    )
+
+
+def render_chain(graph: Graph, target_id: str) -> str:
+    """Render bidirectional view as a single contiguous diagram.
+
+    Per SPEC-0018 § Layout rules: queried artifact in the middle, ancestors
+    above, dependents below. The two regions are separated by a single
+    `│` continuation through the queried node — NOT by `▼` and NOT by
+    markdown subheadings.
+
+    Layout:
+        {ancestor stacks rendered top-down with edge labels}
+        {│ continuation}
+        {queried artifact (queried)}
+        {│ continuation if there is impact}
+        {impact tree top-down}
+    """
+    target = graph.nodes[target_id]
+    has_ancestors = bool(_outgoing_authored(graph, target_id))
+    has_impact = bool(_outgoing_derived(graph, target_id))
+
+    out: list[str] = [f"# /sdd:graph chain {target_id}", ""]
+
+    if has_ancestors:
+        paths = _enumerate_ancestor_paths(graph, target_id)
+        for p in paths:
+            if len(p) <= 1:
+                continue
+            out.append(_render_chain_path(graph, p, omit_last_title=True))
+            out.append("")  # blank between ancestor stacks
+
+    out.append(f"{_title_for(target)} (queried)")
+
+    if has_impact:
+        out.append("│")
+        body: list[str] = []
+        visited: set[str] = {target_id}
+        _render_subtree(graph, target_id, follow="derived", prefix="", out=body, visited=visited)
+        out.extend(body)
+
+    out.append("")
+
+    if not has_ancestors and not has_impact:
+        # Replace the trailing blank with the leaf message.
+        out[-1] = f"{_title_for(target)} is a leaf in the graph (no ancestors, no impact)."
+        out.append("")
+
+    return "\n".join(out)
+
+
+def cmd_traversal(graph: Graph, verb: str, target_id: str) -> tuple[str, int]:
+    """Dispatch a traversal verb. Returns (output, exit_code)."""
+    if target_id not in graph.nodes:
+        suggestions = _closest_matches(graph, target_id)
+        msg = f"error: unknown artifact `{target_id}`."
+        if suggestions:
+            msg += f" Closest matches: {', '.join(suggestions)}."
+        msg += "\n"
+        return msg, 1
+    if verb == "ancestors":
+        return render_ancestors(graph, target_id), 0
+    if verb == "impact":
+        return render_impact(graph, target_id), 0
+    if verb == "chain":
+        return render_chain(graph, target_id), 0
+    return f"error: unknown traversal verb `{verb}`.\n", 2
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 
 _ALL_VERBS = ("validate", "impact", "ancestors", "chain", "orphans", "cycles", "backfill")
+_TRAVERSAL_VERBS = frozenset({"impact", "ancestors", "chain"})
 _VERB_STORY = {
-    "impact": 3,
-    "ancestors": 3,
-    "chain": 3,
     "orphans": 4,
     "cycles": 4,
     "backfill": 7,
@@ -699,13 +1082,16 @@ _VERB_STORY = {
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="graph", description=__doc__)
     parser.add_argument("verb", choices=_ALL_VERBS, help="graph verb to run")
+    parser.add_argument(
+        "id", nargs="?", help="artifact ID (required for impact, ancestors, chain)"
+    )
     parser.add_argument("--root", default=".", help="project root (default: cwd)")
     parser.add_argument("--adr-dir", help="ADR directory (default: <root>/docs/adrs)")
     parser.add_argument("--spec-dir", help="spec directory (default: <root>/docs/openspec/specs)")
     args = parser.parse_args(argv)
 
-    if args.verb != "validate":
-        story = _VERB_STORY.get(args.verb, "?")
+    if args.verb in _VERB_STORY:
+        story = _VERB_STORY[args.verb]
         print(
             f"error: verb '{args.verb}' is not yet implemented "
             f"(planned for Story {story} of the artifact-graph chain).",
@@ -717,6 +1103,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    if args.verb in _TRAVERSAL_VERBS and not args.id:
+        print(f"error: verb '{args.verb}' requires an artifact ID argument.", file=sys.stderr)
+        print(f"usage: python3 graph.py {args.verb} <ADR-XXXX | SPEC-XXXX>", file=sys.stderr)
+        return 2
+
     root = Path(args.root).resolve()
     if not root.is_dir():
         print(f"error: --root {root} is not a directory", file=sys.stderr)
@@ -725,8 +1116,24 @@ def main(argv: list[str] | None = None) -> int:
     spec_dir = Path(args.spec_dir).resolve() if args.spec_dir else root / "docs" / "openspec" / "specs"
 
     g = build_graph(root, adr_dir, spec_dir)
-    print_validation(g)
-    return 1 if g.has_errors() else 0
+
+    if args.verb == "validate":
+        print_validation(g)
+        return 1 if g.has_errors() else 0
+
+    if g.has_errors():
+        print("error: graph has hard errors — refusing to answer query verbs.", file=sys.stderr)
+        print("run `python3 graph.py validate` to see the errors.", file=sys.stderr)
+        return 1
+
+    if args.verb in _TRAVERSAL_VERBS:
+        output, code = cmd_traversal(g, args.verb, args.id)
+        print(output, end="")
+        return code
+
+    raise AssertionError(  # pragma: no cover — verbs/dispatch mismatch
+        f"verb '{args.verb}' is in _ALL_VERBS but no dispatch path matches"
+    )
 
 
 if __name__ == "__main__":

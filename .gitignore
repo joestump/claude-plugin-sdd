@@ -6,3 +6,5 @@ docs-site/node_modules/
 docs-site/build/
 docs-site/.docusaurus/
 templates/docs-generated/
+__pycache__/
+*.pyc

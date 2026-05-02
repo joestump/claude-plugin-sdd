@@ -2,9 +2,9 @@
 
 ---
 name: graph
-description: Build and query the SDD artifact graph. Use when the user wants to validate frontmatter edges, find impact/ancestors/chain for an ADR or spec, detect orphans or cycles, or backfill edges from prose. Story 2 ships the `validate` verb; traversal verbs land in subsequent stories.
+description: Build and query the SDD artifact graph. Use when the user wants to validate frontmatter edges, find impact/ancestors/chain for an ADR or spec, detect orphans or cycles, or backfill edges from prose. Currently supports validate / impact / ancestors / chain; orphans/cycles/backfill land in later stories.
 allowed-tools: Bash, Read, Glob, Grep, Task
-argument-hint: validate
+argument-hint: <verb> [<artifact-id>]
 ---
 
 # /sdd:graph — Artifact Graph Skill
@@ -23,9 +23,11 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
 
 1. **Parse the verb and flags from `$ARGUMENTS`**.
 
-   Currently supported: `validate`. Other v1 verbs (`impact`, `ancestors`, `chain`, `orphans`, `cycles`, `backfill`) are recognized at the argparse layer and return a clear "not yet implemented (planned for Story N)" message with exit code 2 if invoked now. They land in Stories 3-7.
+   Currently supported: `validate`, `impact <id>`, `ancestors <id>`, `chain <id>`. Diagnostic verbs (`orphans`, `cycles`) and `backfill` are recognized at the argparse layer and return a clear "not yet implemented (planned for Story N)" message with exit code 2. They land in Stories 4 and 7.
 
-   The `--module <name>` flag for workspace-mode aggregation is not yet wired through the helper — it lands in Story 5 along with cross-module ID prefixing. Until then, the helper operates on a single `--root`. If the user passes `--module`, surface that this flag is Story 5 work and proceed without it.
+   Traversal verbs (`impact`, `ancestors`, `chain`) require an artifact ID argument (e.g., `ADR-0023`, `SPEC-0018`). If the ID is unknown, the helper exits 1 and suggests the closest matches.
+
+   The `--module <name>` flag for workspace-mode aggregation is not yet wired through the helper — it lands in Story 5 along with cross-module ID prefixing.
 
 2. **Locate the helper script**.
 
@@ -36,11 +38,20 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
    For `validate`:
 
    ```bash
-   python3 {skill-dir}/lib/graph.py validate --root {project-root} --adr-dir {adr-dir} --spec-dir {spec-dir}
+   python3 {skill-dir}/lib/graph.py validate --root {project-root} [--adr-dir DIR] [--spec-dir DIR]
+   ```
+
+   For traversal verbs:
+
+   ```bash
+   python3 {skill-dir}/lib/graph.py impact {ARTIFACT-ID} --root {project-root}
+   python3 {skill-dir}/lib/graph.py ancestors {ARTIFACT-ID} --root {project-root}
+   python3 {skill-dir}/lib/graph.py chain {ARTIFACT-ID} --root {project-root}
    ```
 
    - `{project-root}` is the working directory (typically `.`).
    - `{adr-dir}` and `{spec-dir}` are passed only if Step 0 resolved a non-default location (e.g., a workspace module). For a single-module project, omit them and the helper defaults to `docs/adrs/` and `docs/openspec/specs/` under the root.
+   - Traversal verbs refuse to run if validation has hard errors. Run `validate` first if the user reports unexpected output.
 
 4. **Present the helper's stdout to the user verbatim**.
 
@@ -51,6 +62,34 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
    - Exit `0`: graph validates clean (no hard errors). Warnings, if any, are visible in the output.
    - Exit `1`: hard errors. The graph is not queryable until they are fixed. Do not proceed to other verbs.
    - Exit `2`: invocation error (bad arguments, missing root). This is a skill bug — surface it as such.
+
+## Verbs
+
+### `validate`
+
+Builds the graph and reports diagnostics. No ID argument required.
+
+### `impact <id>`
+
+Renders a top-down ASCII DAG: queried artifact at the top, dependents flowing below via derived inverse edges. Direct dependents (one hop) are immediate children; transitive dependents are nested. Each edge is labeled with its derived inverse type and a `(derived)` annotation; the connector uses a dashed arrow `─ ─►`. Default edge types for the source/target kind pair are unlabeled to reduce visual noise (e.g., `governs` for ADR→spec, `implements` for spec→ADR).
+
+### `ancestors <id>`
+
+Renders ancestor paths in a single contiguous diagram with the queried artifact at the bottom (per SPEC-0018 § Layout rules). Each enumerated leaf-to-target path is rendered as a top-down chain (most-distant ancestor first, edge labels and `┆` continuation glyphs flowing down), separated by a blank line from the next path, with the queried artifact appearing exactly once at the bottom. The vertical connector uses the dashed glyph `┆` because the visual flow is the inverse of the authored relationship; edge labels reflect the derived inverse type with the `(derived)` annotation.
+
+The vertical-stack approximation of multi-parent fan-in (vs. a side-by-side merging Y) is a tractable ASCII-only rendering — multi-parent inputs read as a sequence of independent ancestor paths feeding into the shared queried node.
+
+### `chain <id>`
+
+Single contiguous bidirectional diagram: ancestors above (rendered as top-down chains with the target's title suppressed at the bottom of each), the queried artifact in the middle (rendered once as `<title> (queried)`), and impact below (rendered as a top-down indented tree). The two regions are visually joined by a single `│` continuation through the queried node — no markdown subheadings, no `▼` glyphs.
+
+### Diagnostic verbs (Story 4 — not yet implemented)
+
+`orphans` and `cycles` will be added in Story 4. Currently they return a "not yet implemented" error.
+
+### Backfill (Story 7 — not yet implemented)
+
+`backfill` will be added in Story 7. Currently returns a "not yet implemented" error.
 
 ## What `validate` reports
 
