@@ -1,3 +1,7 @@
+---
+implements: [ADR-0004, ADR-0006]
+---
+
 # SPEC-0004: Documentation Site Generation
 
 ## Overview

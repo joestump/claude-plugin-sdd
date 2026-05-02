@@ -1,3 +1,7 @@
+---
+implements: [ADR-0021]
+---
+
 # SPEC-0017: Skill Evaluation and CI Testing
 
 ## Overview

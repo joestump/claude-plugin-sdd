@@ -1,3 +1,7 @@
+---
+implements: [ADR-0001]
+---
+
 # SPEC-0001: Drift Introspection Skills
 
 ## Overview

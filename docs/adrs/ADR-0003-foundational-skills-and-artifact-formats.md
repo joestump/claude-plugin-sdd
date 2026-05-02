@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-02-14
 decision-makers: Plugin maintainers
+related: [ADR-0001, ADR-0002]
 ---
 
 # ADR-0003: Foundational Design Artifact Formats and Core Skills

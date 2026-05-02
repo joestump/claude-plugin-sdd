@@ -1,3 +1,7 @@
+---
+implements: [ADR-0005]
+---
+
 # SPEC-0005: Codebase Discovery
 
 ## Overview

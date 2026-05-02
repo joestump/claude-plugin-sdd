@@ -2,6 +2,8 @@
 status: accepted
 date: 2026-02-20
 decision-makers: joestump
+extends: [ADR-0009]
+related: [ADR-0008]
 ---
 
 # ADR-0010: Parallel PR Review and Response Skill

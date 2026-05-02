@@ -799,7 +799,23 @@ def _validate_id_resolution(g: Graph) -> None:
 
 
 def _validate_no_cycles(g: Graph) -> None:
-    """Detect cycles in DAG-required edge types via Tarjan-style DFS."""
+    """Detect cycles in DAG-required edge types via Tarjan-style DFS.
+
+    `governs` (ADR→SPEC) and `implements` (SPEC→ADR) are semantic inverses
+    describing the same relationship from opposite ends. Authoring both is
+    valid (and shown in SPEC-0018's own JSON example), but my detector
+    would otherwise treat the round-trip A→governs→B→implements→A as a
+    cycle. To honor dual authoring, an authored `governs` edge is omitted
+    from the cycle-detection adjacency when a matching authored `implements`
+    edge exists in the opposite direction; the implements edge alone
+    covers the relationship.
+    """
+    # Pre-compute the set of (spec, adr) pairs covered by authored `implements`.
+    implements_pairs: set[tuple[str, str]] = {
+        (e.source, e.target)
+        for e in g.edges
+        if e.type == "implements" and not e.derived
+    }
     # Build adjacency for acyclic-required edges only (ignores `related`).
     adj: dict[str, list[tuple[str, str]]] = {}
     for edge in g.edges:
@@ -807,6 +823,8 @@ def _validate_no_cycles(g: Graph) -> None:
             continue
         if edge.target not in g.nodes:
             continue  # already reported by id-resolution
+        if edge.type == "governs" and (edge.target, edge.source) in implements_pairs:
+            continue  # semantic-inverse pair already covered by implements
         adj.setdefault(edge.source, []).append((edge.target, edge.type))
 
     color: dict[str, int] = {}  # 0=white, 1=gray, 2=black
@@ -1020,17 +1038,35 @@ def _edge_label(
 
 
 def _outgoing_authored(graph: Graph, node_id: str) -> list[tuple[str, str]]:
-    """Authored outgoing edges (forward direction). Sorted by (target, type)."""
+    """Authored outgoing edges (forward direction). Sorted by (target, type).
+
+    Excludes `related` (weak association) — this edge type carries no
+    dependency semantics, so propagating through it during transitive
+    traversal produces noise without informational value. `related` edges
+    still appear in `validate`, `orphans`, and `--json` output; they're
+    just not walked by `impact`/`ancestors`/`chain`.
+    """
     src = graph.nodes.get(node_id)
     if src is not None and src.kind == "code":
         return []  # code nodes have only their governing edges, treated separately
-    out = [(e.target, e.type) for e in graph.edges if e.source == node_id and not e.derived]
+    out = [
+        (e.target, e.type) for e in graph.edges
+        if e.source == node_id and not e.derived and e.type != "related"
+    ]
     return sorted(out)
 
 
 def _outgoing_derived(graph: Graph, node_id: str) -> list[tuple[str, str]]:
-    """Derived outgoing edges (inverse direction). Sorted by (target, type)."""
-    out = [(e.target, e.type) for e in graph.edges if e.source == node_id and e.derived]
+    """Derived outgoing edges (inverse direction). Sorted by (target, type).
+
+    Excludes the symmetric `related` derived inverse for the same reason
+    as `_outgoing_authored`: weak associations don't carry dependency
+    semantics worth transitive traversal.
+    """
+    out = [
+        (e.target, e.type) for e in graph.edges
+        if e.source == node_id and e.derived and e.type != "related"
+    ]
     return sorted(out)
 
 

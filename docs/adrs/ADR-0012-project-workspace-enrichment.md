@@ -2,6 +2,8 @@
 status: accepted
 date: 2026-02-21
 decision-makers: joestump
+extends: [ADR-0009, ADR-0011]
+related: [ADR-0008]
 ---
 
 # ADR-0012: Project Workspace Enrichment

@@ -1,3 +1,7 @@
+---
+implements: [ADR-0009]
+---
+
 # SPEC-0008: Retroactive Issue Management
 
 ## Overview

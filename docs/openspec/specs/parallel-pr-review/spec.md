@@ -1,3 +1,7 @@
+---
+implements: [ADR-0010]
+---
+
 # SPEC-0009: Parallel PR Review and Response
 
 ## Overview

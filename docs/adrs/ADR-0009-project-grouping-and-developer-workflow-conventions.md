@@ -2,6 +2,9 @@
 status: accepted
 date: 2026-02-20
 decision-makers: joestump
+extends: [ADR-0008]
+governs: [SPEC-0007]
+related: [ADR-0003]
 ---
 
 # ADR-0009: Project Grouping and Developer Workflow Conventions

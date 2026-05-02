@@ -1,3 +1,7 @@
+---
+implements: [ADR-0002]
+---
+
 # SPEC-0002: Initialization and Context Priming
 
 ## Overview

@@ -1,3 +1,7 @@
+---
+implements: [ADR-0007, ADR-0008]
+---
+
 # SPEC-0006: Tasks.md Fallback for Trackerless Projects
 
 ## Overview

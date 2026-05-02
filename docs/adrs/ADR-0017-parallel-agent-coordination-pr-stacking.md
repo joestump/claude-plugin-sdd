@@ -2,6 +2,8 @@
 status: proposed
 date: 2026-03-27
 decision-makers: joestump
+governs: [SPEC-0015]
+related: [ADR-0008, ADR-0009, ADR-0010, ADR-0015]
 ---
 
 # ADR-0017: Parallel Agent Coordination and PR Stacking

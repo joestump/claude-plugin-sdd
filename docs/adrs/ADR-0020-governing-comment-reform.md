@@ -2,6 +2,7 @@
 status: proposed
 date: 2026-03-27
 decision-makers: joestump
+related: [ADR-0017]
 ---
 
 # ADR-0020: Governing Comment Reform

@@ -2,6 +2,8 @@
 status: accepted
 date: 2026-02-20
 decision-makers: joestump
+governs: [SPEC-0007]
+related: [ADR-0003, ADR-0007]
 ---
 
 # ADR-0008: Standalone Sprint Planning Skill

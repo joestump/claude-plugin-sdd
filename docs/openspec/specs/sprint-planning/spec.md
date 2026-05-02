@@ -1,3 +1,7 @@
+---
+implements: [ADR-0008]
+---
+
 # SPEC-0007: Sprint Planning
 
 ## Overview

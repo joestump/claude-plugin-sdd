@@ -2,6 +2,8 @@
 status: accepted
 date: 2026-03-01
 decision-makers: joestump
+governs: [SPEC-0001, SPEC-0013]
+related: [ADR-0001, ADR-0013]
 ---
 
 # ADR-0014: Scrum Mode for `/sdd:audit` — Team-Triaged Drift Remediation

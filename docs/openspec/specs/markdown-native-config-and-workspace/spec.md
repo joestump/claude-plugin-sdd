@@ -1,3 +1,7 @@
+---
+implements: [ADR-0015, ADR-0016]
+---
+
 # SPEC-0014: Markdown-Native Configuration and Workspace Mode
 
 ## Overview

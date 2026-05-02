@@ -1,3 +1,7 @@
+---
+implements: [ADR-0011, ADR-0012]
+---
+
 # SPEC-0011: Project Workspace Enrichment
 
 ## Overview

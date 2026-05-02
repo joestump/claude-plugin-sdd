@@ -1,3 +1,7 @@
+---
+implements: [ADR-0013]
+---
+
 # SPEC-0012: Scrum Mode Sprint Planning
 
 ## Overview

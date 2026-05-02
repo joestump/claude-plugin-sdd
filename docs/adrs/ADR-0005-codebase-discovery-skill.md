@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-02-14
 decision-makers: Joe Stump, Plugin maintainers
+related: [ADR-0001, ADR-0003]
 ---
 
 # ADR-0005: Add a Codebase Discovery Skill for Reverse-Engineering Design Artifacts

@@ -8,3 +8,4 @@ docs-site/.docusaurus/
 templates/docs-generated/
 __pycache__/
 *.pyc
+.sdd-graph-backfill-skip

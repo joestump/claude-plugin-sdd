@@ -2,6 +2,9 @@
 status: accepted
 date: 2026-02-28
 decision-makers: joestump
+extends: [ADR-0008, ADR-0009]
+governs: [SPEC-0012]
+related: [ADR-0011, ADR-0012]
 ---
 
 # ADR-0013: Scrum Mode for `/sdd:plan` — Team-Groomed Sprint Planning

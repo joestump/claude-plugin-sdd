@@ -1,3 +1,7 @@
+---
+implements: [ADR-0017]
+---
+
 # SPEC-0015: Parallel Agent Coordination
 
 ## Overview

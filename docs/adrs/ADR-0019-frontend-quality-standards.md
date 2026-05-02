@@ -2,6 +2,8 @@
 status: proposed
 date: 2026-03-27
 decision-makers: joestump
+governs: [SPEC-0016]
+related: [ADR-0001, ADR-0017, ADR-0018]
 ---
 
 # ADR-0019: Frontend Quality Standards — Accessibility, Testing, and Template Quality Integrated into Existing Skills

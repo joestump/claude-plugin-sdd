@@ -2,6 +2,7 @@
 status: proposed
 date: 2026-03-27
 decision-makers: Joe Stump
+related: [ADR-0017, ADR-0018]
 ---
 
 # ADR-0021: Skill Evaluation and CI Testing Framework

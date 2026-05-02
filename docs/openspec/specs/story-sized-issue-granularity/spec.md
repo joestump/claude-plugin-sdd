@@ -1,3 +1,7 @@
+---
+implements: [ADR-0011]
+---
+
 # SPEC-0010: Story-Sized Issue Granularity
 
 ## Overview

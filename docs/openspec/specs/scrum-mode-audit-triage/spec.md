@@ -1,3 +1,7 @@
+---
+implements: [ADR-0014]
+---
+
 # SPEC-0013: Scrum Mode Audit Triage
 
 ## Overview

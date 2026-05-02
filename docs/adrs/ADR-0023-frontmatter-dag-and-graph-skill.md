@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-05-01
 decision-makers: Joe Stump
+related: [ADR-0001, ADR-0014, ADR-0015, ADR-0016, ADR-0020]
 ---
 
 # ADR-0023: Frontmatter DAG and `/sdd:graph` Skill

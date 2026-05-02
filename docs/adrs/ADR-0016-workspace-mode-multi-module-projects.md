@@ -2,6 +2,8 @@
 status: proposed
 date: 2026-03-27
 decision-makers: joestump
+governs: [SPEC-0014]
+related: [ADR-0015]
 ---
 
 # ADR-0016: Workspace Mode for Multi-Module Projects

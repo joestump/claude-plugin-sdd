@@ -1,3 +1,7 @@
+---
+implements: [ADR-0018, ADR-0019, ADR-0020]
+---
+
 # SPEC-0016: Security and Quality Guardrails
 
 ## Overview

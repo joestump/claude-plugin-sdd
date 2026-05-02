@@ -1,3 +1,7 @@
+---
+implements: [ADR-0003]
+---
+
 # SPEC-0003: Foundational Design Artifact Formats and Core Skills
 
 ## Overview

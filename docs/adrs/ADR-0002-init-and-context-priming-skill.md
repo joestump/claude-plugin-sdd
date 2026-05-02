@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-02-14
 decision-makers: Plugin maintainers
+related: [ADR-0001]
 ---
 
 # ADR-0002: Add Initialization and Context-Priming Skills to the SDD Plugin

@@ -2,6 +2,8 @@
 status: accepted
 date: 2026-02-20
 decision-makers: joestump
+governs: [SPEC-0006]
+related: [ADR-0003]
 ---
 
 # ADR-0007: Generate tasks.md as openspec artifact when no issue tracker is available

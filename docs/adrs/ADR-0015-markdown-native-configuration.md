@@ -2,6 +2,8 @@
 status: proposed
 date: 2026-03-27
 decision-makers: joestump
+enables: [ADR-0016]
+governs: [SPEC-0014]
 ---
 
 # ADR-0015: Markdown-Native Configuration — Eliminate `.claude-plugin-design.json`
