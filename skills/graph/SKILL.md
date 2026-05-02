@@ -87,11 +87,13 @@ Single contiguous bidirectional diagram: ancestors above (rendered as top-down c
 
 Surfaces three categories of orphan as flat markdown tables (default for flat results per SPEC-0018):
 
-1. **Source files without governing artifacts** — code nodes whose governing comment block referenced no resolvable artifact ID. Currently rare since unresolved IDs already fail validation as a hard error.
+1. **Source files without governing artifacts** — non-markdown source files in the project tree that contain no `Governing:` comment block. Discovered by a dedicated walk so these files do not become graph nodes (they remain invisible to traversal queries) but DO surface here. The walk uses the same exclusions as the graph builder (`.git`, `node_modules`, `vendor`, build/cache dirs, `docs/`, `skills/`, `references/`, etc.). Markdown files are skipped — they participate via frontmatter (ADRs, specs) or are out of scope for v1 (READMEs, ad-hoc docs).
 2. **Specs with no implementing code** — specs that no source file's governing comment references.
 3. **ADRs with no implementing spec** — ADRs that no spec declares `implements:` against.
 
 Optional `--scope <subtree>` restricts category 1 to source files under the given path. Categories 2 and 3 always cover the full graph.
+
+**Operator-facing framing.** A spec is flagged whenever no `Governing:` comment in source code references it; comment-less code is invisible by design (per SPEC-0018 § "Files without governing comments"). For repos that haven't yet attached governing comments to source code, expect every spec and ADR to be flagged. The output includes a one-line preamble explaining this so first-time readers know the verb is working as intended, not reporting a real catastrophe.
 
 ### `cycles`
 

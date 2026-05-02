@@ -306,9 +306,40 @@ def discover_code_edges(root: Path, excludes: frozenset[str] = _DEFAULT_CODE_EXC
     whose first 4096 bytes contain a governing-comment block. Markdown files
     are skipped — they participate via frontmatter, not governing comments.
     """
-    out: list[tuple[Path, list[str]]] = []
+    edges, _ = _walk_code_files(root, excludes)
+    return edges
+
+
+def discover_orphan_code(
+    root: Path, excludes: frozenset[str] = _DEFAULT_CODE_EXCLUDES
+) -> list[Path]:
+    """Walk `root` and return code files with NO governing-comment block.
+
+    Per SPEC-0018 § "Files without governing comments": these files MUST
+    NOT become graph nodes (so they remain invisible to traversal queries)
+    but MUST surface via the `orphans` verb. This walker uses the same
+    exclusions as `discover_code_edges` for consistency.
+
+    "Code files" excludes markdown (`.md`, `.markdown`) — markdown
+    participates via frontmatter, not governing comments. It also
+    excludes binary files (any file whose head doesn't decode as UTF-8).
+    """
+    _, orphans = _walk_code_files(root, excludes)
+    return orphans
+
+
+def _walk_code_files(
+    root: Path, excludes: frozenset[str]
+) -> tuple[list[tuple[Path, list[str]]], list[Path]]:
+    """Single tree walk that returns both governed-edge files and orphan files.
+
+    Returns (edges, orphans):
+      - edges: list of (path, ids) for files with governing comment blocks
+      - orphans: list of paths for files without governing comment blocks
+    """
+    edges: list[tuple[Path, list[str]]] = []
+    orphans: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(root):
-        # Prune excluded and hidden directories in-place.
         dirnames[:] = sorted(
             d for d in dirnames if d not in excludes and not d.startswith(".")
         )
@@ -325,13 +356,36 @@ def discover_code_edges(root: Path, excludes: frozenset[str] = _DEFAULT_CODE_EXC
                 text = head.decode("utf-8", errors="ignore")
             except UnicodeDecodeError:
                 continue
-            m = _GOVERNING_RE.search(text)
-            if not m:
+            # Skip files that look binary (high non-printable ratio).
+            if _looks_binary(head):
                 continue
-            ids = sorted(set(_GOVERNING_ID_RE.findall(m.group(1))))
-            if ids:
-                out.append((path, ids))
-    return sorted(out, key=lambda t: str(t[0]))
+            m = _GOVERNING_RE.search(text)
+            if m:
+                ids = sorted(set(_GOVERNING_ID_RE.findall(m.group(1))))
+                if ids:
+                    edges.append((path, ids))
+                else:
+                    # Block exists but referenced no IDs — treat as comment-less
+                    # for orphan purposes.
+                    orphans.append(path)
+            else:
+                orphans.append(path)
+    return (
+        sorted(edges, key=lambda t: str(t[0])),
+        sorted(orphans),
+    )
+
+
+def _looks_binary(head: bytes) -> bool:
+    """Heuristic: a NUL byte or a high non-text ratio implies binary."""
+    if b"\x00" in head:
+        return True
+    if not head:
+        return False
+    # text characters: tab, LF, CR, form feed, printable ASCII, plus any UTF-8
+    # continuation bytes (0x80-0xff).
+    text_chars = sum(1 for b in head if b == 9 or b == 10 or b == 13 or 32 <= b < 127 or b >= 128)
+    return text_chars / len(head) < 0.85
 
 
 # ---------------------------------------------------------------------------
@@ -1070,22 +1124,23 @@ def cmd_traversal(graph: Graph, verb: str, target_id: str) -> tuple[str, int]:
 # ---------------------------------------------------------------------------
 
 
-def cmd_orphans(graph: Graph, scope: str | None = None) -> str:
+def cmd_orphans(graph: Graph, root: Path, scope: str | None = None) -> str:
     """Render orphan diagnostic per SPEC-0018 REQ "Diagnostic Query Verbs".
 
     Three orphan categories:
-      a. Source files with no governing comment block — represented by code
-         nodes already in the graph; we surface them when they have no
-         `governed-by` outgoing edges (which would mean their governing
-         comments referenced no resolvable artifacts). NOTE: Story 2's
-         walker only adds code nodes that already contain governing
-         comment blocks, so this category is currently always empty.
-         Truly comment-less files are invisible to the graph today; a
-         future story may walk the entire tree to surface them.
-      b. Specs with no implementing source files — specs that have no
-         derived `governed-by` inverse edges from any code node.
-      c. ADRs with no implementing spec — ADRs that have no derived
-         `implemented-by` inverse edges from any spec.
+      a. Source files with no governing comment block — found via a fresh
+         walk of `root` (using the same exclusions as the graph builder).
+         These files are NOT graph nodes, per SPEC-0018: they remain
+         invisible to traversal queries and surface only here.
+      b. Specs with no implementing source files — specs that no code
+         file's governing comment references.
+      c. ADRs with no implementing spec — ADRs that no spec declares
+         `implements:` against.
+
+    A spec-or-ADR is flagged whenever no `Governing:` comment in source
+    code references it; comment-less code is invisible by design (per
+    the spec scenario). For repos that don't yet attach governing
+    comments to source code, expect every spec and ADR to be flagged.
 
     Output is a flat markdown table per SPEC-0018 (default for flat
     results). Optional `scope` filter restricts category (a) to files
@@ -1093,7 +1148,7 @@ def cmd_orphans(graph: Graph, scope: str | None = None) -> str:
     """
     out: list[str] = ["# /sdd:graph orphans", ""]
 
-    code_orphans = _orphan_code(graph, scope)
+    code_orphans = _orphan_code(graph, root, scope)
     spec_orphans = _orphan_specs(graph)
     adr_orphans = _orphan_adrs(graph)
 
@@ -1102,13 +1157,21 @@ def cmd_orphans(graph: Graph, scope: str | None = None) -> str:
         out.append("")
         return "\n".join(out)
 
+    out.append(
+        "Orphans surface artifacts that have no traceability link to code: a spec is "
+        "flagged whenever no `Governing:` comment in source code references it, "
+        "and an ADR is flagged whenever no spec declares `implements:` against it. "
+        "Source files without governing comments are listed separately."
+    )
+    out.append("")
+
     if code_orphans:
         out.append("## Source files without governing artifacts")
         out.append("")
         out.append("| File |")
         out.append("|------|")
         for path in code_orphans:
-            out.append(f"| `{path}` |")
+            out.append(f"| `{_md_escape(path)}` |")
         out.append("")
 
     if spec_orphans:
@@ -1118,8 +1181,7 @@ def cmd_orphans(graph: Graph, scope: str | None = None) -> str:
         out.append("|------|-------|")
         for spec_id in spec_orphans:
             node = graph.nodes[spec_id]
-            title = _title_for(node).split(": ", 1)[1] if ": " in _title_for(node) else ""
-            out.append(f"| {spec_id} | {title} |")
+            out.append(f"| {spec_id} | {_md_escape(_node_title_only(node))} |")
         out.append("")
 
     if adr_orphans:
@@ -1129,33 +1191,45 @@ def cmd_orphans(graph: Graph, scope: str | None = None) -> str:
         out.append("|-----|-------|")
         for adr_id in adr_orphans:
             node = graph.nodes[adr_id]
-            title = _title_for(node).split(": ", 1)[1] if ": " in _title_for(node) else ""
-            out.append(f"| {adr_id} | {title} |")
+            out.append(f"| {adr_id} | {_md_escape(_node_title_only(node))} |")
         out.append("")
 
     return "\n".join(out)
 
 
-def _orphan_code(graph: Graph, scope: str | None) -> list[str]:
-    """Source files in the graph whose governing comments resolve to nothing.
+def _node_title_only(node: Node) -> str:
+    """Return the truncated normalized title without the leading ID prefix."""
+    full = _title_for(node)
+    if ": " in full:
+        return full.split(": ", 1)[1]
+    return ""
 
-    Code nodes are added by the walker only when they contain a governing
-    comment block, so the orphan candidates here are the small subset
-    where the comment exists but referenced no resolvable artifact ID.
+
+def _md_escape(s: str) -> str:
+    """Escape `|` and backslash for safe inclusion in markdown table cells."""
+    return s.replace("\\", "\\\\").replace("|", "\\|")
+
+
+def _orphan_code(graph: Graph, root: Path, scope: str | None) -> list[str]:
+    """Code files without a governing comment block, per SPEC-0018.
+
+    These files are NOT graph nodes (the builder skips files with no
+    `Governing:` block to keep traversal queries clean). The walk runs
+    fresh here so the verb can surface comment-less files independent of
+    what's already in the graph.
+
+    `scope` filters results to a subtree. Empty / `.` / `./` / leading
+    `./` are all normalized to "include everything."
     """
-    orphans: list[str] = []
-    for node_id, node in sorted(graph.nodes.items()):
-        if node.kind != "code":
+    paths = discover_orphan_code(root)
+    scope_clean = (scope or "").lstrip("./").rstrip("/")
+    rel_paths: list[str] = []
+    for p in paths:
+        rel = str(p.relative_to(root)) if p.is_relative_to(root) else str(p)
+        if scope_clean and not (rel == scope_clean or rel.startswith(scope_clean + "/")):
             continue
-        if scope and not node_id.startswith(scope.rstrip("/") + "/") and node_id != scope:
-            continue
-        # A code node is an orphan if it has no outgoing governed-by edges
-        # (which would happen if all its comment-referenced IDs were
-        # unresolvable — already a hard error from validation).
-        outgoing = [e for e in graph.edges if e.source == node_id and not e.derived]
-        if not outgoing:
-            orphans.append(node_id)
-    return orphans
+        rel_paths.append(rel)
+    return rel_paths
 
 
 def _orphan_specs(graph: Graph) -> list[str]:
@@ -1229,7 +1303,6 @@ def cmd_cycles(graph: Graph) -> str:
 
 _ALL_VERBS = ("validate", "impact", "ancestors", "chain", "orphans", "cycles", "backfill")
 _TRAVERSAL_VERBS = frozenset({"impact", "ancestors", "chain"})
-_DIAGNOSTIC_VERBS = frozenset({"orphans", "cycles"})
 _VERB_STORY = {
     "backfill": 7,
 }
@@ -1289,7 +1362,7 @@ def main(argv: list[str] | None = None) -> int:
         return code
 
     if args.verb == "orphans":
-        print(cmd_orphans(g, scope=args.scope), end="")
+        print(cmd_orphans(g, root=root, scope=args.scope), end="")
         return 0
     if args.verb == "cycles":
         print(cmd_cycles(g), end="")
