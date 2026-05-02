@@ -24,6 +24,9 @@ require('./transform-adrs');
 // Generate index page
 require('./generate-index');
 
+// Generate graph page (artifact DAG from frontmatter, per ADR-0023 / SPEC-0018)
+require('./generate-graph');
+
 // Copy static content from content/ to docs-generated/
 const contentDir = path.join(__dirname, '../content');
 const docsDir = path.join(__dirname, '../../docs-generated');

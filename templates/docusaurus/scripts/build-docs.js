@@ -20,4 +20,7 @@ require('./transform-adrs');
 // Generate index page
 require('./generate-index');
 
+// Generate graph page (artifact DAG from frontmatter, per ADR-0023 / SPEC-0018)
+require('./generate-graph');
+
 console.log('\nDocumentation content build complete!');

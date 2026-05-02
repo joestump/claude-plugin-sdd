@@ -33,6 +33,7 @@ const { buildSpecMapping } = require('./lib/build-spec-mapping');
 const { transformAdrs } = require('./lib/transform-adrs');
 const { transformOpenspecs } = require('./lib/transform-openspecs');
 const { generateIndex } = require('./lib/generate-index');
+const { generateGraph } = require('./lib/generate-graph');
 
 module.exports = function pluginSyncSpecDocs(context, options = {}) {
   const projectRoot = path.resolve(context.siteDir, options.projectRoot || '..');
@@ -93,6 +94,13 @@ module.exports = function pluginSyncSpecDocs(context, options = {}) {
         specsSource,
         outputDir: outputBase,
         projectTitle: context.siteConfig.title,
+      });
+
+      // 5. Generate graph page (artifact DAG, per ADR-0023 / SPEC-0018)
+      generateGraph({
+        adrsSource,
+        specsSource,
+        outputDir: outputBase,
       });
 
       console.log('[sync-spec-docs] Sync complete.');
