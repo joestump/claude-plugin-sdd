@@ -27,6 +27,19 @@ const INVERSE_OF = {
   related: 'related',
 };
 
+// Mermaid-safe identifier from an artifact id. Cross-module ids
+// ([module]/X) get sanitized to underscores.
+const nodeId = (id) => id.replace(/[^A-Za-z0-9_]/g, '_');
+
+// Display label for a Mermaid node. Strips the redundant `ADR-XXXX:` /
+// `SPEC-XXXX:` prefix from the title since the node id already encodes
+// it (e.g., a node `ADR_0023` doesn't need its label to start with
+// "ADR-0023:" too -- that's just visual noise on every diagram).
+const nodeLabel = (n) =>
+  (n.title || n.id)
+    .replace(/^(?:ADR|SPEC)-\d+:\s*/, '')
+    .replace(/"/g, '\\"');
+
 /**
  * Parse YAML-ish frontmatter from a markdown body. Recognizes scalars
  * and inline-bracket lists with quoted scalars. Mirrors the narrow
@@ -229,8 +242,6 @@ function ingestEdges(edges, sourceId, fm, allowed) {
 function renderFullMermaid({ nodes, edges }) {
   const lines = ['flowchart TB'];
   const seen = new Set();
-  const nodeId = (id) => id.replace(/[^A-Za-z0-9_]/g, '_');
-  const nodeLabel = (n) => (n.title || n.id).replace(/"/g, '\\"');
 
   for (const id of Object.keys(nodes).sort()) {
     const n = nodes[id];
@@ -257,8 +268,6 @@ function renderFullMermaid({ nodes, edges }) {
 function renderNeighborMermaid(targetId, { nodes, edges }) {
   if (!nodes[targetId]) return null;
   const lines = ['flowchart TB'];
-  const nodeId = (id) => id.replace(/[^A-Za-z0-9_]/g, '_');
-  const nodeLabel = (n) => (n.title || n.id).replace(/"/g, '\\"');
   const neighborhood = new Set([targetId]);
   for (const e of edges) {
     if (e.source === targetId || e.target === targetId) {
@@ -307,8 +316,35 @@ function buildMiniDagSection(artifactId, graph) {
   ].join('\n');
 }
 
+// Lazy-cached graph for the standard project layout. The docs build
+// orchestrator (`build-docs.js`) requires three scripts in sequence
+// (`transform-adrs`, `transform-openspecs`, `generate-graph`) and each
+// previously called `buildGraph(...)` independently -- meaning the
+// frontmatter corpus was parsed three times per build. Routing through
+// `getGraph()` instead returns the same in-memory graph on subsequent
+// calls, eliminating two of those parses.
+//
+// Pass explicit `opts` to force a rebuild against custom paths (e.g.,
+// in tests). With no args, paths are computed relative to this file's
+// location: `../../docs/adrs` and `../../docs/openspec/specs`.
+let _cachedGraph = null;
+function getGraph(opts) {
+  if (opts) {
+    return buildGraph(opts);
+  }
+  if (_cachedGraph) {
+    return _cachedGraph;
+  }
+  _cachedGraph = buildGraph({
+    adrsSource: path.join(__dirname, '../../docs/adrs'),
+    specsSource: path.join(__dirname, '../../docs/openspec/specs'),
+  });
+  return _cachedGraph;
+}
+
 module.exports = {
   buildGraph,
+  getGraph,
   parseFrontmatter,
   renderFullMermaid,
   renderNeighborMermaid,

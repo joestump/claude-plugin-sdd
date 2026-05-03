@@ -8,10 +8,32 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getGraph, renderFullMermaid } = require('./graph-data');
 
 const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
 const SPECS_SOURCE = path.join(__dirname, '../../docs/openspec/specs');
 const DOCS_DEST = path.join(__dirname, '../../docs-generated');
+
+// Render a "Hierarchy" section showing the full artifact graph as a
+// single Mermaid flowchart. Returned as a Markdown block ready to
+// append to an index page; empty string when the graph has no nodes
+// (e.g., a brand-new project with no ADRs or specs yet).
+function renderHierarchySection() {
+  const graph = getGraph();
+  if (!graph.nodes || Object.keys(graph.nodes).length === 0) return '';
+  const mermaid = renderFullMermaid(graph);
+  return [
+    '',
+    '## Hierarchy',
+    '',
+    'Authored relationships across every ADR and spec in this project (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Derived inverses are computed on demand by `/sdd:graph` and omitted here to keep the diagram readable.',
+    '',
+    '```mermaid',
+    mermaid,
+    '```',
+    '',
+  ].join('\n');
+}
 
 // Read project title from docusaurus.config.ts
 const configPath = path.join(__dirname, '../docusaurus.config.ts');
@@ -90,10 +112,70 @@ sidebar_position: 0
 | Component | Documents |
 |-----------|-----------|
 ${rows.join('\n')}
-`;
+${renderHierarchySection()}`;
 
   fs.writeFileSync(path.join(specsDest, 'index.mdx'), content);
   console.log('  Generated specs index page');
+}
+
+function generateDecisionsIndex() {
+  if (!fs.existsSync(ADRS_SOURCE)) return;
+
+  const decisionsDest = path.join(DOCS_DEST, 'decisions');
+  fs.mkdirSync(decisionsDest, { recursive: true });
+
+  const files = fs.readdirSync(ADRS_SOURCE)
+    .filter(f => f.endsWith('.md') && f !== '0000-template.md' && f !== 'README.md')
+    .sort();
+
+  // Strikethrough wrapper for stricken statuses, matching the
+  // adr-struck sidebar treatment from transform-adrs.js -- consistent
+  // visual signal for deprecated/superseded ADRs in both the sidebar
+  // and the index table.
+  const strike = (text, status) =>
+    ['deprecated', 'superseded'].includes(status.toLowerCase()) ? `~~${text}~~` : text;
+
+  const rows = [];
+  for (const file of files) {
+    const content = fs.readFileSync(path.join(ADRS_SOURCE, file), 'utf-8');
+
+    // Pull the canonical id and short title from the H1 (e.g.,
+    // `# ADR-0023: Frontmatter DAG and /sdd:graph Skill`).
+    const idMatch = file.match(/^(ADR-\d{4})/);
+    const id = idMatch ? idMatch[1] : file.replace(/\.md$/, '');
+    const titleMatch = content.match(/^#\s+(?:ADR-\d+:\s*)?(.+)$/m);
+    const title = titleMatch ? titleMatch[1].trim() : id;
+
+    // Status from frontmatter; default to 'unknown' so missing-field
+    // ADRs still render a row instead of disappearing silently.
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    let status = 'unknown';
+    if (fmMatch) {
+      const statusMatch = fmMatch[1].match(/^status:\s*"?([^"\n]+)"?/m);
+      if (statusMatch) status = statusMatch[1].trim();
+    }
+
+    const slug = file.replace(/\.md$/, '');
+    rows.push(`| ${strike(id, status)} | ${strike(`[${title}](./${slug})`, status)} | \`${status}\` |`);
+  }
+
+  if (rows.length === 0) return;
+
+  const content = `---
+title: "Architecture Decisions"
+sidebar_label: "Overview"
+sidebar_position: 0
+---
+
+# Architecture Decisions
+
+| ID | Title | Status |
+|----|-------|--------|
+${rows.join('\n')}
+${renderHierarchySection()}`;
+
+  fs.writeFileSync(path.join(decisionsDest, 'index.mdx'), content);
+  console.log('  Generated decisions index page');
 }
 
 function generate() {
@@ -101,6 +183,10 @@ function generate() {
   const specCount = countSpecs();
 
   const safeTitle = projectTitle.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  // docs-site divergence from templates: this repo has a hand-written
+  // homepage at `src/pages/index.tsx` that owns `/`, so the generated
+  // overview lives at `/overview` (linked from the home page's hero
+  // button). Keep this slug aligned with `src/pages/index.tsx`.
   const content = `---
 title: "Overview"
 sidebar_label: "Overview"
@@ -132,6 +218,7 @@ This project has **${specCount}** specification${specCount !== 1 ? 's' : ''} def
   console.log('  Generated index page');
 
   generateSpecsIndex();
+  generateDecisionsIndex();
 }
 
 console.log('Generating index page...');
