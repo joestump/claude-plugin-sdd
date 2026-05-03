@@ -27,6 +27,17 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
 
    Then stop. Do NOT proceed with scanning.
 
+1a. **Tier 2 session-start update** (v5.0.0+):
+
+   <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 2 Session-Start Update via /sdd:prime" -->
+
+   Run `qmd update` (cheap file-mtime scan) on entry to catch changes from outside the current Claude session — other developers, CI bots, branch switches, manually edited files. Skip the update when the qmd index was touched within the last 60 seconds (back-to-back primes are common; the short-circuit prevents redundant work).
+
+   1. Read the qmd index's last-modified timestamp via `qmd status` (or the qmd MCP `mcp__plugin_qmd_qmd__status` tool — prefer MCP when loaded per `references/qmd-helpers.md` § "MCP-vs-CLI Selection"). Take the maximum `lastUpdated` across this-repo collections (identified via the exact-prefix match algorithm in `qmd-helpers.md` § "This-Repo Collection Identification").
+   2. If the most recent timestamp is within the last 60 seconds, skip the update entirely (no output).
+   3. Otherwise, invoke `qmd update` per `references/qmd-helpers.md` § "Update Patterns". The update is silent on success when the diff is empty. If the update added/modified/removed any documents, print exactly one line in the report header (between the `## Architecture Context Loaded` heading and the section tables): `Refreshed index ({a} added, {m} updated, {r} removed across this repo's collections)`.
+   4. After the update, count unembedded chunks for this repo's collections via `qmd status` (sum `(documents - embedded)` across this-repo collections, again via the exact-prefix match algorithm). If non-zero, surface a one-line note in the report header (after the refresh line, if any): `{N} chunks unembedded — run \`/sdd:index embed\` (≈{seconds}s on this machine, foreground; or wait for the next mutation skill to backfill)`. Do NOT prompt via AskUserQuestion — the surface is informational, not a decision the user needs to make right now.
+
 2. **Scan for ADRs**: Glob for `{adr-dir}/ADR-*.md` files (in aggregate mode, glob per-module). For each file:
    - Extract `status` and `date` per the **Status Field Extraction** algorithm below
    - Extract the title from the first `# ` heading
@@ -50,15 +61,21 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
    4. **No status found**: if neither form yields a value, record the artifact as having no parseable status. Render as `—` in the table when other artifacts in the same corpus have status; drop the Status column entirely when *zero* artifacts in the corpus have status (see Step 6 rendering rule).
 
 4. **Apply topic filter** (if `$ARGUMENTS` is not empty):
-   - The topic argument is a free-text string for semantic matching
-   - For each ADR, read the title, context/problem statement, and decision outcome
-   - For each spec, read the title and overview
-   - Determine relevance based on semantic similarity to the topic -- an artifact is relevant if the topic relates to any of its key concepts, technologies, domains, or concerns
-   - For example: topic "security" should match ADRs about authentication, authorization, encryption, or access control
-   - If no artifacts match the topic, output:
-     ```
-     No ADRs or specs matched the topic "{topic}". Try a broader term, or run `/sdd:prime` without a topic to see all artifacts.
-     ```
+
+   <!-- Governing: ADR-0024 (qmd as hard dependency), SPEC-0019 REQ "qmd-Smart Context Loading" -->
+
+   The topic argument is a free-text string. Starting v5.0.0, the topic-filter mode uses qmd hybrid retrieval to identify the top-K most relevant ADRs and specs to the topic, then reads ONLY those candidates in full — replacing the pre-v5 "load every artifact, then filter semantically" path. Untargeted `/sdd:prime` (no topic) MUST still load all artifacts (the user explicitly asked for a corpus overview); only the topic-filtered mode uses qmd retrieval.
+
+   1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval". The query document SHOULD include both `lex` (the topic verbatim, for keyword/exact matches like "JWT" or "OAuth") and `vec` (a natural-language framing of the topic, e.g., for topic "security" → "decisions about authentication, authorization, encryption, and access control") sub-queries. Set `intent: "/sdd:prime topic-filter — find ADRs and specs relevant to {topic}"` so the reranker has context.
+   2. Filter to this repo's design collections: `collections: ["{repo}-adrs", "{repo}-specs"]` (or `{repo}-{module}-adrs` / `{repo}-{module}-specs` per module in workspace mode — see `qmd-helpers.md` § "This-Repo Collection Identification"). Set `limit: 8` and `minScore: 0.3` as the V1 defaults.
+   3. From the candidate list, deep-read only the matching ADRs and specs. Skip the full corpus scan from Steps 2–3 when a topic is provided — the qmd retrieval already identified what's relevant.
+   4. If the qmd query returns zero candidates above `minScore`, output the canonical "no matches" message (preserved from the pre-v5 behavior):
+      ```
+      No ADRs or specs matched the topic "{topic}". Try a broader term, or run `/sdd:prime` without a topic to see all artifacts.
+      ```
+   5. If qmd is unreachable or times out (per `qmd-helpers.md` § "Error Handling"), surface the error and stop — do NOT fall back to the pre-v5 "scan everything and semantically filter" path. Per ADR-0024, fallback paths were eliminated in v5; the failure mode is "fix qmd, retry."
+
+   The "Skipped" section in the topic-filter output (per the existing template) lists artifacts retrieved by qmd that fell below the relevance threshold OR the artifacts present in the corpus but NOT returned by qmd at all. The point is the same as before: the user sees what was excluded so they can broaden the topic if needed.
 
 5. **Handle edge cases**:
    - If `{adr-dir}` does not exist: "The `{adr-dir}` directory does not exist. Run `/sdd:adr [description]` to create your first ADR."
@@ -172,3 +189,6 @@ Primed session with {N} ADRs and {M} specs matching "{topic}".
 - In workspace aggregate mode, MUST include the Module column in output tables
 - In workspace aggregate mode, sort by module name first, then by artifact number within each module
 - When `--module` is provided, do NOT prefix artifacts — behave as single-module
+- **v5.0.0+**: MUST run Tier 2 session-start update per Step 1a — `qmd update` on entry unless the index was touched within 60s. Surface refresh diff as one-line note when non-zero; otherwise silent. Surface unembedded chunk count as one-line informational note (no AskUserQuestion) (Governing: ADR-0026, SPEC-0019 REQ "Tier 2 Session-Start Update via /sdd:prime")
+- **v5.0.0+**: When a topic is provided, MUST use qmd hybrid retrieval per `references/qmd-helpers.md` to identify the top-K relevant artifacts; deep-read ONLY the candidates qmd returns. The pre-v5 read-everything-then-filter path is removed for topic-filter mode (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Context Loading")
+- **v5.0.0+**: Untargeted `/sdd:prime` (no topic) MUST retain the full-corpus overview behavior — qmd retrieval is for the topic-filter path only
