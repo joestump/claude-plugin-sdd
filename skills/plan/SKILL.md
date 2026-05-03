@@ -162,11 +162,55 @@ Ordered for implementation (dependencies respected):
 
 4. **Detect the issue tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Read the `### SDD Configuration` section from CLAUDE.md for tracker type, tracker-specific config (GitHub/Gitea/GitLab: Owner/Repo, Jira: Project Key, Linear: Team ID, Beads: no extra config), plus Branch Conventions, PR Conventions, and Projects settings used in steps 5–7. When the user selects a tracker for the first time, offer to save the configuration to the `### SDD Configuration` section in CLAUDE.md.
 
+4a. **Tier 4 issues sync** (v5.0.0+):
+
+   <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills" -->
+
+   Before grouping requirements into stories (Step 5.2), sync the `{repo}-issues` qmd collection from the tracker so the planner sees current issue state. Subject to the 5-minute deduplication window in `.sdd/issues/_meta.json` (per `references/tracker-sync.md` § "Cursor Management").
+
+   1. Read `.sdd/issues/_meta.json`. If `last_sync` is within the last 5 minutes, skip the sync silently.
+   2. Otherwise, invoke per-tracker fetch+normalize per `references/tracker-sync.md`. Print: "Syncing N issues from {tracker}…".
+   3. On sync failure, surface a one-line warning per `tracker-sync.md` § "Failure Modes and Degradation" and proceed with live tracker queries (the pre-v5 path) for this run. Do NOT block; planning is the user's primary intent.
+
 5. **Create issues in the detected tracker**:
 
    **5.1: Create an epic.** Create an epic (or equivalent) for the specification itself, titled "Implement {Capability Title}" with a body referencing the spec number and linking to the spec/design files. Apply the `epic` label using the try-then-create pattern (see `references/shared-patterns.md`). (Governing: SPEC-0011 REQ "Auto-Create Labels")
 
+   **5.1a: qmd-aware issue duplicate check** (v5.0.0+):
+
+   <!-- Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Sprint Skills" -->
+
+   Before creating story issues, qmd-search `{repo}-issues` for existing issues that overlap with the spec's scope. This catches the case where a sprint is being re-planned or where ad-hoc issues already cover part of the spec.
+
+   1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval":
+      - `lex`: spec capability name + key requirement names from the spec
+      - `vec`: a one-sentence framing of what the spec covers
+      - `intent: "/sdd:plan — find existing open issues that already cover part of this spec"`
+      - `collections: ["{repo}-issues"]`
+      - `limit: 10`, `minScore: 0.4`
+
+   2. For each result above the threshold, surface to the user via AskUserQuestion: "Issue #{N} ({title}) appears to already cover part of SPEC-{XXXX}. Skip planning the requirements it covers, link the existing issue into the new epic, or proceed and create a new story anyway?" Three options: skip / link / proceed.
+
+   3. If qmd returns zero matches, proceed silently — the sprint is greenfield from the issue tracker's perspective.
+
    **5.2: Group requirements into stories.** Instead of creating one issue per requirement, group all `### Requirement:` sections into 3-4 story-sized issues by functional area. This is governed by SPEC-0010 and ADR-0011.
+
+   **5.2.0: qmd-aware code awareness** (v5.0.0+):
+
+   <!-- Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Sprint Skills" -->
+
+   For each functional area identified during grouping, qmd-search `{repo}-code` to find existing files that already implement related capability. Stories that touch existing code MUST be framed as "extend X in path/to/file" rather than "implement from scratch", and sized accordingly (smaller than greenfield).
+
+   1. Construct a hybrid query per `references/qmd-helpers.md`:
+      - `lex`: keywords from the requirement names + functional area name
+      - `vec`: a one-sentence framing of what the requirement does
+      - `intent: "/sdd:plan — find existing code that implements related capability"`
+      - `collections: ["{repo}-code"]`
+      - `limit: 8`, `minScore: 0.3`
+
+   2. For each result above the threshold, fold the file path and a brief note into the story's body description: "Extend `{path/to/file}` (currently does {one-line summary})".
+
+   3. Story sizing: stories that extend existing code SHOULD target ~150-300 line PRs (smaller than the greenfield 200-500 target). Stories with no qmd-detected related code use the greenfield target.
 
    **Grouping process:**
    1. Scan all `### Requirement:` sections in the spec and identify the functional areas they affect (e.g., data model, API endpoints, validation, configuration, setup).
@@ -463,3 +507,6 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - Stories touching hotspot files MUST be serialized, not parallelized
 - MUST report detected hotspots with file path and percentage of recent PRs that touched them
 - The hotspot threshold (default 50%) SHOULD be read from CLAUDE.md `## SDD Configuration` if present
+- **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 4a — sync from tracker before grouping requirements, subject to 5-min dedup. On failure, fall back to live queries with one-line warning, never block (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")
+- **v5.0.0+**: MUST run qmd-aware issue duplicate check per Step 5.1a — surface existing issues that overlap with the spec's scope before creating story issues; user can skip / link / proceed (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Sprint Skills")
+- **v5.0.0+**: MUST run qmd-aware code awareness per Step 5.2.0 — for each functional area, retrieve existing code that already implements related capability; frame stories as "extend X in path/to/file" when matches exist; size accordingly (~150-300 lines for extends, 200-500 lines for greenfield) (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Sprint Skills")
