@@ -26,6 +26,7 @@ This project uses the [SDD plugin](https://github.com/joestump/claude-plugin-sdd
 | `/sdd:review` | Review and merge PRs using reviewer-responder agent pairs |
 | `/sdd:graph` | Build and query the artifact graph (validate, impact, ancestors, chain, orphans, cycles, backfill) |
 | `/sdd:index` | Index ADRs, specs, and code into qmd collections for hybrid semantic search |
+| `/sdd:report-friction` | File a feedback issue against the SDD plugin when one of its skills caused significant churn |
 
 Run `/sdd:prime [topic]` at the start of a session to load relevant ADRs and specs into context.
 
