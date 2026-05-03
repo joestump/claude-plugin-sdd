@@ -5,17 +5,43 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 argument-hint: [--module <name>]
 ---
 
-<!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Migration from JSON to CLAUDE.md" -->
+<!-- Governing: ADR-0015 (Markdown-Native Configuration), ADR-0024 (qmd as hard dependency), ADR-0025 (.sdd/ directory rationale), SPEC-0014 REQ "Migration from JSON to CLAUDE.md", SPEC-0019 REQ "qmd Preflight Enforcement", SPEC-0019 REQ "qmd Assumption in Consumer Skills", SPEC-0019 REQ ".sdd Gitignore Enforcement" -->
 
 # Initialize SDD Plugin
 
 Set up the project's `CLAUDE.md` with architecture context so Claude sessions are design-aware. This skill uses **componentized convergence** — each component independently checks its own state and converges. No single gate blocks other components. Running init N times produces the same result as running it once.
+
+Starting v5.0.0, init also enforces a hardware/install precondition: the `qmd` CLI MUST be available on PATH (per ADR-0024). If qmd is missing, init refuses to operate so users discover the dependency at setup, not three skills deep into a workflow.
 
 ## Process
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
 **Module support**: If `$ARGUMENTS` contains `--module <name>`, resolve the module root using the Workspace Detection pattern from `references/shared-patterns.md`. All CLAUDE.md reads and writes in the steps below target the module's `CLAUDE.md` at the module root instead of the project root. If workspace detection finds no modules and `--module` is provided, error: "No modules detected. Run `/sdd:init` without `--module` first to set up workspace."
+
+### Step -1: qmd Preflight (v5.0.0+)
+
+<!-- Governing: ADR-0024, SPEC-0019 REQ "qmd Preflight Enforcement" -->
+
+Before any other check or mutation, verify that the `qmd` CLI is available on PATH. Starting with v5.0.0, qmd is a hard dependency — every qmd-aware consumer skill (per SPEC-0019) assumes qmd is present, so init MUST refuse to operate without it.
+
+1. Run `command -v qmd >/dev/null 2>&1`. If exit is non-zero, output the canonical error message and stop:
+
+   ```
+   The `qmd` CLI is required by the SDD plugin starting with v5.0.0 but was not found on PATH.
+
+   Install with one of:
+     npm install -g @tobilu/qmd
+     bun install -g @tobilu/qmd
+
+   See https://github.com/tobi/qmd for details. Re-run `/sdd:init` after installing.
+   ```
+
+   The exit signal MUST be visible enough that downstream tooling (CI, install scripts) can detect the missing dependency. Do NOT modify CLAUDE.md, `.gitignore`, or any other file when this preflight fails.
+
+2. If qmd is present, optionally run `qmd status` to detect whether the GGUF models are downloaded. Model download is qmd's responsibility on first embed, NOT an init prerequisite — proceed even if models are absent. Note the upcoming ~2GB download in the Step 5 final report so users on bandwidth-constrained networks can plan.
+
+3. Re-running `/sdd:init` after a successful install is idempotent — qmd is present, the preflight passes silently, and no spurious changes are introduced to CLAUDE.md or `.gitignore`.
 
 ### Step 0: Component Status Scan
 
@@ -35,6 +61,8 @@ Before making any changes, read the current state and build a component checklis
 | Session Coordination | Does CLAUDE.md contain `### Session Coordination`? | `present` / `missing` |
 | SDD Plugin Config | Does CLAUDE.md contain `### SDD Configuration`? | `present` / `missing` |
 | Permissions | Does `.claude/settings.local.json` contain broad wildcard patterns for `git` and the detected tracker? (e.g., `Bash(git *)`, `Bash(gh *)`, `mcp__gitea__*`) | `configured` / `needs-update` |
+| qmd Assumption Note | Does CLAUDE.md (or canonical template) include the v5 note "qmd-aware consumer skills MAY assume qmd is present"? | `present` / `missing` |
+| `.sdd/` Gitignore | Does `.gitignore` contain a `.sdd/` entry? (Required for v5.0.0+ — see ADR-0025 / SPEC-0019 REQ ".sdd Gitignore Enforcement") | `present` / `missing` |
 | Workspace Modules | Does `### Workspace Modules` exist? (only check if `.gitmodules` exists) | `present` / `missing` / `n/a` |
 
 Display the scan results before proceeding so the user can see what will change.
@@ -102,6 +130,8 @@ d. **Session Coordination section**: If `### Session Coordination` heading is mi
 
 e. **SDD Configuration section**: If Step 1 produced config markdown and no `### SDD Configuration` section exists yet, append it at the end of the `## Architecture Context` section. If the section already exists, Step 1 already handled the merge.
 
+f. **qmd Assumption Note** (v5.0.0+, per SPEC-0019 REQ "qmd Assumption in Consumer Skills"): Read the canonical template's `### qmd Dependency` paragraph from `references/claude-md-template.md`. If the current CLAUDE.md's `## Architecture Context` section does not include this paragraph (match by the heading text "qmd Dependency"), append it after the existing intro paragraph and before the `### SDD Skills` heading. The paragraph documents that qmd-aware consumer skills MAY assume qmd is installed (because /sdd:init enforced it) and MUST NOT include conditional fallback paths — this gives future readers and contributors the v5 invariant in plain language.
+
 **Duplicate prevention**: Before inserting any section, check for the section heading. Before inserting a skills table row, check for the skill name. This makes the step idempotent.
 
 ### Step 3: Permission Auto-Configuration
@@ -132,6 +162,22 @@ If `.claude/settings.local.json` already contains broad wildcard patterns for gi
 6. **Write** the updated `.claude/settings.local.json`.
 
 **No AskUserQuestion** — these are standard tool permissions for the detected tracker.
+
+### Step 3.5: `.sdd/` Gitignore Enforcement
+
+<!-- Governing: ADR-0025 (Tracker Issues as Fourth qmd Collection), SPEC-0019 REQ ".sdd Gitignore Enforcement" -->
+
+**Precondition**: `.sdd/` Gitignore status is `missing`.
+
+The `.sdd/` directory is the local cache for synced tracker issues (per ADR-0025). It is replaceable from the tracker on demand, contains issue bodies that may carry sensitive content, and MUST NOT be committed to the repository.
+
+1. **If `.gitignore` does not exist**: create it with a single line `.sdd/` (followed by a trailing newline). Done.
+
+2. **If `.gitignore` exists and contains `.sdd/`** (anywhere in the file, on its own line): leave the file unchanged. Idempotent — running init repeatedly MUST NOT produce duplicate `.sdd/` lines.
+
+3. **If `.gitignore` exists but does not contain `.sdd/`**: append `.sdd/` to the end of the file, preceded by a single newline if the file does not already end with one. All existing entries MUST remain in their original positions — this step is purely additive.
+
+**No AskUserQuestion** — `.sdd/` belongs in `.gitignore` for every v5+ project. The decision is universal, not user-preference.
 
 ### Step 4: Workspace Detection and Setup
 
@@ -255,3 +301,6 @@ Each component is independently idempotent:
 - MUST read canonical template from `references/claude-md-template.md` for section-level diffing — never hardcode template content in this skill
 - MUST display component status scan before making changes
 - MUST report all changes in the final component status table
+- **v5.0.0+**: MUST run the qmd preflight (Step -1) before any other check or mutation. If `qmd` is not on PATH, MUST refuse to operate and emit the canonical install message — silent fall-through to the rest of init MUST NOT happen (Governing: ADR-0024, SPEC-0019 REQ "qmd Preflight Enforcement")
+- **v5.0.0+**: MUST add `.sdd/` to `.gitignore` (creating the file if absent) per Step 3.5. Idempotent — duplicate `.sdd/` lines MUST NOT be appended; existing `.gitignore` entries MUST remain in their original positions (Governing: ADR-0025, SPEC-0019 REQ ".sdd Gitignore Enforcement")
+- **v5.0.0+**: MUST converge the `### qmd Dependency` paragraph in CLAUDE.md per Step 2 sub-check (f). The paragraph documents the v5 invariant that qmd-aware consumer skills MAY assume qmd is installed (Governing: SPEC-0019 REQ "qmd Assumption in Consumer Skills")
