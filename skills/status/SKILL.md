@@ -35,7 +35,7 @@ Update the status of an ADR or spec, **preserving the file's existing status for
    | Format | Detection | Update strategy |
    |--------|-----------|-----------------|
    | `yaml-frontmatter` | File has a `---` … `---` frontmatter block at the top AND the block contains a `status:` key | Edit the YAML `status:` value in place |
-   | `inline-bullet` | No frontmatter `status:` key, but the first 30 lines contain a line matching `- **Status:** {value}` (case-insensitive on "Status"; tolerate `*`/`+` markers and `Status:` without bold) | Edit the bullet line in place, preserving any parenthetical refinement notes by default |
+   | `inline-bullet` | No frontmatter `status:` key, but the **20 lines following the first H1 heading** (`# `) contain a line matching `- **Status:** {value}` (case-insensitive on "Status"; tolerate `*`/`+` markers and `Status:` without bold). Anchoring on the H1 rather than file top makes the scan robust to long license headers, copyright comments, or other preamble some repos place before the title | Edit the bullet line in place, preserving any parenthetical refinement notes by default |
    | `none` | Neither format is present | Ask the user which format to add (Step 5c) — never silently default |
 
    If BOTH formats are present (a file already has the dual-source-of-truth pathology, perhaps from a prior buggy `/sdd:status` run), report this as an error: "File `{path}` has BOTH a YAML `status:` field AND an inline `- **Status:** {value}` bullet. These are out of sync — the canonical source is ambiguous. Resolve manually (delete one) and re-run." Do NOT proceed with the update; doing so would silently extend the corruption.
