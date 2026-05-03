@@ -16,14 +16,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const { buildGraph, renderFullMermaid } = require('./graph-data');
+const { getGraph, renderFullMermaid } = require('./graph-data');
 
-const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
-const SPECS_SOURCE = path.join(__dirname, '../../docs/openspec/specs');
 const DOCS_DEST = path.join(__dirname, '../../docs-generated');
 
 function generate() {
-  const graph = buildGraph({ adrsSource: ADRS_SOURCE, specsSource: SPECS_SOURCE });
+  const graph = getGraph();
   const { nodes, edges, orphanAdrs, orphanSpecs } = graph;
 
   const adrCount = Object.values(nodes).filter((n) => n.kind === 'adr').length;

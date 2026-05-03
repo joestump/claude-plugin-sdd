@@ -18,7 +18,7 @@ const {
   transformAdrReferences,
   fixMarkdownLinks,
 } = require('./transform-utils');
-const { buildGraph, buildMiniDagSection } = require('./graph-data');
+const { getGraph, buildMiniDagSection } = require('./graph-data');
 
 const SPECS_SOURCE = path.join(__dirname, '../../docs/openspec/specs');
 const SPECS_DEST = path.join(__dirname, '../../docs-generated/specs');
@@ -48,16 +48,11 @@ const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
 
 const ADR_MAPPING = buildAdrMapping(ADRS_SOURCE);
 
-// Build the artifact graph once at module init -- used to render
-// per-page mini-DAGs showing each spec's direct neighbors (per
-// ADR-0023 / SPEC-0018). The same graph is rebuilt by
-// transform-adrs.js; the cost is negligible (file reads + a narrow
-// YAML parser) and keeping the two scripts independent avoids a
-// shared-state ordering hazard at build time.
-const ARTIFACT_GRAPH = buildGraph({
-  adrsSource: ADRS_SOURCE,
-  specsSource: SPECS_SOURCE,
-});
+// Lazily-cached artifact graph (per ADR-0023 / SPEC-0018). Shared
+// with transform-adrs.js and generate-graph.js via getGraph()'s
+// in-process cache, so the frontmatter corpus is parsed once per
+// docs build regardless of which transform runs first.
+const ARTIFACT_GRAPH = getGraph();
 
 // Domain directory -> canonical SPEC-XXXX id, derived from the graph's
 // spec nodes (which carry their source `dir` alongside the parsed id).

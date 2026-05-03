@@ -366,13 +366,15 @@ The `_category_.json` for each spec directory:
 
 ### Spec Overview Index Page
 
-The generated `index.mdx` includes a table linking to all spec documents:
+The generated `index.mdx` includes a table linking to all spec documents (example output, not live links):
 
+```markdown
 | Component | Documents |
 |-----------|-----------|
 | Docs Generation | [Specification](./docs-generation/spec) / [Design](./docs-generation/design) |
 | Drift Introspection | [Specification](./drift-introspection/spec) / [Design](./drift-introspection/design) |
 | Init and Priming | [Specification](./init-and-priming/spec) |
+```
 
 ### Detection Heuristic for Existing Sites
 

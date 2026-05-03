@@ -16,18 +16,16 @@ const {
   transformAdrReferences,
   fixMarkdownLinks,
 } = require('./transform-utils');
-const { buildGraph, buildMiniDagSection } = require('./graph-data');
+const { getGraph, buildMiniDagSection } = require('./graph-data');
 
 const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
 const ADRS_DEST = path.join(__dirname, '../../docs-generated/decisions');
-const SPECS_SOURCE_FOR_GRAPH = path.join(__dirname, '../../docs/openspec/specs');
 
-// Build the artifact graph once at module init — used to render per-page
-// mini-DAGs showing each ADR's direct neighbors (per ADR-0023 / SPEC-0018).
-const ARTIFACT_GRAPH = buildGraph({
-  adrsSource: ADRS_SOURCE,
-  specsSource: SPECS_SOURCE_FOR_GRAPH,
-});
+// Lazily-cached artifact graph (per ADR-0023 / SPEC-0018). The first
+// caller in the docs build (whichever transform `build-docs.js` requires
+// first) pays the parse cost; subsequent transforms get the same graph
+// for free.
+const ARTIFACT_GRAPH = getGraph();
 
 // Read baseUrl from docusaurus.config.ts
 const configPath = path.join(__dirname, '../docusaurus.config.ts');
@@ -169,7 +167,10 @@ slug: /decisions/${slug}${sidebarClassName}
 ${badgeHeader}
 `;
 
-  // Extract canonical artifact ID for the per-page mini-DAG.
+  // Extract canonical artifact ID for the per-page mini-DAG. The
+  // `ADR-` prefix is required (matches `graph-data.js`'s
+  // `adrFileRe`); an unprefixed `0023-foo.md` won't be in the graph
+  // anyway, so there's nothing to render a mini-DAG against.
   const adrIdMatch = fileName.match(/^(ADR-\d{4})/);
   const artifactId = adrIdMatch ? adrIdMatch[1] : null;
   const miniDag = buildMiniDagSection(artifactId, ARTIFACT_GRAPH);
@@ -191,13 +192,13 @@ function main() {
   }
   fs.mkdirSync(ADRS_DEST, { recursive: true });
 
+  // No `link` field here -- the explicit index.mdx written by
+  // generate-index.js (with table + Mermaid hierarchy) owns the
+  // /decisions route. Matches how transform-openspecs.js handles the
+  // /specs category.
   fs.writeFileSync(path.join(ADRS_DEST, '_category_.json'), JSON.stringify({
     label: 'Architecture Decisions',
     position: 2,
-    link: {
-      type: 'generated-index',
-      description: 'Architecture Decision Records (ADRs).'
-    }
   }, null, 2));
 
   const files = fs.readdirSync(ADRS_SOURCE);
