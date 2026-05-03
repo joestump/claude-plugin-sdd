@@ -154,12 +154,12 @@ Per ADR-0026's embed policy, this operation runs silently with a hardware-aware 
 3. **Pre-embed scope disclosure** (concrete cross-repo accounting). `qmd embed` operates on the entire qmd index — it generates embeddings for any unembedded chunks across all collections, not just this repo's. Before invoking it, call `qmd status` (or the qmd MCP `status` tool) to get the authoritative scope:
 
    - **Total pending across the index**: the `needsEmbedding` field
-   - **Pending attributable to this repo**: count this repo's collection names from `collections[]` and use the difference between this-repo-collection document counts and what's already embedded (or, more simply, run `qmd embed --dry-run` if available — at the time of writing it is not, so the difference path is the practical one)
-   - **Pending attributable to other repos**: total minus this-repo's share
+   - **Pending attributable to this repo**: identify this-repo collections via **exact prefix match** on the collection name — a collection belongs to this repo if and only if its name equals `{slug}-adrs`, `{slug}-specs`, or `{slug}-code` (or `{slug}-{module}-{kind}` in workspace mode). **Do NOT use substring match**: a slug like `myrepo` would otherwise spuriously claim collections like `not-myrepo-adrs` belonging to a sibling repo. Match against the full collection name from `collections[]`. To estimate this-repo-pending, sum `(documents - embedded)` across the matched collections (per-collection embedded count comes from `qmd ls {collection}` or by tracking the diff before/after the most recent `qmd update`).
+   - **Pending attributable to other repos**: total minus this-repo's share. Sample 2-3 of the other repo names from the unmatched collections (strip the trailing `-{kind}` segment to recover the slug) so the user sees concretely *whose* chunks they are about to embed.
 
    Surface this in the report concretely:
 
-   > "Pending across the index: **{total} chunks**. Of those, **{this} are from {repo}**; **{other} are from {N} other indexed repos** ({sample-repo-name-1}, {sample-repo-name-2}, …). Embedding will process all of them in this run."
+   > "Pending across the index: **{total} chunks**. Of those, **{this} are from {repo}**; **{other} are from {N} other indexed repos** ({sample-repo-slug-1}, {sample-repo-slug-2}, …). Embedding will process all of them in this run."
 
    This replaces the abstract "operates on the entire index" callout. Users with a single indexed repo see "0 from other repos" and the line is short; users with several repos see the cross-repo cost upfront and can choose to skip (`--skip`) and batch later.
 

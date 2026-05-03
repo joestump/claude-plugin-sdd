@@ -84,5 +84,5 @@ List all ADRs and specs in the project with their status, date, and title.
 ## Rules
 
 - MUST use the **Status Field Extraction** algorithm in Step 3a to support both YAML-frontmatter and inline-bullet formats — leaving Status blank for legacy repos that use `- **Status:** {value}` is misleading and was reported as a real-world bug
-- MUST drop the Status column entirely when zero artifacts in the corpus have a parseable status; render `—` for missing entries when the column is partially populated
+- MUST drop the Status column entirely when zero artifacts in the rendered corpus have a parseable status; render `—` for missing entries when the column is partially populated. **Workspace aggregate mode**: the rendered corpus is the union across all modules — drop the column only when ZERO artifacts across ALL modules have status. If even one module has status, keep the column
 - MUST strip parenthetical refinement notes from extracted status values (preserved in source files; not rendered in tables)
