@@ -205,18 +205,7 @@ Ordered for implementation (dependencies respected):
 
    A story does NOT involve HTTP endpoints if it exclusively involves: database migrations, background jobs, CLI commands, library refactoring, configuration setup, CI/CD pipelines, or documentation.
 
-   For each story that involves HTTP endpoints, you MUST append a **## Security Checklist** section to the issue body, placed after the `## Acceptance Criteria` section and before any `### Branch` or `### PR Convention` sections. Use this template:
-
-   ```markdown
-   ## Security Checklist
-   - [ ] Authentication middleware applied
-   - [ ] Input validation for all request parameters and body fields
-   - [ ] Output encoding for user-supplied data in responses
-   - [ ] Rate limiting configured
-   - [ ] Request body size limits enforced
-   ```
-
-   Do NOT add the security checklist to stories that do not involve HTTP endpoints.
+   For each story that involves HTTP endpoints, you MUST append a **## Security Checklist** section to the issue body, placed after the `## Acceptance Criteria` section and before any `### Branch` or `### PR Convention` sections. Use the canonical Security Checklist template from `references/issue-authoring.md` § "Security Checklist Template" — five required checkboxes covering auth middleware, input validation, output encoding, rate limiting, and body size limits. Do NOT add the security checklist to stories that do not involve HTTP endpoints.
 
    **5.2.2: Detect UI stories and create companion test stories.**
 
@@ -290,33 +279,9 @@ Ordered for implementation (dependencies respected):
 
    When planning stories, MUST NOT create standalone issues or PRs whose sole purpose is to add governing comments to existing code retroactively. Governing comments (per ADR-0020) are added as part of feature implementation — they go in the PR that implements or modifies the governed code, not in a separate cleanup PR.
 
-   **5.3: Write task checklists.** Each story issue body MUST include a `## Requirements` section with a task checklist. The format varies by tracker:
+   **5.3: Write task checklists.** Each story issue body MUST follow the **Story Issue** template from `references/issue-authoring.md` § Body Templates. The template defines the canonical `## Requirements` (RFC 2119 task checklist) and `## Acceptance Criteria` sections; this skill MUST NOT inline its own variant. The template's rules — exact requirement-name match against the spec, SPEC number references, WHEN/THEN pairs derived from scenarios (not invented), every requirement in exactly one story — apply.
 
-   **For GitHub, Gitea, GitLab, Jira, and Linear** — use markdown task checklists:
-   ```markdown
-   ## Requirements
-
-   - [ ] **REQ "{Requirement Name}"** (SPEC-XXXX): {normative statement from the requirement}
-     - WHEN {trigger from key scenario} THEN {expected outcome}
-     - WHEN {trigger from another scenario} THEN {expected outcome}
-   - [ ] **REQ "{Another Requirement}"** (SPEC-XXXX): {normative statement}
-     - WHEN {trigger} THEN {outcome}
-
-   ## Acceptance Criteria
-   - [ ] Per SPEC-XXXX REQ "{Req 1}": {summary}
-   - [ ] Per SPEC-XXXX REQ "{Req 2}": {summary}
-   - [ ] Governing: ADR-XXXX ({decision title})
-   ```
-
-   - The requirement name MUST match the `### Requirement:` heading in the spec exactly
-   - The SPEC reference MUST use the spec's number (e.g., `SPEC-0010`)
-   - WHEN/THEN pairs MUST be derived from the requirement's scenarios, not invented
-   - Every requirement in the spec MUST appear in exactly one story's task checklist
-
-   **For Beads** — use native subtasks:
-   - Create subtasks for each requirement using `bd subtask add`, linking each subtask to the parent story
-   - Each subtask SHALL be titled with the requirement name
-   - Each subtask body SHALL include the normative statement, WHEN/THEN scenarios, and spec reference
+   **Tracker-specific deviation**: For Beads, replace the markdown `## Requirements` checklist with native subtasks (`bd subtask add` per requirement, each subtask titled with the requirement name and bodied with the normative statement + WHEN/THEN scenarios + spec reference). All other trackers (GitHub, Gitea, GitLab, Jira, Linear) use the markdown form per the template. See `references/issue-authoring.md` § Cross-Tracker Considerations for the full deviation table.
 
    After the requirements and acceptance criteria sections, unless `--no-branches` is set, append a `### PR Convention` section:
    - Include the tracker-specific close keyword referencing the story issue number

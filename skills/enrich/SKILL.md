@@ -9,7 +9,7 @@ argument-hint: [SPEC-XXXX or spec-name] [--branch-prefix <prefix>] [--dry-run] [
 
 # Enrich Issues with Developer Workflow Conventions
 
-You are retroactively adding `### Branch` and `### PR Convention` sections to existing tracker issues that were created by `/sdd:plan` (or manually) for a given spec.
+You are retroactively adding `### Branch` and `### PR Convention` sections to existing tracker issues that were created by `/sdd:plan` (or manually) for a given spec. The canonical templates for these sections live in `references/issue-authoring.md` § Enrichment Sections (which references `shared-patterns.md` for the underlying Branch Naming Conventions and PR Close Keywords). This skill is purely additive — it never replaces existing content.
 
 ## Process
 

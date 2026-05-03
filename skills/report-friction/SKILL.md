@@ -48,35 +48,11 @@ A useful self-check: "If the maintainer reads this and asks 'why did the agent f
 
 ### Step 3: Draft the issue body using the canonical template
 
-```markdown
-## Friction summary
-{One sentence naming what burned time. Lead with the affected skill: "/sdd:plan ..."}
+Use the **Friction Report** template from `references/issue-authoring.md` § Body Templates. The template defines seven sections: Friction summary, Affected, What the SKILL.md said vs. what happened, Reproduction context, Workaround used, Estimated cost, Suggested fix (optional).
 
-## Affected
-- **Skill**: `/sdd:{name}` (or `references/{file}.md` if the friction was in a shared reference)
-- **Plugin version**: {from .claude-plugin/plugin.json — the symlinked cache lets you read this; otherwise cite the version visible in the plugin install path}
-- **Triggering action**: {what the user / agent was trying to accomplish in plain language}
+The "Said vs. Happened" section is the load-bearing one — it gives the maintainer the diff between intent and observed reality. Without it, a friction report is just a complaint. Be honest with severity: "low / I lost ~2k tokens but worked around it" is useful signal; inflating to "high" because you were frustrated is not. Omit "Suggested fix" if you don't have a concrete one — half-baked suggestions are worse than none.
 
-## What the SKILL.md said vs. what happened
-**Said**: {quote or paraphrase the relevant passage from the SKILL.md, including step number}
-
-**Happened**: {what observably went wrong — error messages, wrong output, dead-end branches}
-
-## Reproduction context
-{Minimum facts to reproduce: file paths involved, command issued, repository state if relevant. Keep this scoped — entire diffs and full transcripts go elsewhere.}
-
-## Workaround used (if any)
-{What the agent did to make progress despite the friction. Helps the maintainer understand the cost: a clean workaround is cheaper than a dead-end retry.}
-
-## Estimated cost
-- **Tokens**: ~{rough estimate, e.g., 5k} burned on recovery work
-- **Severity**: {agent's own estimate: low | medium | high}
-
-## Suggested fix
-{Optional. If the agent has a concrete idea — "the SKILL.md should add a preflight check for X" or "the algorithm in step 3 should anchor on the H1 instead of file top" — surface it. Otherwise, omit this section.}
-```
-
-Fill every section that applies. Omit "Suggested fix" if you don't have one. Don't pad.
+Fill every applicable section. Don't pad.
 
 ### Step 4: Determine labels
 
@@ -95,27 +71,24 @@ If `$ARGUMENTS` contains `--label <name>`, use that as the second label and skip
 
 Before showing the draft to the user, scan the body for sensitive content, **replace each match with a clear placeholder**, and keep a record of every redaction. The user sees the sanitized body (which is what will be submitted) plus an explicit "what was redacted" list — so they know both what's leaving the machine and what was changed.
 
-Patterns to detect and the placeholder format:
+The patterns to detect and the placeholder formats are defined canonically in `references/issue-authoring.md` § Sanitization. Brief recap (see the reference for the full table and rationale):
 
-| Pattern | Example match | Replacement placeholder |
-|---------|---------------|------------------------|
-| Absolute paths under `/Users/`, `/home/`, `/var/`, `/opt/`, `C:\Users\` | `/home/joestump/src/secret-project/handler.go:142` | `[REDACTED-PATH]/handler.go:142` (preserve trailing filename if present, since basenames are usually safe and aid reproduction) |
-| URLs containing `internal`, `corp`, `staging`, `dev.`, `.local`, or non-public TLDs | `https://internal.acme.com/api/users` | `[REDACTED-URL]` |
-| Credential-shaped strings: `[A-Za-z0-9_/+=-]{32,}` near keywords (`token`, `key`, `secret`, `password`, `bearer`, `Authorization`) | `Bearer abc123def456ghi789jkl012mno345pqr` | `Bearer [REDACTED-CREDENTIAL]` |
-| Email addresses on non-public domains (skip `@gmail.com`, `@github.com`, etc.) | `someone@acme.com` | `[REDACTED-EMAIL]` |
-| IP addresses (private and public) | `10.0.0.5`, `203.0.113.42` | `[REDACTED-IP]` |
+- Absolute paths under `/Users/`, `/home/`, `/var/`, `/opt/`, `C:\Users\` → `[REDACTED-PATH]/{basename}` (preserve trailing filename)
+- URLs containing `internal`, `corp`, `staging`, `dev.`, `.local`, or non-public TLDs → `[REDACTED-URL]`
+- Credential-shaped strings near keywords (`token`, `key`, `secret`, `password`, `bearer`) → `[REDACTED-CREDENTIAL]`
+- Email addresses on non-public domains → `[REDACTED-EMAIL]`
+- IP addresses → `[REDACTED-IP]`
 
 After scanning, you have:
+
 1. A **sanitized body** — the version that will actually be submitted. All placeholders in place, structure preserved.
-2. A **redaction log** — a short list naming what was redacted and where, e.g.:
-   - `Line 12: 1 absolute path → [REDACTED-PATH]`
-   - `Line 18: 1 internal URL → [REDACTED-URL]`
-   - `Line 24: 1 credential-shaped string → [REDACTED-CREDENTIAL]`
+2. A **redaction log** — a short list naming what was redacted and where (e.g., `Line 12: 1 absolute path → [REDACTED-PATH]`).
 
 When you present the prompt to the user (Step 7), show:
+
 - The **sanitized body in full** (this is the actual submission)
 - The redaction log above or below it, clearly labelled "I sanitized N items before showing you this draft"
-- An explicit option for the user to choose "edit then submit" if they want to put any redacted content back (the original values are NOT cached — by design, redaction is destructive in this skill; the user can re-add specific values if they decide a particular path or URL was actually safe to share)
+- An explicit option for the user to choose "edit then submit" if they want to put any redacted content back (the original values are NOT cached — by design, redaction is destructive; the user can re-add specific values if they decide a particular path or URL was actually safe to share)
 
 This balances two goals: sensitive content does not leak even by inattention, AND the user has full visibility into what's leaving the machine. False positives are acceptable; the user can always edit to put something back.
 
