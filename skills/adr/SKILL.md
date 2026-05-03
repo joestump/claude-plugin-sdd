@@ -17,6 +17,30 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
 1. **Determine the next ADR number**: Scan `{adr-dir}` for existing `ADR-XXXX-*.md` files and increment to the next number. Start at ADR-0001 if none exist. Create `{adr-dir}` if it does not exist. If `$ARGUMENTS` is empty (ignoring flags like `--review` and `--module`), use `AskUserQuestion` to ask the user what decision they want to document.
 
+1a. **qmd-aware edge pre-search** (v5.0.0+):
+
+   <!-- Governing: ADR-0024 (qmd as hard dependency), SPEC-0019 REQ "qmd-Smart Authoring Skills" -->
+
+   Before drafting, qmd-search the existing ADR corpus to find related prior decisions whose IDs SHOULD appear in the new ADR's frontmatter as `supersedes`, `extends`, or `related` edges (per ADR-0023 / SPEC-0018 frontmatter DAG).
+
+   1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval":
+      - `lex`: the user's description from `$ARGUMENTS` (key technologies, named systems, decision verbs)
+      - `vec`: a one-sentence framing of the decision the new ADR will make
+      - `intent: "/sdd:adr — find related prior ADRs to suggest as frontmatter edges"`
+      - `collections: ["{repo}-adrs"]` (or per-module variant in workspace mode per `qmd-helpers.md` § "This-Repo Collection Identification")
+      - `limit: 6`, `minScore: 0.3`
+
+   2. For each result above the threshold, classify the candidate edge:
+      - **supersedes**: the new ADR's description includes "replace", "deprecate", "stop using", "switch from X to Y" and the matched ADR documents X
+      - **extends**: the new ADR builds on the matched ADR's foundation without replacing it
+      - **related**: weak association — same domain, named technology, or shared concern
+
+   3. Surface the candidate edges to the user via `AskUserQuestion` BEFORE writing the file. Show each candidate with the matched ADR's ID, title, and proposed edge classification. Options for each candidate: "Include as `{edge}`", "Include as `related` instead", "Skip". The user can override the classification if the agent's guess is wrong.
+
+   4. If qmd returns zero results above the threshold, proceed without surfacing edge suggestions and emit a one-line note: "No related ADRs found — drafting from scratch."
+
+   5. On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error and stop. Per ADR-0024, fallback paths were eliminated in v5; the failure mode is "fix qmd, retry."
+
 2. **Choose drafting mode**: Check if `$ARGUMENTS` contains `--review`.
 
    **Default (no `--review`)**: Single-agent mode. Research the codebase (read relevant files, understand the current architecture), draft the ADR directly, self-review against the architect's checklist in the Rules section, then write the file.
@@ -30,7 +54,13 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
      - The drafter should research the codebase (read relevant files, understand the current architecture) before writing
      - If `TeamCreate` fails, fall back to single-agent mode: draft the ADR directly, then self-review against the architect's checklist in the Rules section before writing.
 
-3. **Write the ADR** to `{adr-dir}/ADR-XXXX-short-title.md`
+3. **Write the ADR** to `{adr-dir}/ADR-XXXX-short-title.md`. Include the user-confirmed frontmatter edges from Step 1a in the YAML frontmatter (per the canonical edge schema in `references/shared-patterns.md` § "Graph Edge Resolution").
+
+3a. **Tier 1 mutation update** (v5.0.0+):
+
+   <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 1 Mutation-Aware Updates" -->
+
+   After writing the new ADR file, trigger a narrow re-sync of `{repo}-adrs` so the qmd index reflects the new artifact. Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns" → "Narrow update". The update is synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{repo}-adrs` — run `/sdd:index update` manually") but report the ADR creation itself as successful.
 
 4. **Clean up** the team when done (if `--review` was used).
 
@@ -143,6 +173,9 @@ Use flowchart, sequence, or C4 diagrams as appropriate.}
 - Focus on the "why" -- what problem does this solve and why this solution?
 - Reference existing ADRs if this supersedes or relates to them
 - Every ADR SHOULD include at least one Mermaid diagram illustrating the architecture or decision flow. Use flowchart, sequence, or C4 diagrams as appropriate.
+- **v5.0.0+**: MUST run qmd-aware edge pre-search per Step 1a — surface candidate `supersedes`/`extends`/`related` edges to the user via AskUserQuestion before drafting. The user's confirmed edges land in the new ADR's frontmatter (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Authoring Skills")
+- **v5.0.0+**: MUST trigger Tier 1 `{repo}-adrs` re-sync after writing the new file per Step 3a — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
+- **v5.0.0+**: On qmd unreachable / timeout during the edge pre-search, MUST surface the error and stop — never fall back to "draft without edge suggestions" (per ADR-0024)
 
 ## Graph Edge Frontmatter (per ADR-0023 / SPEC-0018)
 

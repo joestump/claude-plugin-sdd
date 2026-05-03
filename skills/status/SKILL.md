@@ -61,6 +61,12 @@ Update the status of an ADR or spec, **preserving the file's existing status for
    - "Updated ADR-0001 status: accepted → superseded (inline-bullet, preserved format; refinement note dropped)"
    - "Added inline-bullet status to SPEC-0005: draft (file had no prior status field; inline format chosen to match sibling specs)"
 
+7. **Tier 1 mutation update** (v5.0.0+):
+
+   <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 1 Mutation-Aware Updates" -->
+
+   After updating the status field, trigger a narrow re-sync of the qmd collection containing the artifact whose status changed — `{repo}-adrs` for ADRs, `{repo}-specs` for specs (or per-module variant in workspace mode per `references/qmd-helpers.md` § "This-Repo Collection Identification"). Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns" → "Narrow update". Synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{collection}` — run `/sdd:index update` manually") but report the status change itself as successful.
+
 ## Rules
 
 - Valid ADR statuses: `proposed`, `accepted`, `deprecated`, `superseded`
@@ -74,3 +80,4 @@ Update the status of an ADR or spec, **preserving the file's existing status for
 - MUST report which format was preserved or added in the success message — silent mutations are how the previous bug went undetected
 - Do not modify any content outside the status field — neither YAML keys nor body content nor adjacent bullets
 - Refinement note format is preserved in source files (per the prior `/sdd:prime` and `/sdd:list` updates that strip parentheticals from the table view) — this skill's job is to update the lifecycle word, not the refinement annotation, and only on explicit user direction
+- **v5.0.0+**: MUST trigger Tier 1 update of the affected collection (`{repo}-adrs` or `{repo}-specs`) per Step 7 — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
