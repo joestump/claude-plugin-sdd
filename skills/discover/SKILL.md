@@ -23,6 +23,12 @@ Explore an existing codebase to discover implicit architectural decisions and sp
 2. **Validate the scope** (if provided):
    - For directory paths: verify the path exists. If not, report: "Scope not found: `{scope}`. Provide a valid directory path or omit the scope to analyze the entire project."
 
+2a. **Tier 3 staleness check** (v5.0.0+):
+
+   <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 3 Staleness Threshold for Consumer Skills" -->
+
+   On entry, check the qmd index's last-modified timestamp for this repo's collections (use the exact-prefix match algorithm from `references/qmd-helpers.md` § "This-Repo Collection Identification"). If older than the configured staleness threshold (default 120m, set in CLAUDE.md `### SDD Configuration` `#### Index Freshness` `**Staleness Threshold**`), trigger a silent `qmd update` first and emit a one-line note in the report header: `Index was {age} stale — refreshed before running.` On fresh, proceed silently.
+
 3. **Load existing design artifacts**:
    - Glob `{adr-dir}/ADR-*.md` and read each file's title, context, and decision outcome
    - Glob `{spec-dir}/*/spec.md` and read each file's title and overview. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
@@ -66,6 +72,25 @@ Explore an existing codebase to discover implicit architectural decisions and sp
    - Group related findings (e.g., "chose Express" and "REST API pattern" both relate to the API layer)
    - Remove findings that overlap with existing ADRs or specs from step 3
    - For partial overlaps, note what the existing artifact covers and what remains undocumented
+
+5a. **qmd-aware duplicate suppression** (v5.0.0+):
+
+   <!-- Governing: ADR-0024 (qmd as hard dependency), SPEC-0019 REQ "qmd-Smart Drift Skills" -->
+
+   Step 5 already removes findings that overlap with existing ADRs/specs from step 3 (which read the corpus directly). v5.0.0 adds a second-pass qmd-based check to catch near-duplicates that the prose-level overlap check missed. For each remaining suggestion:
+
+   1. Construct a qmd query per `references/qmd-helpers.md` § "Hybrid Retrieval" using the suggestion text:
+      - `lex`: the candidate suggestion's title + key technologies/concepts
+      - `vec`: the candidate suggestion's one-sentence rationale
+      - `intent: "/sdd:discover — rule out near-duplicates of existing decisions"`
+      - `collections: ["{repo}-adrs"]` (or per-module variant in workspace mode)
+      - `limit: 5`, `minScore: 0.3`
+
+   2. If the top result has `score >= 0.7` (semantic near-match threshold; configurable via `--similarity-threshold` flag, defaults to 0.7), suppress the suggestion. The matched ADR likely already covers it — surfacing the suggestion would be noise.
+
+   3. Log every suppressed suggestion in the report's "Skipped (already documented)" section with the matched ADR ID, score, and a one-line note explaining the match. The user can review the suppressions to verify they were correct; if a suppression is wrong, they can re-run with `--similarity-threshold 0.85` (or higher) to be more conservative.
+
+   On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error and stop. Per ADR-0024, the pre-v5 fallback ("just use the prose-overlap check") is gone in v5; the failure mode is "fix qmd, retry."
 
 6. **Assign confidence levels** to each suggestion:
    - **High**: Explicit evidence in declarations or configuration (e.g., dependency in package.json, Dockerfile present)
@@ -169,3 +194,6 @@ This may indicate:
 - Do NOT suggest specs for directories with fewer than 3 files unless they represent a critical subsystem boundary
 - Keep the report concise -- prefer fewer high-quality suggestions over many low-confidence ones
 - Use `##` for the top-level heading and `###` for sections within the report
+- **v5.0.0+**: MUST run Tier 3 staleness check on entry per Step 3a — `qmd update` if older than configured threshold (default 120m) (Governing: ADR-0026, SPEC-0019 REQ "Tier 3 Staleness Threshold for Consumer Skills")
+- **v5.0.0+**: MUST run qmd-aware duplicate suppression per Step 5a — for each candidate suggestion, qmd-search `{repo}-adrs` for near-matches; if score ≥ 0.7 (configurable via `--similarity-threshold`), suppress and log to "Skipped (already documented)" section. The pre-v5 prose-overlap-only check is now first-pass; qmd is the second-pass net (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Drift Skills")
+- **v5.0.0+**: On qmd unreachable / timeout, MUST surface the error and stop. NEVER fall back to "just use the prose-overlap check" (per ADR-0024 — fallback paths were eliminated in v5)
