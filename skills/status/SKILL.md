@@ -2,7 +2,7 @@
 name: status
 description: Change the status of an ADR or spec (e.g., proposed to accepted, draft to review). Use when the user says "accept ADR", "approve the spec", "mark as accepted", or wants to update decision status.
 allowed-tools: Read, Write, Edit, Glob, Grep, AskUserQuestion
-argument-hint: [ADR-XXXX or SPEC-XXXX] [new status] [--module <name>]
+argument-hint: [ADR-XXXX or SPEC-XXXX] [new status] [--module <name>] [--keep-refinement]
 disable-model-invocation: true
 ---
 
