@@ -14,19 +14,40 @@ const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
 const SPECS_SOURCE = path.join(__dirname, '../../docs/openspec/specs');
 const DOCS_DEST = path.join(__dirname, '../../docs-generated');
 
-// Render a "Hierarchy" section showing the full artifact graph as a
-// single Mermaid flowchart. Returned as a Markdown block ready to
-// append to an index page; empty string when the graph has no nodes
-// (e.g., a brand-new project with no ADRs or specs yet).
-function renderHierarchySection() {
+// Render a "Hierarchy" section showing relationships among artifacts
+// of a single kind (ADRs OR specs, not both). Each index page gets
+// the diagram relevant to that page's content -- the ADR index shows
+// ADR-to-ADR edges (extends, supersedes, related), the spec index
+// shows spec-to-spec edges (requires, extends). Cross-kind context
+// (which ADR a spec implements, etc.) is already covered by the
+// per-page mini-DAGs in `buildMiniDagSection`.
+//
+// Returns the empty string when no nodes of the requested kind exist
+// or when the filtered subgraph has no internal edges (a flat list of
+// disconnected nodes wouldn't be a useful diagram).
+function renderHierarchySection({ kind, kindPlural }) {
   const graph = getGraph();
   if (!graph.nodes || Object.keys(graph.nodes).length === 0) return '';
-  const mermaid = renderFullMermaid(graph);
+
+  const filteredNodes = {};
+  for (const [id, node] of Object.entries(graph.nodes)) {
+    if (node.kind === kind) filteredNodes[id] = node;
+  }
+  if (Object.keys(filteredNodes).length === 0) return '';
+
+  // Keep only edges where both endpoints are in the filtered node set
+  // (drops cross-kind edges like spec.implements -> ADR for a
+  // specs-only subgraph).
+  const filteredEdges = graph.edges.filter(
+    (e) => filteredNodes[e.source] && filteredNodes[e.target]
+  );
+
+  const mermaid = renderFullMermaid({ nodes: filteredNodes, edges: filteredEdges });
   return [
     '',
     '## Hierarchy',
     '',
-    'Authored relationships across every ADR and spec in this project (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Derived inverses are computed on demand by `/sdd:graph` and omitted here to keep the diagram readable.',
+    `Authored relationships among ${kindPlural} in this project (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Cross-kind links (e.g., which ADR a spec implements) appear in each artifact's per-page "Related Artifacts" mini-DAG.`,
     '',
     '```mermaid',
     mermaid,
@@ -112,7 +133,7 @@ sidebar_position: 0
 | Component | Documents |
 |-----------|-----------|
 ${rows.join('\n')}
-${renderHierarchySection()}`;
+${renderHierarchySection({ kind: 'spec', kindPlural: 'specs' })}`;
 
   fs.writeFileSync(path.join(specsDest, 'index.mdx'), content);
   console.log('  Generated specs index page');
@@ -172,7 +193,7 @@ sidebar_position: 0
 | ID | Title | Status |
 |----|-------|--------|
 ${rows.join('\n')}
-${renderHierarchySection()}`;
+${renderHierarchySection({ kind: 'adr', kindPlural: 'ADRs' })}`;
 
   fs.writeFileSync(path.join(decisionsDest, 'index.mdx'), content);
   console.log('  Generated decisions index page');
