@@ -29,6 +29,7 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
 
 2. **Scan for ADRs**: Glob for `{adr-dir}/ADR-*.md` files (in aggregate mode, glob per-module). For each file:
    - Extract `status` and `date` per the **Status Field Extraction** algorithm below
+   - Extract `superseded-by` from YAML frontmatter if present (used by Step 4 footer rendering)
    - Extract the title from the first `# ` heading
    - Read the `## Context and Problem Statement` section
    - Read the `## Decision Outcome` section to extract the key decision
@@ -36,6 +37,7 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
 
 3. **Scan for specs**: Glob for `{spec-dir}/*/spec.md` files (in aggregate mode, glob per-module). Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation". For each file:
    - Extract `status` per the **Status Field Extraction** algorithm below
+   - Extract `superseded-by` from YAML frontmatter if present (used by Step 4 footer rendering)
    - Extract the title from the first `# ` heading (e.g., `SPEC-0001: Web Dashboard`)
    - Read the `## Overview` section
    - Count the number of `### Requirement:` headings
@@ -47,9 +49,18 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
    1. **YAML frontmatter** (canonical, current SDD template): look for a `status:` key inside the `---` … `---` frontmatter block at the top of the file.
    2. **Inline bullet** (legacy / hand-authored): if no YAML frontmatter exists OR YAML has no `status:` field, scan the first 30 lines for a line matching `- **Status:** {value}` (case-insensitive on "Status"; tolerate `*` or `+` as the bullet marker; tolerate `Status:` without the bold).
    3. **Strip refinement notes**: the inline-bullet form sometimes carries a parenthetical refinement note: `- **Status:** accepted (refined by ADR-0010, 2026-05-03)`. Split on the first `(`, trim trailing whitespace, and use only the leading word ("accepted"). The parenthetical content is preserved in the source file but is not rendered in prime tables — it would blow out column width for a corner case better surfaced by `/sdd:graph` or by reading the artifact directly.
-   4. **No status found**: if neither form yields a value, record the artifact as having no parseable status. Render as `—` in the table when other artifacts in the same corpus have status; drop the Status column entirely when *zero* artifacts in the corpus have status (see Step 6 rendering rule).
+   4. **No status found**: if neither form yields a value, record the artifact as having no parseable status. Render as `—` in the table when other artifacts in the same corpus have status; drop the Status column entirely when *zero* artifacts in the corpus have status (see Step 7 rendering rule).
 
-4. **Apply topic filter** (if `$ARGUMENTS` is not empty):
+   <!-- Governing: ADR-0027 (Non-Authoritative Artifact Filtering in Prime) -->
+
+4. **Filter non-authoritative artifacts**: Partition all scanned ADRs and specs into two groups:
+   - **Authoritative**: status is `accepted`, `proposed`, `draft`, `review`, `approved`, `implemented`, or missing/empty — these appear in the main output tables
+   - **Non-authoritative**: status is `superseded`, `deprecated`, or `rejected` — these are excluded from the main tables and collected for the footer section
+   - For each non-authoritative artifact, record its status and `superseded-by` target (if present)
+   - The header counts (e.g., "Primed session with N ADRs and M specs") MUST reflect only authoritative artifacts
+   - In topic-filtered mode (Step 5), non-authoritative artifacts are NOT excluded by this step — they are surfaced in matching results with a `⚠` badge instead. This step's filtering applies to the unfiltered/main output paths.
+
+5. **Apply topic filter** (if `$ARGUMENTS` is not empty):
    - The topic argument is a free-text string for semantic matching
    - For each ADR, read the title, context/problem statement, and decision outcome
    - For each spec, read the title and overview
@@ -60,13 +71,13 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
      No ADRs or specs matched the topic "{topic}". Try a broader term, or run `/sdd:prime` without a topic to see all artifacts.
      ```
 
-5. **Handle edge cases**:
+6. **Handle edge cases**:
    - If `{adr-dir}` does not exist: "The `{adr-dir}` directory does not exist. Run `/sdd:adr [description]` to create your first ADR."
    - If `{spec-dir}` does not exist: "The `{spec-dir}` directory does not exist. Run `/sdd:spec [capability]` to create your first spec."
    - If neither directory has any artifacts: "No design artifacts found. Create an ADR with `/sdd:adr` or a spec with `/sdd:spec` first."
    - If ADRs exist but no specs (or vice versa), present whichever exists and note the other is empty
 
-6. **Present results** using the appropriate output format below.
+7. **Present results** using the appropriate output format below.
 
 ## Output
 
@@ -89,11 +100,18 @@ Primed session with {N} ADRs and {M} specs.
 |----|-------|--------|--------------|
 | SPEC-0001 | {title} | {status} | {N} requirements, {M} scenarios |
 
+### Non-Authoritative (excluded)
+- ADR-XXXX: {title} → superseded by ADR-YYYY
+- ADR-XXXX: {title} (deprecated)
+- SPEC-XXXX: {title} (rejected)
+
 ### Quick Reference
 - Check for drift: `/sdd:check [target]`
 - Full audit: `/sdd:audit [scope]`
 - List all artifacts: `/sdd:list`
 ```
+
+> **Note**: The "Non-Authoritative (excluded)" section MUST only appear when there are excluded artifacts. If all artifacts are authoritative, omit the section entirely.
 
 ### Workspace aggregate mode (`/sdd:prime` in a multi-module project):
 
@@ -116,6 +134,10 @@ Primed session with {N} ADRs and {M} specs across {K} modules.
 | [api] | SPEC-0001 | {title} | {status} | {N} requirements, {M} scenarios |
 | [worker] | SPEC-0001 | {title} | {status} | {N} requirements, {M} scenarios |
 
+### Non-Authoritative (excluded)
+- [api] ADR-XXXX: {title} → superseded by ADR-YYYY
+- [worker] SPEC-XXXX: {title} (deprecated)
+
 ### Quick Reference
 - Check for drift: `/sdd:check [target]`
 - Check single module: `/sdd:check --module api [target]`
@@ -135,6 +157,7 @@ Primed session with {N} ADRs and {M} specs matching "{topic}".
 | ID | Title | Status | Relevance |
 |----|-------|--------|-----------|
 | ADR-XXXX | {title} | {status} | {why this matched the topic} |
+| ADR-XXXX | {title} | ⚠ superseded | {why this matched the topic} |
 
 ### Matching Specs
 
@@ -146,6 +169,9 @@ Primed session with {N} ADRs and {M} specs matching "{topic}".
 
 **ADR-XXXX: {title}**
 {2-3 sentence summary of context, decision, and rationale.}
+
+**ADR-XXXX: {title}** ⚠ superseded by ADR-YYYY
+{2-3 sentence summary. Final sentence notes: "This decision was superseded by ADR-YYYY — see the replacement for current guidance."}
 
 **SPEC-XXXX: {title}**
 {2-3 sentence summary of what the spec covers and key requirements.}
@@ -172,3 +198,9 @@ Primed session with {N} ADRs and {M} specs matching "{topic}".
 - In workspace aggregate mode, MUST include the Module column in output tables
 - In workspace aggregate mode, sort by module name first, then by artifact number within each module
 - When `--module` is provided, do NOT prefix artifacts — behave as single-module
+- MUST partition artifacts into authoritative vs non-authoritative per Step 4 — `superseded`, `deprecated`, and `rejected` are non-authoritative; everything else (including missing/empty status) is authoritative
+- MUST exclude non-authoritative artifacts from main tables and the header counts in the unfiltered output paths — they appear only in the "Non-Authoritative (excluded)" footer
+- MUST omit the "Non-Authoritative (excluded)" footer entirely when there are zero excluded artifacts — never render an empty section
+- MUST render superseded artifacts in the footer with a transition link: `ADR-XXXX: {title} → superseded by ADR-YYYY`. If `superseded-by` metadata is missing, render as `ADR-XXXX: {title} (superseded — no replacement recorded)` so the dead-end is visible
+- In topic-filtered mode, MUST surface non-authoritative artifacts that match the topic with a `⚠ {status}` badge in the table and a "superseded by" note in the summary — do NOT silently exclude them, since topic filtering is for historical/investigative use
+- In workspace aggregate mode, MUST prefix non-authoritative footer entries with the module bracket (e.g., `[api] ADR-XXXX: ...`) consistent with main-table prefixing
