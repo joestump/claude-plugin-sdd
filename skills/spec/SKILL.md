@@ -27,6 +27,31 @@ When creating a new spec from scratch, both files are created together — align
 
 3. **Determine the next SPEC number**: Scan `{spec-dir}` for existing spec.md files, find the highest SPEC number used, and increment. SPEC numbers are formatted as `SPEC-XXXX` (e.g., SPEC-0001). Start at SPEC-0001 if none exist. **IMPORTANT**: The prefix is `SPEC-`, NOT `RFC-`. Do not confuse spec numbering with RFC 2119 (which is a language standard for requirements keywords).
 
+3a. **qmd-aware edge pre-search** (v5.0.0+):
+
+   <!-- Governing: ADR-0024 (qmd as hard dependency), SPEC-0019 REQ "qmd-Smart Authoring Skills" -->
+
+   Before drafting, qmd-search the existing spec corpus to find related prior specs whose IDs SHOULD appear in the new spec's frontmatter as `requires`, `extends`, or `supersedes` edges. Also search ADRs to identify which ADRs the new spec should declare it `implements`.
+
+   1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval":
+      - `lex`: capability name + key technologies/concepts
+      - `vec`: a one-sentence framing of what the new spec covers
+      - `intent: "/sdd:spec — find related prior specs and governing ADRs to suggest as frontmatter edges"`
+      - `collections: ["{repo}-specs", "{repo}-adrs"]` (or per-module variants per `qmd-helpers.md` § "This-Repo Collection Identification")
+      - `limit: 8`, `minScore: 0.3`
+
+   2. Classify each result above the threshold:
+      - **requires** (spec → spec): the new spec depends on capability the matched spec provides
+      - **extends** (spec → spec): the new spec is a behavioral extension of the matched spec
+      - **supersedes** (spec → spec): the new spec replaces the matched spec
+      - **implements** (spec → ADR): the new spec realizes the matched ADR's decision
+
+   3. Surface candidate edges via `AskUserQuestion` BEFORE writing the file. Show each with the matched artifact's ID, title, and proposed edge classification. Options for each: "Include as `{edge}`", "Include as different edge", "Skip".
+
+   4. If qmd returns zero results above the threshold, proceed without surfacing edge suggestions and emit: "No related specs or ADRs found — drafting from scratch."
+
+   5. On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error and stop. Per ADR-0024, no fallback in v5.
+
 4. **Choose drafting mode**: Check if `$ARGUMENTS` contains `--review`.
 
    **Default (no `--review`)**: Single-agent mode. Research the codebase (read relevant files, understand the current architecture), draft both spec.md and design.md directly, self-review against the architect's checklist in the Rules section, then write both files.
@@ -41,8 +66,14 @@ When creating a new spec from scratch, both files are created together — align
      - If `TeamCreate` fails, fall back to single-agent mode: draft both files directly, then self-review against the architect's checklist in the Rules section before writing.
 
 5. **Write both files**:
-   - `{spec-dir}/{capability-name}/spec.md`
+   - `{spec-dir}/{capability-name}/spec.md` — include the user-confirmed frontmatter edges from Step 3a (per the canonical edge schema in `references/shared-patterns.md` § "Graph Edge Resolution")
    - `{spec-dir}/{capability-name}/design.md`
+
+5a. **Tier 1 mutation update** (v5.0.0+):
+
+   <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 1 Mutation-Aware Updates" -->
+
+   After writing both files, trigger a narrow re-sync of `{repo}-specs` so the qmd index reflects the new artifacts. Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns" → "Narrow update". Synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{repo}-specs` — run `/sdd:index update` manually") but report the spec creation itself as successful.
 
 6. **Clean up** the team when done (if `--review` was used).
 
@@ -380,6 +411,9 @@ date: {YYYY-MM-DD}
 - MUST NOT inject the Security Requirements section for non-web specs (CLI tools, libraries, batch jobs, data migrations, background workers)
 - For UI-facing specs: MUST inject the Accessibility Requirements section covering WCAG 2.1 AA, ARIA landmarks, `aria-label` on icon-only controls, `aria-live` for dynamic content, keyboard navigation, and focus management (Governing: ADR-0019, SPEC-0016 REQ "Accessibility Requirements for UI Specs")
 - MUST NOT inject the Accessibility Requirements section for non-UI specs (API-only, CLI, batch jobs, background workers, internal libraries)
+- **v5.0.0+**: MUST run qmd-aware edge pre-search per Step 3a — surface candidate `requires`/`extends`/`supersedes`/`implements` edges to the user via AskUserQuestion before drafting. The user's confirmed edges land in the new spec's frontmatter (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Authoring Skills")
+- **v5.0.0+**: MUST trigger Tier 1 `{repo}-specs` re-sync after writing both files per Step 5a — best-effort, silent on success (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
+- **v5.0.0+**: On qmd unreachable / timeout during the edge pre-search, MUST surface the error and stop — never fall back to "draft without edge suggestions" (per ADR-0024)
 - For backend specs with error handling: MUST inject error wrapping, sentinel errors, no silent swallowing, and structured logging requirements (Governing: SPEC-0016 REQ "Go Code Quality Guidelines")
 - For backend specs with concurrency: MUST inject context propagation, worker lifecycle, race safety, and race detection CI requirements (Governing: SPEC-0016 REQ "Go Code Quality Guidelines")
 - For backend specs with database interactions: MUST inject transaction, connection lifecycle, and parameterized query requirements
