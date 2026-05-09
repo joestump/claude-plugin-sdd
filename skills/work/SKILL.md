@@ -96,6 +96,16 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
    This list is passed to every worker in step 9.4 and enforced in worker step 7a.
 
+3c. **Tier 4 issues sync** (v5.0.0+):
+
+   <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills" -->
+
+   Before discovering workable issues (Step 4), sync the `{repo}-issues` qmd collection from the tracker so the lead and all workers see current issue state. This also feeds the Sibling PR Manifest (Step 8a) with fresh data. Subject to the 5-min dedup window per `references/tracker-sync.md` § "Cursor Management".
+
+   1. Read `.sdd/issues/_meta.json`. If `last_sync` is within the last 5 minutes, skip the sync silently.
+   2. Otherwise, invoke per-tracker fetch+normalize per `references/tracker-sync.md`. Print: "Syncing N issues from {tracker}…".
+   3. On sync failure, surface a one-line warning per `tracker-sync.md` § "Failure Modes and Degradation" and proceed with live tracker queries (the pre-v5 path) for this run. Do NOT block; work dispatch is the user's primary intent.
+
 4. **Discover workable issues**: Search the tracker for open issues:
    - If a **spec** was provided: find all open issues referencing that spec.
    - If **issue numbers** were provided: fetch those specific issues.
@@ -257,7 +267,30 @@ You are picking up tracker issues and implementing them in parallel using git wo
     1. All file operations use the worktree absolute path (read, write, edit, glob, grep).
     2. Read the issue body and understand the acceptance criteria.
     3. Explore existing code in the worktree to understand the codebase structure.
-    3a. **Coordinate with sibling workers** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"). Follow the "Worker Communication Protocol" in `references/shared-patterns.md`. Before modifying any file:
+
+    3a. **qmd-aware code pre-search before writing** (v5.0.0+).
+
+       <!-- Governing: ADR-0024 (qmd as hard dependency), SPEC-0019 REQ "qmd-Smart Sprint Skills" -->
+
+       Before writing any new helper, type, struct, interface, or substantial code block, qmd-search `{repo}-code` for existing patterns. This complements the Sibling PR Manifest (which covers in-flight work) by surfacing patterns already on main that the worker would otherwise re-create. Mitigates the duplicate-implementation drift Foundation Story Detection (per ADR-0017) was designed to catch.
+
+       1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval":
+          - `lex`: the planned helper / type / function name AND key terms from its purpose (e.g., for a `parseUserID` helper: "parseUserID parse user id authentication token")
+          - `vec`: a one-sentence framing of what the worker is about to implement (e.g., "extract a numeric user ID from an authenticated request context")
+          - `intent: "/sdd:work — find existing helpers/types/patterns to import rather than recreate"`
+          - `collections: ["{repo}-code"]`
+          - `limit: 6`, `minScore: 0.4`
+
+       2. For each match above the threshold, the worker MUST:
+          - Read the matched file's relevant portion in full
+          - If the existing implementation covers the worker's need, IMPORT it rather than create a duplicate
+          - Broadcast `TYPE_IMPORTED: #{issue} will import {TypeName} from {file-path}` per the Worker Communication Protocol (already in `shared-patterns.md`) so the lead and siblings know
+
+       3. If qmd returns zero matches above the threshold, proceed with the new implementation as planned.
+
+       4. On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error to the lead via SendMessage and stop work on this issue. Per ADR-0024, the pre-v5 fallback ("just write new code") is gone in v5; the failure mode is "fix qmd, retry."
+
+    3b. **Coordinate with sibling workers** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"). Follow the "Worker Communication Protocol" in `references/shared-patterns.md`. Before modifying any file:
        - **Check the Sibling PR Manifest** for files already claimed by siblings. If the file appears under "Files Currently Being Modified by Siblings", send `CONFLICT_ALERT` and wait for lead coordination instead of modifying it.
        - **Check for shared types** in the manifest's "Shared Types Available" section. If a needed type, struct, interface, or helper already exists (from a merged foundation PR or an in-progress sibling), import it from the expected location instead of creating a duplicate.
        - **Broadcast live updates** via `SendMessage` to all siblings:
@@ -335,6 +368,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
       gh issue edit {issue-number} --remove-label "in-review" --add-label "merged"
       ```
       If the work session itself does not merge PRs, the `merged` transition will be handled by `/sdd:review` or the next `/sdd:work` invocation that detects merged PRs.
+    - **Tier 1 mutation update on merge** (v5.0.0+, Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates"): After detecting a PR merge, before transitioning to `merged`, trigger a narrow re-sync of `{repo}-code` so the qmd index reflects the newly-merged code. Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns". Best-effort and silent on success. On failure, append a one-line warning to the run log ("Index refresh failed for `{repo}-code` after merging PR #{N} — run `/sdd:index update` manually") but the merged-label transition still proceeds.
     - **Unblock deferred issues**: After any issue transitions to `merged`, re-check the deferred queue from step 4. For each deferred issue, re-query its dependencies. If ALL dependencies now have the `merged` label, move the issue to the ready queue and start it if an agent slot is available.
     - When a worker finishes, check if there are queued issues waiting.
     - If queued issues have dependency requirements, check if dependencies are now satisfied.
@@ -556,3 +590,6 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - Governing comments (per ADR-0020) are inline code annotations and MUST be added in feature PRs — they are NOT subject to design document isolation
 - Lead MUST collect all deferred design doc updates after sprint PRs merge and create a single batch PR for them
 - If no deferred design doc updates exist across any PRs, the batch PR step MUST be skipped
+- **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 3c — sync from tracker before Step 4 issue discovery, subject to 5-min dedup. On failure, fall back to live queries with a warning, never block (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")
+- **v5.0.0+**: Workers MUST run qmd-aware code pre-search per worker Step 3a before writing any new helper/type/struct/interface — qmd-search `{repo}-code` for matches; if found above threshold (minScore 0.4), MUST import the existing implementation and broadcast `TYPE_IMPORTED` rather than recreate (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Sprint Skills")
+- **v5.0.0+**: Lead MUST trigger Tier 1 update of `{repo}-code` after detecting a PR merge per Step 11 — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
