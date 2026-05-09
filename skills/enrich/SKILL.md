@@ -113,6 +113,26 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
    - Any failures encountered (with issue numbers and error details)
    - Breakdown: how many got `### Branch`, how many got `### PR Convention`
 
+### Step 0a: Tier 4 issues sync (v5.0.0+)
+
+<!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills" -->
+
+Before iterating issues, sync the `{repo}-issues` qmd collection from the tracker so the local cache reflects current issue state. This is Tier 4 of the freshness model: always sync at consumer entry, subject to a 5-minute deduplication window.
+
+1. Read `.sdd/issues/_meta.json` (per `references/tracker-sync.md` § "Cursor Management"). If `last_sync` is within the last 5 minutes, skip the sync and proceed silently.
+2. Otherwise, invoke the per-tracker fetch+normalize per `references/tracker-sync.md` § "Per-Tracker Sync" with the `cursor.{tracker}` from `_meta.json` for incremental fetch. Print a one-line note: "Syncing N issues from {tracker}…".
+3. On sync failure (rate limit, auth, network), surface the failure per `references/tracker-sync.md` § "Failure Modes and Degradation" — emit a one-line warning and proceed with live tracker queries (the pre-v5 path) for this run. Do NOT block; enrichment is the user's primary intent.
+
+### Step 10: Tier 1 mutation update (v5.0.0+)
+
+<!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 1 Mutation-Aware Updates" -->
+
+After all issue body updates complete (step 7.i), trigger a narrow re-sync of the `{repo}-issues` collection so the qmd index reflects the appended `### Branch` and `### PR Convention` sections. Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns" → "Narrow update".
+
+1. Re-fetch the affected issues via the per-tracker fetch+normalize (only the issues that were modified — most trackers expose a list-by-IDs endpoint that's cheaper than a full re-sync).
+2. Run `qmd update` per the qmd-helpers pattern.
+3. The update is best-effort and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{repo}-issues` — run `/sdd:index update` manually") but report the enrichment itself as successful.
+
 ## Config Reference
 
 This skill reads the `Branch Conventions` and `PR Conventions` subsections of the `### SDD Configuration` section in CLAUDE.md. See the plugin's `references/shared-patterns.md` § "Config Resolution" for the canonical format and defaults, and § "Branch Naming Conventions" and "PR Close Keywords" for conventions.
@@ -127,3 +147,5 @@ This skill reads the `Branch Conventions` and `PR Conventions` subsections of th
 - MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
 - MUST use the try-then-create pattern (see `references/shared-patterns.md`) for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - No `--review` support (utility skill)
+- **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 0a — sync from the configured tracker into `.sdd/issues/` before iterating issues, subject to the 5-minute dedup window. On sync failure, fall back to live tracker queries with a one-line warning (NEVER block) (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")
+- **v5.0.0+**: MUST trigger Tier 1 mutation update of `{repo}-issues` after enrichment per Step 10 — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")

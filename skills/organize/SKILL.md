@@ -102,6 +102,28 @@ You are retroactively grouping existing tracker issues into tracker-native proje
     - Any failures encountered (with issue numbers)
     - Whether CLAUDE.md `Projects` section was updated with project IDs
 
+### Step 0a: Tier 4 issues sync (v5.0.0+)
+
+<!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills" -->
+
+Before discovering existing issues (Step 5), sync the `{repo}-issues` qmd collection from the tracker so the local cache reflects current issue state. This is Tier 4 of the freshness model: always sync at consumer entry, subject to a 5-minute deduplication window.
+
+1. Read `.sdd/issues/_meta.json` (per `references/tracker-sync.md` § "Cursor Management"). If `last_sync` is within the last 5 minutes, skip the sync and proceed silently.
+2. Otherwise, invoke the per-tracker fetch+normalize per `references/tracker-sync.md` with the cursor for incremental fetch. Print: "Syncing N issues from {tracker}…".
+3. On sync failure, surface a one-line warning per `references/tracker-sync.md` § "Failure Modes and Degradation" and proceed with live tracker queries (the pre-v5 path) for this run. Do NOT block; organize is the user's primary intent.
+
+### Step 12: Tier 1 mutation update (v5.0.0+)
+
+<!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 1 Mutation-Aware Updates" -->
+
+After tier (c) interventions modify issue bodies (labels, project links surfaced in body, etc.), trigger a narrow re-sync of `{repo}-issues` so the qmd index reflects the changes. Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns".
+
+1. Re-fetch the modified issues via per-tracker fetch+normalize (only those touched in tier (c)).
+2. Run `qmd update`.
+3. Best-effort and silent on success. On failure, append a one-line warning ("Index refresh failed for `{repo}-issues` — run `/sdd:index update` manually") and report the organize step itself as successful.
+
+If tier (a) (report-only) or tier (b) (project-level only, no issue-content changes) was selected, skip Step 12 — there's nothing to re-index for `{repo}-issues`.
+
 ## Config Reference
 
 This skill reads and writes the `Projects` subsection of the `### SDD Configuration` section in CLAUDE.md. See the plugin's `references/shared-patterns.md` § "Config Resolution" for the canonical format and defaults. All keys are optional with sensible defaults. When writing, merge — do not overwrite.
@@ -122,3 +144,5 @@ This skill reads and writes the `Projects` subsection of the `### SDD Configurat
 - MUST use the try-then-create pattern (see `references/shared-patterns.md`) for all label applications in tier (c) (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - MUST degrade gracefully when tracker features are unavailable — skip and report, never fail (Governing: SPEC-0011 REQ "Graceful Degradation")
 - No `--review` support (utility skill)
+- **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 0a — sync from tracker before discovering issues, subject to 5-min dedup. On failure, fall back to live queries with a warning (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")
+- **v5.0.0+**: MUST trigger Tier 1 update of `{repo}-issues` after tier (c) interventions per Step 12 — best-effort, silent on success (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
