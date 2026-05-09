@@ -8,6 +8,22 @@ sidebar_position: 0
 
 The SDD plugin brings architecture governance to Claude Code. It lets you record decisions as ADRs, formalize them into specifications, plan sprints, implement issues in parallel, and validate that your code stays aligned with your architecture -- all without leaving the CLI.
 
+## Prerequisites
+
+Starting with **v5.0.0**, the plugin has a hard runtime dependency on [qmd](https://github.com/tobi/qmd), an on-device hybrid retrieval engine (BM25 + vector + LLM rerank). qmd powers the plugin's smart-context features: topic-filtered priming, drift detection on changed files, and pre-search of related decisions when authoring ADRs and specs.
+
+Install qmd globally before running `/sdd:init`:
+
+```bash
+npm install -g @tobilu/qmd
+# or
+bun install -g @tobilu/qmd
+```
+
+`/sdd:init` runs `command -v qmd` as a preflight check and refuses to set up the project if qmd is missing. The first time qmd embeds a corpus, it auto-downloads its GGUF models (~2&nbsp;GB total) and caches them in `~/.cache/qmd/`. Subsequent embeds and queries reuse the cached models.
+
+If you previously used the plugin at v4.x, qmd was not required — see the [CHANGELOG](https://github.com/joestump/claude-plugin-sdd/blob/main/CHANGELOG.md) for the v5 upgrade notes.
+
 ## Installation
 
 Add the plugin to your project's `.claude/settings.json`:

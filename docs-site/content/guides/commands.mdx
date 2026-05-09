@@ -425,20 +425,23 @@ responses. Run at the start of each session.
 
 **Usage:**
 ```
-/sdd:prime [topic]
+/sdd:prime [topic] [--module <name>]
 ```
 
 **What it does:**
-- Reads all ADRs and specs, summarizes each, and presents them in structured tables
-- With a topic argument, uses semantic matching to load only relevant artifacts
-  (e.g., `/sdd:prime security` loads auth, encryption, and access control ADRs)
-- Read-only — never modifies files
+- **Untargeted mode** (`/sdd:prime`): reads every ADR and spec in the corpus, summarizes each, and presents them in structured tables for a full architecture overview.
+- **Topic mode** (`/sdd:prime <topic>`): uses qmd hybrid retrieval (BM25 + vector + LLM rerank) to fetch the top-K artifacts most relevant to the topic and deep-reads only those candidates. Replaces the v4 "load everything, then filter semantically" path.
+- **Tier 2 session-start refresh** (v5.0.0+): on entry, runs a cheap `qmd update` to catch artifacts changed outside the current session (other developers, CI, branch switches). Skipped if the index was touched within the last 60 seconds. Surfaces a one-line refresh diff in the report header when something changed.
+- **Non-authoritative filtering** (v5.0.0+, ADR-0027): ADRs and specs with status `superseded`, `deprecated`, or `rejected` are excluded from the main tables and listed in a "Non-Authoritative (excluded)" footer with `superseded-by` transition links. The header counts reflect only authoritative artifacts. In topic mode, non-authoritative matches are still surfaced but flagged with a `⚠` badge so historical investigation works.
+- **Workspace mode**: with `--module <name>`, scopes to a single module; otherwise aggregates across all modules in a workspace and prefixes artifact IDs with `[module]` brackets.
+- Read-only — never modifies files (apart from the qmd index refresh in Tier 2).
 
 **Examples:**
 ```
 /sdd:prime
 /sdd:prime authentication
 /sdd:prime deployment
+/sdd:prime --module api
 ```
 
 ---
