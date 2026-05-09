@@ -76,10 +76,43 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
    4. **If no conflict markers are found**, proceed to step 4 for this PR.
 
+3c. **Tier 4 issues sync** (v5.0.0+):
+
+   <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills" -->
+
+   Before computing the topological merge order (Step 11a) and before reviewers query for missing ADR/issue references (Step 4a), sync the `{repo}-issues` qmd collection from the tracker. Subject to the 5-min dedup window per `references/tracker-sync.md` § "Cursor Management".
+
+   1. Read `.sdd/issues/_meta.json`. If `last_sync` is within the last 5 minutes, skip the sync silently.
+   2. Otherwise, invoke per-tracker fetch+normalize per `references/tracker-sync.md`. Print: "Syncing N issues from {tracker}…".
+   3. On sync failure, surface a one-line warning per `tracker-sync.md` § "Failure Modes and Degradation" and proceed with live tracker queries (the pre-v5 path) for this run. Do NOT block; PR review is the user's primary intent.
+
 4. **Load architecture context** (Governing: SPEC-0009 REQ "Architecture Context Loading"):
    - If a spec identifier is provided or can be inferred from PR metadata (e.g., PR body contains "SPEC-XXXX"), read `spec.md`, `design.md`, and any referenced ADRs from the resolved spec directory. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
    - If no governing spec can be inferred (e.g., PRs specified by number with no spec reference), proceed with general code review only and note in the report that spec compliance could not be verified.
    - This context will be sent to all reviewer agents.
+
+4a. **qmd-aware missing-reference retrieval** (v5.0.0+):
+
+   <!-- Governing: ADR-0024 (qmd as hard dependency), SPEC-0019 REQ "qmd-Smart Sprint Skills" -->
+
+   Reviewers MUST search `{repo}-adrs` and `{repo}-issues` to identify ADRs the PR should reference and prior issues the PR touches. The point: a PR that modifies authentication code should reference the auth ADR (ADR-0011 in the SPEC-0019 example). Without a qmd assist, this requires the reviewer to remember the entire ADR/issue corpus. With qmd, the reviewer surfaces missing references as findings.
+
+   For each PR being reviewed:
+
+   1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval" derived from the PR's diff:
+      - `lex`: keywords from the PR title + file path basenames + named symbols touched
+      - `vec`: a one-sentence summary of what the PR changes
+      - `intent: "/sdd:review — find ADRs and prior issues this PR should reference"`
+      - `collections: ["{repo}-adrs", "{repo}-issues"]`
+      - `limit: 8`, `minScore: 0.4`
+
+   2. For each match above the threshold:
+      - **ADR match**: Check whether the PR body or any modified file's governing comment block already references the matched ADR. If NOT, raise as a finding ("Should this PR reference ADR-{XXXX} ({title})?") with the relevant ADR section that suggests the connection.
+      - **Issue match**: Check whether the PR body already references the matched issue (via `Closes #N`, `Fixes #N`, `Part of #N`, or `Related: #N`). If NOT, surface as informational note rather than a blocking finding ("PR appears related to open issue #{N} ({title}) — consider linking").
+
+   3. Inject the missing-reference findings into the reviewer's review (alongside the spec-acceptance-criteria findings already in Step 9). Each finding cites the qmd retrieval evidence (matched ADR/issue ID + score) so the reviewer's responder can evaluate whether the connection is real.
+
+   4. On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error and stop. Per ADR-0024, no fallback in v5.
 
 5. **Read review config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `#### Review` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Max Pairs`=2, `Merge Strategy`="squash", `Auto Cleanup`=false. CLI flags override: `--pairs N` overrides `Max Pairs`, `--no-merge` prevents merging.
 
@@ -171,6 +204,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
        - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to merge.
        - **GitLab**: Use MCP tools or `glab mr merge`.
        - The tracker's native close-on-merge behavior will automatically close the linked story issue.
+    5a. **Tier 1 mutation update on merge** (v5.0.0+, Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates"): After a successful merge, trigger narrow re-syncs of BOTH `{repo}-code` (the merge changed code) AND `{repo}-issues` (the linked story issue closed). Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns". Best-effort and silent on success. On failure of either, append a one-line warning to the run log ("Index refresh failed for `{collection}` after merging PR #{N} — run `/sdd:index update` manually") but the merge itself is reported as successful.
     6. **Close parent epic if all stories are done**: After a successful merge, check whether the closed story's parent epic should also be closed:
        a. Parse the PR body for an epic reference (e.g., `Part of #XX` or the configured `Ref Keyword` from CLAUDE.md `PR Conventions`). If no epic reference is found, skip this step.
        b. Fetch the epic issue and extract its child story references. Read the `PR Conventions > Ref Keyword` from CLAUDE.md config (default: "Part of") and use it to find child issues:
@@ -274,3 +308,6 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 - MUST reject PRs with conflict markers using REQUEST_CHANGES with file paths and line numbers — zero tolerance, any file type
 - MUST skip all further review (architecture context loading, spec compliance, code quality) for PRs rejected by the conflict-marker gate
 - Conflict-marker gate runs before CI checks — a PR with conflict markers is rejected even if CI is green
+- **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 3c — sync from tracker before Step 4a (qmd-aware missing-reference retrieval) and Step 11a (topological merge order). On failure, fall back to live queries with a warning, never block (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")
+- **v5.0.0+**: Reviewers MUST run qmd-aware missing-reference retrieval per Step 4a — qmd-search `{repo}-adrs` and `{repo}-issues` for ADRs and prior issues the PR should reference; surface missing ADR refs as findings (with citation), surface missing issue refs as informational notes (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Sprint Skills")
+- **v5.0.0+**: After successful merge, MUST trigger Tier 1 updates of BOTH `{repo}-code` AND `{repo}-issues` per Step 11.5a — best-effort, silent on success, one-line warnings on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
