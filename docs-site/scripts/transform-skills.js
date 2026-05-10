@@ -621,24 +621,93 @@ function generateIndexPage(manifest, skillsByName) {
 }
 
 // ---------------------------------------------------------------------------
-// Override hatch (foundation pass-through; full pin enforcement in #141)
+// Override hatch — SHA-256 pin enforcement
 // ---------------------------------------------------------------------------
 
+const OVERRIDE_PIN_RE =
+  /\{\/\*\s*Governing-SKILL:\s*([^@\s]+)@([0-9a-fA-F]{64})\s*\*\/\}/;
+
 /**
- * If skills/{name}/page.override.mdx exists, copy it verbatim and skip
- * auto-generation for that skill. Story #141 layers SHA-256 pin enforcement
- * on top of this; the foundation story exposes the hatch so authors can
- * stage overrides during the migration window.
+ * Compute SHA-256 of the raw byte content of a SKILL.md file. Per the
+ * spec's Open Question #5 resolution, the hash is over the full bytes
+ * with no normalization or trimming.
  *
  * Governing: SPEC-0021 REQ "Override File Format and Pin".
  */
-function loadOverride(skillDir) {
+function computeSkillMdHash(skillMdPath) {
+  const buf = fs.readFileSync(skillMdPath);
+  return crypto.createHash('sha256').update(buf).digest('hex');
+}
+
+/**
+ * Parse the {/* Governing-SKILL: <path>@<sha256> *​/} pin from the first
+ * non-blank line of an override file. Returns {path, sha} on success or
+ * null on missing/malformed.
+ *
+ * Governing: SPEC-0021 REQ "Override File Format and Pin".
+ */
+function parseOverridePin(content) {
+  const lines = content.split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const m = line.match(OVERRIDE_PIN_RE);
+    if (m) return { path: m[1], sha: m[2].toLowerCase() };
+    return null; // first non-blank line MUST be the pin
+  }
+  return null;
+}
+
+/**
+ * Resolve and validate an override file for the given skill. Returns:
+ *  - null when no override exists (caller falls through to auto-generation)
+ *  - {content} when an override exists with a matching pin
+ *
+ * Throws when the pin is missing, mismatched, or the override is orphaned
+ * (no SKILL.md). Each error message names the override file path and
+ * points the author at `npm run docs:refresh-overrides`.
+ *
+ * Governing: SPEC-0021 REQ "Override File Format and Pin",
+ *            SPEC-0021 REQ "Override Pin Mismatch and Helper".
+ */
+function loadOverride(skillDir, skillName) {
   const overridePath = path.join(skillDir, 'page.override.mdx');
   if (!fs.existsSync(overridePath)) return null;
-  return {
-    path: overridePath,
-    content: fs.readFileSync(overridePath, 'utf-8'),
-  };
+
+  const skillMdPath = path.join(skillDir, 'SKILL.md');
+  if (!fs.existsSync(skillMdPath)) {
+    throw new Error(
+      `${path.relative(REPO_ROOT, overridePath)}: orphan override — ` +
+        `skills/${skillName}/SKILL.md does not exist. ` +
+        `Either delete the override or recreate the SKILL.md.`,
+    );
+  }
+
+  const content = fs.readFileSync(overridePath, 'utf-8');
+  const pin = parseOverridePin(content);
+  if (!pin) {
+    throw new Error(
+      `${path.relative(REPO_ROOT, overridePath)}: missing or malformed ` +
+        `Governing-SKILL pin header. The first non-blank line MUST be of the form ` +
+        `'{/* Governing-SKILL: skills/${skillName}/SKILL.md@<sha256> */}'. ` +
+        `Run 'npm run docs:refresh-overrides -- ${skillName}' to add or repair it, ` +
+        `or delete the override to fall back to auto-generation.`,
+    );
+  }
+
+  const expected = pin.sha;
+  const actual = computeSkillMdHash(skillMdPath);
+  if (expected !== actual) {
+    throw new Error(
+      `${path.relative(REPO_ROOT, overridePath)}: stale Governing-SKILL pin.\n` +
+        `  expected (pinned): ${expected}\n` +
+        `  current (on disk): ${actual}\n` +
+        `Re-review the override against the new SKILL.md, then run ` +
+        `'npm run docs:refresh-overrides -- ${skillName}' to update the pin, ` +
+        `or delete the override to fall back to auto-generation.`,
+    );
+  }
+
+  return { path: overridePath, content };
 }
 
 // ---------------------------------------------------------------------------
@@ -688,6 +757,25 @@ function main() {
   const manifest = loadManifest();
   checkBidirectionalConsistency(manifest);
 
+  // Detect orphan overrides — page.override.mdx files in directories
+  // whose SKILL.md has been removed. These would never be visited by the
+  // manifest loop below, so scan all skill directories independently.
+  // Governing: SPEC-0021 REQ "Override Pin Mismatch and Helper" (orphan).
+  if (fs.existsSync(SKILLS_SOURCE)) {
+    for (const entry of fs.readdirSync(SKILLS_SOURCE, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const overridePath = path.join(SKILLS_SOURCE, entry.name, 'page.override.mdx');
+      const skillMdPath = path.join(SKILLS_SOURCE, entry.name, 'SKILL.md');
+      if (fs.existsSync(overridePath) && !fs.existsSync(skillMdPath)) {
+        throw new Error(
+          `${path.relative(REPO_ROOT, overridePath)}: orphan override — ` +
+            `skills/${entry.name}/SKILL.md does not exist. ` +
+            `Either delete the override or recreate the SKILL.md.`,
+        );
+      }
+    }
+  }
+
   ensureCleanDest();
 
   const skillsByName = new Map();
@@ -700,9 +788,13 @@ function main() {
       skillsByName.set(name, skill);
 
       const destPath = path.join(SKILLS_DEST, `${name}.mdx`);
-      const override = loadOverride(skill.dir);
+      // Override pin enforcement: matching pin → copy verbatim, do NOT
+      // re-run mdx-escape (the author owns the override). Mismatch,
+      // missing pin, or orphan → loadOverride throws and aborts the build.
+      // Governing: SPEC-0021 REQ "Override File Format and Pin",
+      //            SPEC-0021 REQ "MDX Safety" (overrides bypass escaping).
+      const override = loadOverride(skill.dir, name);
       if (override) {
-        // Foundation: pass-through. Story #141 adds the SHA-256 pin check.
         fs.writeFileSync(destPath, override.content);
         overrideCount++;
         continue;
@@ -740,10 +832,10 @@ module.exports = {
   generateSkillPage,
   generateIndexPage,
   loadSkill,
-  // Exposed so Story #141 can add SHA-256 pin enforcement on top without
-  // forking the file. The pin computation itself lives there.
-  computeSkillMdHash: (skillMdPath) =>
-    crypto.createHash('sha256').update(fs.readFileSync(skillMdPath)).digest('hex'),
+  loadOverride,
+  parseOverridePin,
+  computeSkillMdHash,
+  OVERRIDE_PIN_RE,
   SKILLS_SOURCE,
   SKILLS_DEST,
   MANIFEST_PATH,
