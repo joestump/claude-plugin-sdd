@@ -244,13 +244,13 @@ When a lockfile already exists, the skill MUST evaluate staleness using PID live
 
 ### Requirement: Concurrency Invariants for /sdd:review
 
-`/sdd:review --loop` MUST NOT submit a new review on a PR whose previous-iteration responder has not yet pushed fixes. The skill MUST verify by comparing the latest PR head SHA against the SHA the previous iteration recorded in `history.jsonl`. CI mid-flight MUST NOT be treated as lock contention; it MUST remain handled by the existing per-PR CI gate (skip until green).
+`/sdd:review --loop` MUST NOT submit a new review on a PR whose previous-iteration responder has not yet pushed fixes. The skill MUST verify by comparing the current remote HEAD SHA of the PR's branch against `head_sha_at_iteration_end` recorded for that PR in the previous iteration's `history.jsonl` line (per "Telemetry Schema"). If the two SHAs are equal, no new commits have landed since the prior iteration ended and the iteration MUST defer review of that PR. SHA equality is the sole verification rule; out-of-band signals (e.g., responder commentary about fixes being incoming) MUST NOT be used. CI mid-flight MUST NOT be treated as lock contention; it MUST remain handled by the existing per-PR CI gate (skip until green).
 
-#### Scenario: Responder from prior iteration has not yet pushed
+#### Scenario: No new commits since prior iteration ended
 
-- **WHEN** iteration 3 of `/sdd:review --loop` finds PR #142's head SHA equals the SHA recorded in iteration 2's `history.jsonl` line, but the prior responder reported a fix was incoming
+- **WHEN** iteration 3 of `/sdd:review --loop` finds PR #142's current remote HEAD SHA equals the `head_sha_at_iteration_end` recorded for #142 in iteration 2's `history.jsonl` line
 - **THEN** the iteration MUST defer review of #142 to the next tick
-- **AND** MUST emit a one-line note ("PR #142: awaiting responder push from iteration 2")
+- **AND** MUST emit a one-line note ("PR #142: no new commits since iteration 2 (head_sha_at_iteration_end matches remote HEAD)")
 
 #### Scenario: CI is mid-flight
 
@@ -375,9 +375,23 @@ On every tick, the skill MUST read the file, increment the relevant counters, ev
 - **THEN** `prs_touched` MUST contain exactly one occurrence of `"#142"`
 - **AND** condition #4 MUST count it once
 
+### Requirement: Budget Schema — comments_pushed Definition
+
+The `comments_pushed` counter in `budget.json` (and the corresponding per-iteration deltas in `history.jsonl`) MUST count BOTH top-level review comments AND reply-to-comment messages pushed by the loop. Both kinds of activity consume tracker API rate limits and represent loop-driven activity, so both MUST be reflected in the spend proxy. The wrapped skill MUST instrument every comment-push API call (top-level or reply) and contribute to the counter.
+
+#### Scenario: A reviewer iteration pushes a top-level comment and three replies
+
+- **WHEN** iteration 2 of `/sdd:review --loop --pr 142` posts one top-level review comment and three replies to existing review threads on PR #142
+- **THEN** `comments_pushed` MUST increase by 4 in `budget.json`
+- **AND** the iteration's `history.jsonl` line MUST reflect the same delta
+
 ### Requirement: Telemetry Schema
 
-Each iteration MUST emit a stdout status block (visible in the session) summarizing the iteration plan, budget remaining, stop conditions evaluated, concurrency state, and outcome. Each iteration MUST also append a JSON line to `.sdd/loop/{skill}.history.jsonl`. The line schema MUST include at minimum: `iteration`, `skill`, `started_at`, `ended_at`, `outcome`, `prs_touched_this_iter`, `agents_dispatched_this_iter`, `tokens_in_this_iter`, `tokens_out_this_iter`, `dollars_this_iter`, `budget_snapshot` (mirroring the budget fields), `gates[]` (array of `{name, question, answer, at}`), and `stop_conditions_fired` (array). The `gates[]` array MUST capture every `AskUserQuestion` invocation in the iteration verbatim, including the prompt text, the user's answer, and the timestamp.
+Each iteration MUST emit a stdout status block (visible in the session) summarizing the iteration plan, budget remaining, stop conditions evaluated, concurrency state, and outcome. Each iteration MUST also append a JSON line to `.sdd/loop/{skill}.history.jsonl`. The line schema MUST include at minimum: `iteration`, `skill`, `started_at`, `ended_at`, `outcome`, `prs_touched_this_iter`, `agents_dispatched_this_iter`, `tokens_in_this_iter`, `tokens_out_this_iter`, `dollars_this_iter`, `budget_snapshot` (mirroring the budget fields), `tracked_prs` (array, see below), `active_worktrees` (array, see below), `gates[]` (array of `{name, question, answer, at}`), and `stop_conditions_fired` (array). The `gates[]` array MUST capture every `AskUserQuestion` invocation in the iteration verbatim, including the prompt text, the user's answer, and the timestamp.
+
+`tracked_prs` MUST be an array of objects, one per PR the iteration interacted with. Each object MUST include at minimum: `number` (int, the PR number), `branch` (string, the head branch name), `head_sha_at_iteration_start` (string, the PR's head SHA observed at iteration entry), `head_sha_at_iteration_end` (string, the PR's head SHA observed at iteration exit, after any pushes by the loop), and `state_at_end` (one of `"open"`, `"merged"`, `"closed"`). These fields are the typed inputs for the resume contract's HEAD-SHA reconciliation and for the `/sdd:review` "no new commits since prior iteration" check.
+
+`active_worktrees` MUST be an array of objects, one per worktree the iteration left on disk (whether successful or failed). Each object MUST include at minimum: `path` (string, absolute or repo-relative path to the worktree), `branch` (string, the branch checked out in the worktree), and `head_sha` (string, the worktree branch's HEAD SHA at iteration exit). The array MUST include failed-issue worktrees so the resume contract can re-attach or report them without external probing.
 
 The `history.jsonl` file MUST be treated as containing potentially-sensitive content. It is written under `.sdd/loop/` (covered by the `.sdd/` gitignore entry from SPEC-0019). The file MUST NOT be uploaded to telemetry without explicit user opt-in. Where a project declares a `### Loop Logging` block in CLAUDE.md with redaction patterns, the skill SHOULD apply those patterns before writing. Where no such block exists, the file MUST be documented as treat-as-secret in the same class as `.env` and tracker tokens.
 
@@ -391,23 +405,15 @@ The `history.jsonl` file MUST be treated as containing potentially-sensitive con
 - **WHEN** any iteration completes (including a skipped tick due to lock contention)
 - **THEN** the skill MUST emit the stdout status block before returning so users sampling the session see the iteration's outcome
 
+#### Scenario: tracked_prs and active_worktrees are captured each iteration
+
+- **WHEN** iteration 2 of `/sdd:work --loop` opens PR #142 on branch `feature/123-foo` (HEAD `abc1234` at entry, `def5678` at exit) and leaves a worktree at `.sdd/worktrees/feature-123-foo` checked out at `def5678`
+- **THEN** iteration 2's history line MUST include `tracked_prs: [{"number": 142, "branch": "feature/123-foo", "head_sha_at_iteration_start": "abc1234", "head_sha_at_iteration_end": "def5678", "state_at_end": "open"}]`
+- **AND** MUST include `active_worktrees: [{"path": ".sdd/worktrees/feature-123-foo", "branch": "feature/123-foo", "head_sha": "def5678"}]`
+
 ### Requirement: Resume Contract
 
-`--resume` MUST recover state from the most recent `history.jsonl` line. The skill MUST restore from the last line: `iterations_used`, `prs_touched`, `minutes_elapsed`, `tokens_in`, `tokens_out`, `agents_dispatched`, `dollars_estimate`, `comments_pushed`, `merges_attempted`, `qmd_failures_consecutive`, the iteration counter, and the recorded `gates[]` entries (kept as audit context only — they MUST NOT be replayed as silent answers). The skill MUST recompute from scratch: the next iteration's stop-condition evaluation, the next iteration's gate evaluation, the per-iteration timestamp, and the elapsed-since-last-tick wall-clock delta. The lockfile MUST be treated as stale per the PID-liveness rule. In-flight worktrees and open PRs from the prior iteration MUST be inspected exactly once at resume entry.
-
-For each open PR or active worktree referenced in the last history line, the skill MUST compare the recorded branch HEAD SHA against the current remote HEAD. On match, the artifact MUST be re-attached silently. On divergence, the skill MUST fire an `AskUserQuestion` drift gate ("PR #N has diverged since the prior iteration crashed — re-attach, skip, or stop the loop?"). Worktrees with no associated open PR MUST be reported but MUST NOT be auto-cleaned, consistent with `skills/work/SKILL.md` Rules ("MUST preserve worktrees for failed issues — never auto-clean failures").
-
-#### Scenario: Resume with matching HEAD SHAs
-
-- **WHEN** `/sdd:work --loop --resume` runs and the recorded HEAD SHA for PR #142 matches the current remote HEAD
-- **THEN** the skill MUST silently re-attach #142, restore counters from the last history line, and proceed
-- **AND** MUST NOT re-prompt about #142
-
-#### Scenario: Resume with diverged PR head
-
-- **WHEN** `/sdd:work --loop --resume` runs and PR #142's current remote HEAD differs from the recorded SHA (someone force-pushed)
-- **THEN** the skill MUST fire the drift gate with `re-attach`, `skip`, `stop`
-- **AND** MUST honor the user's choice before proceeding
+`--resume` MUST recover state from the most recent `history.jsonl` line. The skill MUST restore from the last line: `iterations_used`, `prs_touched`, `minutes_elapsed`, `tokens_in`, `tokens_out`, `agents_dispatched`, `dollars_estimate`, `comments_pushed`, `merges_attempted`, `qmd_failures_consecutive`, the iteration counter, the `tracked_prs` array, the `active_worktrees` array, and the recorded `gates[]` entries (kept as audit context only — they MUST NOT be replayed as silent answers). The skill MUST recompute from scratch: the next iteration's stop-condition evaluation, the next iteration's gate evaluation, the per-iteration timestamp, and the elapsed-since-last-tick wall-clock delta. The lockfile MUST be treated as stale per the PID-liveness rule. In-flight worktrees and open PRs from the prior iteration MUST be inspected exactly once at resume entry, using the typed inputs in `tracked_prs` and `active_worktrees` (per "Resume Contract Reconciliation").
 
 #### Scenario: Resume finds the prior PID is still alive
 
@@ -419,6 +425,32 @@ For each open PR or active worktree referenced in the last history line, the ski
 - **WHEN** the prior run's last history line records `gates: [{"name": "budget-escalation", "answer": "raise"}]` and the resumed run's first iteration also crosses 80% on a budget
 - **THEN** the skill MUST fire a fresh budget-escalation gate
 - **AND** MUST NOT auto-apply the prior `raise` answer
+
+### Requirement: Resume Contract Reconciliation
+
+On resume, the skill MUST reconcile prior-iteration artifacts using the `tracked_prs` and `active_worktrees` fields persisted in the last `history.jsonl` line. External probing of GitHub or the filesystem to discover prior PRs or worktrees MUST NOT substitute for the typed inputs; the recorded fields are authoritative.
+
+For each entry in `tracked_prs` whose `state_at_end` is `"open"`, the skill MUST fetch the current remote HEAD SHA for the recorded `branch` and compare it against `head_sha_at_iteration_end`. On match, the PR MUST be re-attached silently. On mismatch, the skill MUST fire the resume-divergence drift gate ("PR #N has diverged since the prior iteration crashed — re-attach, skip, or stop the loop?") with options `re-attach`, `skip`, `stop`, and MUST honor the user's choice before proceeding. PRs whose `state_at_end` is `"merged"` or `"closed"` MUST be skipped silently with a one-line note.
+
+For each entry in `active_worktrees`, the skill MUST verify the worktree exists at the recorded `path` and that its current branch HEAD matches `head_sha`. Worktrees with a matching SHA MUST be re-attached silently. Worktrees with a mismatched SHA, a missing path, or a different branch checked out MUST be reported (one-line note per worktree) and MUST NOT be auto-cleaned, consistent with `skills/work/SKILL.md` Rules ("MUST preserve worktrees for failed issues — never auto-clean failures").
+
+#### Scenario: Resume with matching HEAD SHAs
+
+- **WHEN** `/sdd:work --loop --resume` runs and `tracked_prs[0]` records PR #142 with `head_sha_at_iteration_end="def5678"` and `state_at_end="open"`, and the current remote HEAD for the recorded branch is `def5678`
+- **THEN** the skill MUST silently re-attach #142, restore counters from the last history line, and proceed
+- **AND** MUST NOT re-prompt about #142
+
+#### Scenario: Resume with diverged PR head fires the drift gate
+
+- **WHEN** `/sdd:work --loop --resume` runs and `tracked_prs[0]` records PR #142 with `head_sha_at_iteration_end="def5678"` and `state_at_end="open"`, but the current remote HEAD for the recorded branch is `9999aaa` (someone force-pushed)
+- **THEN** the skill MUST fire the resume-divergence drift gate with options `re-attach`, `skip`, `stop`
+- **AND** MUST honor the user's choice before proceeding
+
+#### Scenario: Resume skips PRs already terminal
+
+- **WHEN** `/sdd:work --loop --resume` runs and `tracked_prs[0]` records PR #142 with `state_at_end="merged"`
+- **THEN** the skill MUST skip #142 silently with a one-line note ("PR #142 was already merged at prior iteration end — not re-attaching")
+- **AND** MUST NOT fetch the remote HEAD for #142
 
 ### Requirement: Single-PR Review Loop Semantics
 

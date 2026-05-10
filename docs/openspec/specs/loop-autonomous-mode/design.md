@@ -148,7 +148,32 @@ The schema is defined normatively in spec.md ("Budget Schema and Persistence"). 
 
 Append-only JSON Lines. Each line corresponds to exactly one iteration (including iterations that were skipped due to lock contention — those carry `outcome: "skipped_lock"`). The `gates[]` array is the most important debug surface for "why did the loop stop?": every `AskUserQuestion` invocation across the iteration is captured verbatim, so a post-mortem can reconstruct user choices without replaying the run.
 
-The line schema is enumerated normatively in spec.md ("Telemetry Schema"); the canonical example in ADR-0028 sub-decision "Telemetry and observability" remains representative.
+The line schema is enumerated normatively in spec.md ("Telemetry Schema"). Beyond the per-iteration counters and `gates[]`, the schema also records two arrays of typed inputs that the resume contract relies on:
+
+- `tracked_prs[]` — one entry per PR the iteration interacted with, capturing `number`, `branch`, `head_sha_at_iteration_start`, `head_sha_at_iteration_end`, and `state_at_end`. These fields exist precisely so the resume contract can reconcile open PRs by SHA equality without external probing, and so `/sdd:review --loop`'s "no new commits since prior iteration" check has typed inputs rather than out-of-band signals.
+- `active_worktrees[]` — one entry per worktree left on disk (successful or failed), capturing `path`, `branch`, and `head_sha`. Failed-issue worktrees are preserved per `skills/work/SKILL.md` Rules; recording them in history lets resume report them without scanning the filesystem.
+
+`comments_pushed` counts BOTH top-level review comments AND reply-to-comment messages — both consume tracker API rate limits and represent loop-driven activity, so a single counter that conflates the two is the faithful spend proxy in single-PR review mode (where `prs_touched` is informational and `comments_pushed`/`merges_attempted` carry the meaningful signal).
+
+A canonical example line:
+
+```jsonl
+{
+  "iteration": 2,
+  "skill": "work",
+  "started_at": "2026-05-09T14:50:00Z",
+  "ended_at": "2026-05-09T14:58:00Z",
+  "outcome": "ok",
+  "tracked_prs": [
+    {"number": 142, "branch": "feature/123-foo", "head_sha_at_iteration_start": "abc1234", "head_sha_at_iteration_end": "def5678", "state_at_end": "open"}
+  ],
+  "active_worktrees": [
+    {"path": ".sdd/worktrees/feature-123-foo", "branch": "feature/123-foo", "head_sha": "def5678"}
+  ],
+  "gates": [],
+  "stop_conditions_fired": []
+}
+```
 
 ### Multi-budget 80% gate batching
 
@@ -198,25 +223,37 @@ The chosen source is recorded in `budget.json.rate_table_source` (`"CLAUDE.md SD
 | `prs_touched`, `comments_pushed`, `merges_attempted` | Gate evaluation for the next iteration (no replay) |
 | `minutes_elapsed`, `tokens_in`, `tokens_out`, `agents_dispatched`, `dollars_estimate` | Per-iteration timestamp, elapsed-since-last-tick |
 | `qmd_failures_consecutive` | Lockfile state (PID-liveness check + reap) |
-| Recorded `gates[]` (audit only) | In-flight worktree / PR HEAD-SHA reconciliation |
+| `tracked_prs[]`, `active_worktrees[]` (typed inputs for reconciliation) | Current remote HEAD per recorded branch (for SHA comparison) |
+| Recorded `gates[]` (audit only) | Drift-gate firing decision per recorded PR |
 
 The split principle: counters are durable; *judgments* are not. A user's "raise the ceiling" answer in a prior session was bound to that session's context; replaying it silently in a resumed session would let stale judgments rubber-stamp new work.
 
 ### Drift handling
 
-For each open PR or active worktree referenced in the last history line:
+For each open PR recorded in `tracked_prs[]` (i.e., entries whose `state_at_end == "open"`):
 
 ```
-recorded_sha = last_history_line.prs[i].head_sha
-current_sha  = git ls-remote origin {branch} | head -1
-if recorded_sha == current_sha:
-    re-attach silently
-else:
-    fire AskUserQuestion(
-      "PR #N has diverged since the prior iteration crashed — re-attach, skip, or stop the loop?",
-      options=["re-attach", "skip", "stop"]
-    )
+for pr in last_history_line.tracked_prs:
+    if pr.state_at_end != "open":
+        continue                        # merged/closed are skipped silently with a one-line note
+    recorded_sha = pr.head_sha_at_iteration_end
+    current_sha  = git ls-remote origin {pr.branch} | head -1
+    if recorded_sha == current_sha:
+        re-attach pr silently           # PR has not moved since prior iteration ended
+    else:
+        fire AskUserQuestion(
+          f"PR #{pr.number} has diverged since the prior iteration crashed — re-attach, skip, or stop the loop?",
+          options=["re-attach", "skip", "stop"]
+        )
+
+for wt in last_history_line.active_worktrees:
+    if exists(wt.path) and current_branch(wt.path) == wt.branch and current_head(wt.path) == wt.head_sha:
+        re-attach wt silently
+    else:
+        emit_one_line_note(f"Worktree {wt.path} diverged or missing — leaving in place per worktree-preservation rule")
 ```
+
+The same SHA-equality rule covers the `/sdd:review --loop` "no new commits since prior iteration" check: comparing `pr.head_sha_at_iteration_end` against the live remote HEAD is sufficient to know whether the prior iteration's responder pushed anything new. There is no separate "fix incoming" signal — drift is drift, regardless of who or what produced it.
 
 Worktrees with no associated open PR are reported (one-line note per worktree) but never auto-cleaned, consistent with `skills/work/SKILL.md` Rules.
 
@@ -278,8 +315,7 @@ These do not block this spec but should be tracked:
 1. **Should `--lock=wait` poll the lock or use an OS-level wait primitive?** Polling is simpler and platform-uniform; OS waits (e.g., POSIX advisory locks via `flock`) are more efficient but add a portability surface. V1 implementation should poll at a small fixed interval (e.g., 5s); revisit if telemetry shows wait-mode is common enough to justify the optimization.
 2. **Should the rate table support explicit "unknown model" handling?** A future Anthropic model not yet in the built-in table or CLAUDE.md would silently zero-cost. Probably the right answer is to record `"rate_table_source": "unknown-model"` and surface a one-line warning, but the contract is currently "the table is exhaustive"; revisit when a new model lands without a rate.
 3. **Should `--max-prs` count *opened* PRs or *touched* PRs in `/sdd:work --loop`?** The spec says touched (deduplicated set). For `/sdd:work` this is effectively "opened" because workers always open new PRs, but a pathological case where the same iteration re-touches a PR (e.g., a foundation PR amended after merge) would consume the budget twice if counted naively. Current pseudocode dedups by PR identifier; revisit if telemetry shows the dedup is missing edge cases.
-4. **Does `comments_pushed` count the responder's reply-to-comment messages or only top-level review comments?** The spec leaves this to the wrapped skill's existing instrumentation. `/sdd:review`'s reviewer / responder pair already has both kinds of comment activity; counting both gives a faithful spend proxy in single-PR mode. V1 should count both and document the choice.
-5. **Should the loop persist a separate "last successful iteration" cursor for `/sdd:work` discovery to avoid re-running the full backlog query every tick?** Currently each tick re-runs discovery (Tier 4 sync per SPEC-0019). For 10+ iteration runs against a large backlog this is non-trivial cost. Probably worth a follow-up optimization once telemetry shows the cost; out of scope for V1.
+4. **Should the loop persist a separate "last successful iteration" cursor for `/sdd:work` discovery to avoid re-running the full backlog query every tick?** Currently each tick re-runs discovery (Tier 4 sync per SPEC-0019). For 10+ iteration runs against a large backlog this is non-trivial cost. Probably worth a follow-up optimization once telemetry shows the cost; out of scope for V1.
 
 ## More Information
 
