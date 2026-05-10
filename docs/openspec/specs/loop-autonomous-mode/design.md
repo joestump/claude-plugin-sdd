@@ -152,6 +152,7 @@ The line schema is enumerated normatively in spec.md ("Telemetry Schema"). Beyon
 
 - `tracked_prs[]` — one entry per PR the iteration interacted with, capturing `number`, `branch`, `head_sha_at_iteration_start`, `head_sha_at_iteration_end`, and `state_at_end`. These fields exist precisely so the resume contract can reconcile open PRs by SHA equality without external probing, and so `/sdd:review --loop`'s "no new commits since prior iteration" check has typed inputs rather than out-of-band signals.
 - `active_worktrees[]` — one entry per worktree left on disk (successful or failed), capturing `path`, `branch`, and `head_sha`. Failed-issue worktrees are preserved per `skills/work/SKILL.md` Rules; recording them in history lets resume report them without scanning the filesystem.
+- `chain_invoked` (bool), `review_outcome` (one of `"approve"`, `"changes-requested"`, `"needs-human"`), and `autofix_pr_invoked` (bool) — typed inputs for the post-PR chain pattern (per spec.md "Chain Outcome Telemetry"). When `--no-chain` is set, only `chain_invoked: false` is recorded; the other two fields are omitted. These fields let post-mortems correlate cost spikes with chain invocations and confirm that ADR-0010's one-round invariant held across the chain.
 
 `comments_pushed` counts BOTH top-level review comments AND reply-to-comment messages — both consume tracker API rate limits and represent loop-driven activity, so a single counter that conflates the two is the faithful spend proxy in single-PR review mode (where `prs_touched` is informational and `comments_pushed`/`merges_attempted` carry the meaningful signal).
 
@@ -170,6 +171,9 @@ A canonical example line:
   "active_worktrees": [
     {"path": ".sdd/worktrees/feature-123-foo", "branch": "feature/123-foo", "head_sha": "def5678"}
   ],
+  "chain_invoked": true,
+  "review_outcome": "approve",
+  "autofix_pr_invoked": true,
   "gates": [],
   "stop_conditions_fired": []
 }
@@ -281,6 +285,46 @@ State machine: `qmd_failures_consecutive` is incremented when a tick exits with 
 
 All six gates are re-evaluated on every tick. There is no debounce.
 
+## Post-PR Chain Pattern
+
+After `/sdd:work` opens a PR, the loop hands the PR off through a two-stage chain: a *bounded* architectural review pass (`/sdd:review`, exactly one round per ADR-0010), followed by an *open-ended* CI/maintenance monitoring pass (`/autofix-pr`, the Claude Code built-in that watches CI and applies straightforward fixes over time). The chain is unconditional within the iteration unless the user passes `--no-chain`. ADR-0030 is the governing decision; the spec.md requirements "Post-PR Chain Invocation" and "Chain Outcome Telemetry" are its normative form.
+
+### Sequence
+
+```mermaid
+sequenceDiagram
+  participant W as /sdd:work
+  participant GH as Tracker / GitHub
+  participant R as /sdd:review
+  participant A as /autofix-pr
+
+  W->>GH: Open PR #X
+  alt --no-chain
+    W-->>W: record chain_invoked=false; exit
+  else chain enabled (default)
+    alt /autofix-pr available
+      W->>R: invoke /sdd:review X (one round per ADR-0010)
+      R-->>W: review_outcome ∈ {approve, changes-requested, needs-human}
+      W->>A: invoke /autofix-pr X
+      A-->>W: handed off (continues monitoring CI)
+      W-->>W: record chain_invoked=true, review_outcome=…, autofix_pr_invoked=true; exit
+    else /autofix-pr unavailable
+      W->>GH: open tracker issue tagged claude-code-version-required
+      W-->>W: log warning; record chain_invoked=true, autofix_pr_invoked=false; exit cleanly
+    end
+  end
+```
+
+The diagram captures the two failure-mode branches: `--no-chain` (skip both follow-ups) and `/autofix-pr` unavailability (record the version requirement as a tracker issue, keep the PR, exit cleanly). PR creation itself is never blocked by chain failures.
+
+### Cost accounting
+
+Each chain invocation is metered by its own tool's cost surface. `/sdd:work` does NOT double-count `/sdd:review`'s tokens or `/autofix-pr`'s tokens against its own budget; those costs accrue under the invoked command's accounting. What `/sdd:work` does record in `history.jsonl` is the *event* of invocation (`chain_invoked`, `review_outcome`, `autofix_pr_invoked`) so users correlating cost spikes after the fact can map them back to the iteration that opened the PR. The chain is therefore visible in telemetry as an event but not as a token line item — consistent with how nested skill invocations are billed elsewhere in the plugin.
+
+### Interaction with --loop
+
+Each loop iteration runs a self-contained chain per PR. ADR-0028's gates (backlog drift, ambiguous criteria, budget escalation, post-feedback merge, force-unlock, repeated failure) fire BEFORE the chain — they decide whether to start a new iteration at all. Once an iteration begins and opens a PR, the chain is unconditional within that iteration unless `--no-chain` is set. There is no per-PR gate that interposes between PR creation and `/sdd:review`; the architectural review is the bounded round (ADR-0010), and the post-feedback-merge gate is the only human-mediated checkpoint that can pause the chain's eventual merge path. This preserves ADR-0028's iteration mechanics (gates as iteration-entry decisions) while keeping ADR-0010's one-round invariant intact across the chain.
+
 ## Tradeoffs
 
 - **Chattiness vs. autonomy.** Six gates can prompt several times per long run. The deliberate stance: chatty is the conservative default. Users who want quieter autonomy lower budgets so the loop ends sooner, rather than the plugin relaxing gates. Debouncing gates across iterations would be the obvious "less chatty" lever; the explicit choice not to debounce is documented here so a future contributor doesn't quietly add it.
@@ -320,6 +364,7 @@ These do not block this spec but should be tracked:
 ## More Information
 
 - ADR-0028 — the governing decision record this spec realizes.
+- ADR-0030 — the post-PR chain pattern (`/sdd:work` → `/sdd:review` → `/autofix-pr`) realized by this spec's "Post-PR Chain Invocation" and "Chain Outcome Telemetry" requirements.
 - ADR-0010 / SPEC-0009 — the bounded-iteration invariant per PR that this spec preserves under loop wrapping.
 - ADR-0017 / SPEC-0015 — the parallel-agent coordination semantics whose worktree and lockfile interactions this spec respects (in particular, the worktree-preservation rule that is the reason PID liveness is the sole staleness signal).
 - ADR-0024 / SPEC-0019 — the qmd hard-dependency contract that condition #11 cites for the remediation message.
