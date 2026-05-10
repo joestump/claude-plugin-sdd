@@ -188,15 +188,16 @@ flowchart TD
     DryRunCheck -->|no| InvokeReview[Invoke /sdd:review on PR<br/>one round per ADR-0010]
 
     InvokeReview --> ReviewOutcome{Review outcome}
-    ReviewOutcome -->|errored: qmd<br/>or infra| LabelFailed[Label PR<br/>chain-failed-pre-autofix] --> Done
+    ReviewOutcome -->|errored: qmd<br/>or infra| LabelFailed[Label PR<br/>chain-failed-pre-autofix] --> Telemetry
     ReviewOutcome -->|approve| AutofixCheck
     ReviewOutcome -->|changes-requested<br/>resolved in round| AutofixCheck
     ReviewOutcome -->|needs-human| LabelHuman[Label PR<br/>needs-human-follow-up] --> AutofixCheck
 
     AutofixCheck{/autofix-pr<br/>available?}
-    AutofixCheck -->|no| Warn[Log warning,<br/>open tracker issue tagged<br/>claude-code-version-required] --> Done
+    AutofixCheck -->|no| Warn[Log warning,<br/>open tracker issue tagged<br/>claude-code-version-required] --> Telemetry
     AutofixCheck -->|yes| InvokeAutofix[Invoke /autofix-pr on PR<br/>fire-and-forget]
-    InvokeAutofix --> Telemetry[Append history.jsonl:<br/>chain_invoked, review_outcome,<br/>autofix_pr_invoked,<br/>autofix_pr_invocation_status] --> Done
+    InvokeAutofix --> Telemetry[Append history.jsonl:<br/>chain_invoked, review_outcome,<br/>autofix_pr_invoked,<br/>autofix_pr_invocation_status]
+    Telemetry --> Done
 
     classDef chain fill:#bfb,stroke:#090
     classDef warn fill:#fce8b2,stroke:#b58900
