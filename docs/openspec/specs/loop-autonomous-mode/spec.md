@@ -10,7 +10,7 @@ extends: [SPEC-0009]
 
 ## Overview
 
-Defines how `/sdd:work` and `/sdd:review` cooperate with the runtime `/loop` skill so users can grind a backlog (or watch a single PR) autonomously without losing the user-in-the-loop preference. The contract is opt-in via a `--loop` flag on each skill: the runtime re-invokes the skill, and the skill enforces stop conditions, concurrency, user-prompt gates, budget ceilings, and inter-iteration telemetry. `/loop` itself is unchanged.
+Defines how `/sdd:work` and `/sdd:review` cooperate with the runtime `/loop` skill so users can grind a backlog (or watch a single PR) autonomously without losing the user-in-the-loop preference. The contract is opt-in via a `--loop` flag on each skill: the runtime re-invokes the skill, and the skill enforces stop conditions, concurrency, user-prompt gates, budget ceilings, and inter-iteration telemetry. `/loop` itself is unchanged. In addition to the loop iteration mechanics, this spec governs the post-PR chain pattern that hands off PR follow-up from `/sdd:work` to `/sdd:review` (one architectural round) and then to `/autofix-pr` (Claude Code built-in for ongoing CI/maintenance), per ADR-0030.
 
 This spec realizes ADR-0028 by translating its sub-decisions into RFC 2119 requirements. It covers the CLI surface for both skills, the twelve stop conditions (iteration / PR / wall-clock / dollar budgets, repeated failure, dependency cycle, user interrupt, lockfile contention, qmd-unreachable, and prior-gate stop), the lock-and-skip concurrency model with PID liveness as the sole staleness signal, the six `AskUserQuestion` gates (backlog drift, ambiguous criteria, budget escalation, post-feedback merge, force-unlock, repeated failure), the on-disk artifacts (`.sdd/loop/{skill}.lock`, `.budget.json`, `.history.jsonl`), the resume contract for crash recovery, and the single-PR `/sdd:review --loop --pr <N>` watch mode.
 
@@ -393,6 +393,8 @@ Each iteration MUST emit a stdout status block (visible in the session) summariz
 
 `active_worktrees` MUST be an array of objects, one per worktree the iteration left on disk (whether successful or failed). Each object MUST include at minimum: `path` (string, absolute or repo-relative path to the worktree), `branch` (string, the branch checked out in the worktree), and `head_sha` (string, the worktree branch's HEAD SHA at iteration exit). The array MUST include failed-issue worktrees so the resume contract can re-attach or report them without external probing.
 
+The line schema MUST also include the post-PR chain fields defined under "Chain Outcome Telemetry" (`chain_invoked`, `review_outcome`, `autofix_pr_invoked`, `autofix_pr_invocation_status`), with the values and conditional-presence rules specified there.
+
 The `history.jsonl` file MUST be treated as containing potentially-sensitive content. It is written under `.sdd/loop/` (covered by the `.sdd/` gitignore entry from SPEC-0019). The file MUST NOT be uploaded to telemetry without explicit user opt-in. Where a project declares a `### Loop Logging` block in CLAUDE.md with redaction patterns, the skill SHOULD apply those patterns before writing. Where no such block exists, the file MUST be documented as treat-as-secret in the same class as `.env` and tracker tokens.
 
 #### Scenario: Gate invocation is captured verbatim
@@ -467,6 +469,57 @@ For each entry in `active_worktrees`, the skill MUST verify the worktree exists 
 - **WHEN** the budget-escalation gate fires in single-PR mode and `max_iterations`, `max_minutes`, and `max_dollars` are all near 80%
 - **THEN** the gate prompt MUST list those three dimensions only
 - **AND** MUST NOT mention `prs_touched`
+
+### Requirement: Post-PR Chain Invocation
+
+Governing: ADR-0030.
+
+WHEN `/sdd:work` opens a PR for an issue THEN `/sdd:work` MUST invoke `/sdd:review` on that PR before exiting, unless the user passed `--no-chain`.
+
+WHEN `/sdd:review` exits with `review_outcome: "errored"` (qmd unreachable or other infrastructure failure) THEN `/sdd:work` MUST NOT invoke `/autofix-pr`, MUST add the `chain-failed-pre-autofix` label to the PR, and MUST emit telemetry with `autofix_pr_invoked: false` and `autofix_pr_invocation_status` absent.
+
+WHEN `/sdd:review` exits with any healthy outcome (`"approve"`, `"changes-requested"`, `"needs-human"`) THEN `/sdd:work` MUST invoke `/autofix-pr` on the same PR before exiting, unless the user passed `--no-chain`.
+
+WHEN `/autofix-pr` is unavailable (the Claude Code build does not ship the command) THEN `/sdd:work` MUST log a warning, MUST open a tracker issue tagged `claude-code-version-required` describing the version requirement, and MUST exit cleanly without blocking PR creation.
+
+#### Scenario: Chain runs to completion after PR creation
+
+- **WHEN** `/sdd:work` creates PR #X
+- **THEN** it MUST invoke `/sdd:review X` and, after `/sdd:review` exits, MUST invoke `/autofix-pr X` before exiting
+
+#### Scenario: --no-chain suppresses both follow-ups
+
+- **WHEN** the user passes `--no-chain` and `/sdd:work` opens a PR
+- **THEN** `/sdd:work` MUST exit after PR creation without invoking `/sdd:review` or `/autofix-pr`
+
+#### Scenario: /autofix-pr is unavailable in this Claude Code build
+
+- **WHEN** `/autofix-pr` is not available in the current Claude Code build
+- **THEN** `/sdd:work` MUST log a warning, MUST open a tracker issue with the `claude-code-version-required` label naming the missing command and required version, and MUST exit cleanly without blocking PR creation
+
+#### Scenario: /sdd:review errors on qmd unreachability
+
+- **WHEN** `/sdd:review` exits with `review_outcome: "errored"` because qmd is unreachable (or another infrastructure failure)
+- **THEN** `/sdd:work` MUST skip the `/autofix-pr` invocation, MUST add the `chain-failed-pre-autofix` label to the PR, and MUST emit telemetry with `autofix_pr_invoked: false` and `autofix_pr_invocation_status` absent per "Chain Outcome Telemetry"
+
+### Requirement: Chain Outcome Telemetry
+
+Governing: ADR-0028, ADR-0030.
+
+WHEN `/sdd:work` invokes the post-PR chain THEN the per-iteration entry in `history.jsonl` MUST include `chain_invoked: true|false`, `review_outcome` (one of `"approve"`, `"changes-requested"`, `"needs-human"`, `"errored"`), `autofix_pr_invoked: true|false`, and `autofix_pr_invocation_status` (one of `"accepted"`, `"unavailable"`, `"errored"`).
+
+WHEN `--no-chain` is set THEN the per-iteration entry MUST record `chain_invoked: false` and MUST omit the `review_outcome`, `autofix_pr_invoked`, and `autofix_pr_invocation_status` fields.
+
+#### Scenario: Chain runs to completion and all four fields are recorded
+
+- **WHEN** PR #X is created and the chain runs to completion (`/sdd:review` returns `approve` and `/autofix-pr` is invoked and accepted)
+- **THEN** the iteration's `history.jsonl` line MUST record `chain_invoked: true`, `review_outcome: "approve"`, `autofix_pr_invoked: true`, and `autofix_pr_invocation_status: "accepted"`
+
+#### Scenario: --no-chain omits the per-stage fields
+
+- **WHEN** `--no-chain` is set on the iteration that opens PR #X
+- **THEN** the iteration's `history.jsonl` line MUST record `chain_invoked: false`
+- **AND** MUST NOT include `review_outcome`, `autofix_pr_invoked`, or `autofix_pr_invocation_status`
 
 ### Requirement: ADR-0010 Bounded-Iteration Preservation
 
