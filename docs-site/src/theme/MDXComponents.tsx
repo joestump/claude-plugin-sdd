@@ -9,6 +9,7 @@ import RFCLevelBadge from '@site/src/components/RFCLevelBadge';
 import RequirementBox from '@site/src/components/RequirementBox';
 import Field from '@site/src/components/Field';
 import FieldGroup from '@site/src/components/FieldGroup';
+import SkillTile from '@site/src/components/SkillTile';
 
 export default {
   ...MDXComponents,
@@ -21,4 +22,6 @@ export default {
   RequirementBox,
   Field,
   FieldGroup,
+  // Governing: ADR-0029, SPEC-0021 REQ "Hero-Tile Index Page".
+  SkillTile,
 };

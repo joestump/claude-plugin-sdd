@@ -299,3 +299,69 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0.7;
 }
 
+/* ============================================
+   Skill pages and hero tiles (ADR-0029, SPEC-0021)
+   ============================================ */
+.skill-subtitle {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 1.1rem;
+  margin: 0 0 1.5rem 0;
+}
+
+.skill-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+.skill-badge--manual {
+  background: var(--ifm-color-warning-contrast-background, #fff8e1);
+  color: var(--ifm-color-warning-contrast-foreground, #7a4a00);
+}
+
+.skill-governing {
+  background: var(--ifm-color-emphasis-100);
+  border-left: 3px solid var(--ifm-color-primary);
+  padding: 0.6rem 1rem;
+  margin: 0 0 1.5rem 0;
+  font-size: 0.9rem;
+}
+
+.skill-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 2rem 0;
+}
+
+.skill-tile {
+  display: block;
+  padding: 1rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  text-decoration: none !important;
+  color: inherit !important;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.skill-tile:hover {
+  border-color: var(--ifm-color-primary);
+  transform: translateY(-2px);
+  text-decoration: none !important;
+}
+.skill-tile__name {
+  font-family: var(--ifm-font-family-monospace);
+  font-weight: 600;
+  color: var(--ifm-color-primary);
+}
+.skill-tile__description {
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+  color: var(--ifm-color-emphasis-700);
+}
+.skill-tile__hint {
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-600);
+}
+

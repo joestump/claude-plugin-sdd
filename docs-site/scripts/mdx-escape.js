@@ -140,6 +140,8 @@ const HTML_TAGS = new Set([
 const JSX_COMPONENTS = new Set([
   'StatusBadge', 'DateBadge', 'DomainBadge', 'PriorityBadge', 'SeverityBadge',
   'RFCLevelBadge', 'RequirementBox', 'Field', 'FieldGroup',
+  // Governing: ADR-0029, SPEC-0021 REQ "Hero-Tile Index Page".
+  'SkillTile',
   'Tabs', 'TabItem', 'Admonition',
 ]);
 

@@ -5,7 +5,7 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "build-content": "node scripts/build-docs.js",
-    "watch-content": "chokidar '../docs/openspec/**/*' '../docs/adrs/**/*' -c 'npm run build-content' --initial",
+    "watch-content": "chokidar '../docs/openspec/**/*' '../docs/adrs/**/*' '../skills/**/*' -c 'npm run build-content' --initial",
     "start": "npm run build-content && docusaurus start",
     "dev": "concurrently --kill-others \"npm run watch-content\" \"docusaurus start\"",
     "build": "npm run build-content && docusaurus build",
@@ -17,9 +17,11 @@
   },
   "dependencies": {
     "@docusaurus/core": "3.9.2",
+    "@docusaurus/plugin-client-redirects": "3.9.2",
     "@docusaurus/preset-classic": "3.9.2",
     "@docusaurus/theme-mermaid": "^3.9.2",
     "@mdx-js/react": "^3.0.0",
+    "ajv": "^8.17.1",
     "clsx": "^2.0.0",
     "lucide-react": "^0.575.0",
     "prism-react-renderer": "^2.3.0",

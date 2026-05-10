@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/joestump/claude-plugin-sdd/schemas/skills-index.schema.json",
+  "title": "Skills Index Manifest",
+  "description": "Manifest of skills grouped by display name. Each value is an ordered, unique array of skill names. Skill names MUST be unique across the entire manifest. Governing: ADR-0029, SPEC-0021 REQ \"Manifest Schema and Validation\".",
+  "type": "object",
+  "minProperties": 1,
+  "additionalProperties": {
+    "type": "array",
+    "minItems": 1,
+    "uniqueItems": true,
+    "items": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    }
+  }
+}
