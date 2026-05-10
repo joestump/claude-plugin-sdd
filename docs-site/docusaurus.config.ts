@@ -12,6 +12,35 @@ const SITE_URL = 'https://joestump.github.io';
 const BASE_URL = '/claude-plugin-sdd/';
 // ============================================================
 
+// Governing: ADR-0029, SPEC-0021 REQ "Migration of commands.mdx (Step 2 — Audit and Redirect)".
+// One redirect per fragment anchor present in HEAD's commands.mdx at this
+// PR's open time. Fifteen anchors map to skill pages; eight anchors are
+// section/group headings that map to the hero-tile index. Reviewers can
+// re-derive this list with:
+//   grep -oE '\{#[a-z-]+\}' docs-site/content/guides/commands.mdx | sort -u
+const SKILL_ANCHORS = [
+  'adr', 'audit', 'check', 'discover', 'docs', 'enrich', 'init',
+  'list', 'organize', 'plan', 'prime', 'review', 'spec', 'status', 'work',
+];
+const GROUP_ANCHORS = [
+  'creating', 'discovery', 'documentation', 'drift',
+  'implementation', 'lifecycle', 'planning', 'session',
+];
+const COMMANDS_REDIRECTS = [
+  // Skill-level: /guides/commands#{name} -> /skills/{name}
+  ...SKILL_ANCHORS.map((name) => ({
+    from: `/guides/commands#${name}`,
+    to: `/skills/${name}`,
+  })),
+  // Group-level: /guides/commands#{group} -> /skills/ (the hero-tile index).
+  ...GROUP_ANCHORS.map((group) => ({
+    from: `/guides/commands#${group}`,
+    to: `/skills/`,
+  })),
+  // Bare /guides/commands -> /skills/
+  {from: '/guides/commands', to: '/skills/'},
+];
+
 const config: Config = {
   title: PROJECT_TITLE,
   tagline: PROJECT_TAGLINE,
@@ -34,14 +63,12 @@ const config: Config = {
 
   themes: ['@docusaurus/theme-mermaid'],
 
-  // Governing: ADR-0029, SPEC-0021 REQ "Migration of commands.mdx (Step 1 — Coexist)".
-  // The redirects array is intentionally empty in Story #139; Story #142 will
-  // populate it with one entry per fragment anchor in commands.mdx.
+  // Governing: ADR-0029, SPEC-0021 REQ "Migration of commands.mdx (Step 2 — Audit and Redirect)".
   plugins: [
     [
       '@docusaurus/plugin-client-redirects',
       {
-        redirects: [],
+        redirects: COMMANDS_REDIRECTS,
       },
     ],
   ],
@@ -118,9 +145,11 @@ const config: Config = {
               label: 'Workflow',
               to: '/guides/workflow',
             },
+            // Governing: ADR-0029, SPEC-0021 REQ "Migration of commands.mdx (Step 2 — Audit and Redirect)".
+            // Inbound footer link rewritten from /guides/commands to /skills/.
             {
-              label: 'Commands',
-              to: '/guides/commands',
+              label: 'Skills',
+              to: '/skills/',
             },
             {
               label: 'Sprint Planning',
@@ -146,7 +175,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright \u00A9 ${new Date().getFullYear()} Claude Plugin: Spec-Driven Development. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Claude Plugin: Spec-Driven Development. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,
