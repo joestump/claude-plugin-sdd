@@ -16,7 +16,7 @@ const FeatureList: FeatureItem[] = [
   {
     title: 'Architecture Decisions',
     Icon: FileText,
-    link: '/guides/commands#adr',
+    link: '/skills/adr',
     description: (
       <>
         Record decisions using the MADR format with structured sections for
@@ -28,7 +28,7 @@ const FeatureList: FeatureItem[] = [
   {
     title: 'OpenSpec Specifications',
     Icon: ScrollText,
-    link: '/guides/commands#spec',
+    link: '/skills/spec',
     description: (
       <>
         Formal requirements with RFC 2119 keywords and WHEN/THEN scenarios.
@@ -40,7 +40,7 @@ const FeatureList: FeatureItem[] = [
   {
     title: 'Sprint Planning',
     Icon: ListTodo,
-    link: '/guides/commands#plan',
+    link: '/skills/plan',
     description: (
       <>
         Break specifications into actionable sprint issues. Supports
@@ -52,7 +52,7 @@ const FeatureList: FeatureItem[] = [
   {
     title: 'Drift Detection',
     Icon: SearchCheck,
-    link: '/guides/commands#drift',
+    link: '/skills/',
     description: (
       <>
         Quick-check files against specs or run a full audit across
