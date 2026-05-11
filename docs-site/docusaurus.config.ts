@@ -26,18 +26,17 @@ const GROUP_ANCHORS = [
   'creating', 'discovery', 'documentation', 'drift',
   'implementation', 'lifecycle', 'planning', 'session',
 ];
+// The @docusaurus/plugin-client-redirects plugin only accepts pathnames in `from`
+// (no hash fragments — pathnames "should start with slash and not contain any domain
+// or query string"). Server-side redirects can't rewrite the URL fragment, so the
+// per-anchor mappings (`#prime`, `#work`, ...) are out of reach for this plugin.
+// We keep one bare-path redirect; the browser preserves the hash, the index page
+// renders the full skill grid, and users land in the right neighborhood.
+// SKILL_ANCHORS and GROUP_ANCHORS are retained as documentation of the prior
+// inbound surface so a future client-side bridge (e.g., redirect.html with
+// `window.location.hash` lookup) can use them. See ADR-0029, SPEC-0021 REQ
+// "Migration of commands.mdx (Step 2 — Audit and Redirect)".
 const COMMANDS_REDIRECTS = [
-  // Skill-level: /guides/commands#{name} -> /skills/{name}
-  ...SKILL_ANCHORS.map((name) => ({
-    from: `/guides/commands#${name}`,
-    to: `/skills/${name}`,
-  })),
-  // Group-level: /guides/commands#{group} -> /skills/ (the hero-tile index).
-  ...GROUP_ANCHORS.map((group) => ({
-    from: `/guides/commands#${group}`,
-    to: `/skills/`,
-  })),
-  // Bare /guides/commands -> /skills/
   {from: '/guides/commands', to: '/skills/'},
 ];
 
