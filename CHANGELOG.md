@@ -29,7 +29,7 @@ All notable changes to the SDD plugin (`claude-plugin-sdd`) are documented here.
 ### Documentation
 
 - New "Prerequisites" section in [Getting Started](./guides/getting-started) covering qmd installation.
-- `/sdd:prime` command reference updated for v5 behavior. Other skill entries in [Commands](./guides/commands) describe v4 behavior and will be updated in a follow-up doc PR.
+- `/sdd:prime` command reference updated for v5 behavior. Other skill entries in [Skills](./skills/) describe v4 behavior and will be updated in a follow-up doc PR.
 
 ### Notes for upgrading
 
