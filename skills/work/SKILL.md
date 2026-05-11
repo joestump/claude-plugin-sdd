@@ -13,9 +13,9 @@ argument-hint: [SPEC-XXXX | issue numbers | (empty = propose from backlog)] [--m
 
 You are picking up tracker issues and implementing them in parallel using git worktrees. Each issue gets its own worktree and worker agent.
 
-<!-- Governing: ADR-0028 (/loop Autonomous Mode), SPEC-0020 REQ "Lockfile Schema and Acquisition", SPEC-0020 REQ "Budget Schema and Persistence" -->
+<!-- Governing: ADR-0028 (/loop Autonomous Mode), SPEC-0020 REQ "Lockfile Schema and Acquisition", SPEC-0020 REQ "Budget Schema and Persistence", SPEC-0020 REQ "Telemetry Schema", SPEC-0020 REQ "Resume Contract", SPEC-0020 REQ "Resume Contract Reconciliation" -->
 
-> **Loop Mode (V1, opt-in).** When invoked under `/loop` with the `--loop` flag, this skill enters autonomous-mode and uses the lockfile + budget primitives documented in `references/loop-primitives.md` (acquired on entry, released on exit). The full CLI surface, all 12 stop conditions, and all 6 AskUserQuestion gates are wired in story #144 (SPEC-0020). Without `--loop`, behavior is unchanged from the rest of this document and no `.sdd/loop/` artifacts are created.
+> **Loop Mode (V1, opt-in).** When invoked under `/loop` with the `--loop` flag, this skill enters autonomous-mode and uses the lockfile + budget primitives documented in `references/loop-primitives.md` (acquired on entry, released on exit) and the telemetry + resume contract documented in `references/loop-telemetry.md` (every iteration appends a `history.jsonl` line and emits a stdout status block; `--resume` reconciles `tracked_prs[]` and `active_worktrees[]` from the last line). The full CLI surface, all 12 stop conditions, and all 6 AskUserQuestion gates are wired in story #144 (SPEC-0020). Without `--loop`, behavior is unchanged from the rest of this document and no `.sdd/loop/` artifacts are created.
 
 ## Process
 
