@@ -34,6 +34,18 @@ const config: Config = {
 
   themes: ['@docusaurus/theme-mermaid'],
 
+  // Governing: ADR-0029, SPEC-0021 REQ "Migration of commands.mdx (Step 1 — Coexist)".
+  // The redirects array is intentionally empty in Story #139; Story #142 will
+  // populate it with one entry per fragment anchor in commands.mdx.
+  plugins: [
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [],
+      },
+    ],
+  ],
+
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
@@ -68,6 +80,14 @@ const config: Config = {
           sidebarId: 'guidesSidebar',
           position: 'left',
           label: 'Guides',
+        },
+        // Governing: ADR-0029, SPEC-0021 REQ "Routing, Sidebar, and Navbar".
+        // The Skills entry MUST sit between Guides and ADRs.
+        {
+          type: 'docSidebar',
+          sidebarId: 'skillsSidebar',
+          position: 'left',
+          label: 'Skills',
         },
         {
           type: 'docSidebar',

@@ -21,6 +21,13 @@ require('./transform-openspecs');
 // Transform ADRs
 require('./transform-adrs');
 
+// Transform skills (per ADR-0029 / SPEC-0021).
+// MUST run after transform-openspecs.js so spec-mapping.json is available
+// for governing-comment cross-links, and MUST run before generate-graph.js
+// so generated skill pages can later participate in the artifact graph.
+// Governing: ADR-0029, SPEC-0021 REQ "Pipeline Integration".
+require('./transform-skills');
+
 // Generate index page
 require('./generate-index');
 

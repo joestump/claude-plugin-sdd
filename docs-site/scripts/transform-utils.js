@@ -125,6 +125,7 @@ function fixMarkdownLinks(content) {
 }
 
 module.exports = {
+  isCodeFence,
   buildAdrMapping,
   transformRfc2119Keywords,
   transformSpecReferences,
