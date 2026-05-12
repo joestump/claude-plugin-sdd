@@ -4,7 +4,7 @@
 name: work
 description: Pick up tracker issues and implement them in parallel using git worktrees. Use when the user says "work on issues", "implement the spec", "start coding", or wants agents to build from planned issues.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion, ToolSearch, EnterWorktree
-argument-hint: [SPEC-XXXX | issue numbers | (empty = propose from backlog)] [--max-agents N] [--draft] [--dry-run] [--no-tests] [--module <name>]
+argument-hint: [SPEC-XXXX | issue numbers | (empty = propose from backlog)] [--max-agents N] [--draft] [--dry-run] [--no-tests] [--module <name>] [--loop [--max-iterations N] [--max-prs N] [--max-minutes N] [--max-dollars N] [--lock={skip|wait|force}] [--resume] [--budget-file PATH]] [--no-chain]
 ---
 
 <!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
@@ -12,6 +12,10 @@ argument-hint: [SPEC-XXXX | issue numbers | (empty = propose from backlog)] [--m
 # Work on Issues
 
 You are picking up tracker issues and implementing them in parallel using git worktrees. Each issue gets its own worktree and worker agent.
+
+<!-- Governing: ADR-0028 (/loop Autonomous Mode), SPEC-0020 REQ "Lockfile Schema and Acquisition", SPEC-0020 REQ "Budget Schema and Persistence", SPEC-0020 REQ "Telemetry Schema", SPEC-0020 REQ "Resume Contract", SPEC-0020 REQ "Resume Contract Reconciliation" -->
+
+> **Loop Mode (V1, opt-in).** When invoked under `/loop` with the `--loop` flag, this skill enters autonomous-mode and uses the lockfile + budget primitives documented in `references/loop-primitives.md` (acquired on entry, released on exit) and the telemetry + resume contract documented in `references/loop-telemetry.md` (every iteration appends a `history.jsonl` line and emits a stdout status block; `--resume` reconciles `tracked_prs[]` and `active_worktrees[]` from the last line). The full CLI surface, all 12 stop conditions, and all 6 AskUserQuestion gates are wired in story #144 (SPEC-0020). Without `--loop`, behavior is unchanged from the rest of this document and no `.sdd/loop/` artifacts are created.
 
 ## Process
 
@@ -593,3 +597,221 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 3c — sync from tracker before Step 4 issue discovery, subject to 5-min dedup. On failure, fall back to live queries with a warning, never block (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")
 - **v5.0.0+**: Workers MUST run qmd-aware code pre-search per worker Step 3a before writing any new helper/type/struct/interface — qmd-search `{repo}-code` for matches; if found above threshold (minScore 0.4), MUST import the existing implementation and broadcast `TYPE_IMPORTED` rather than recreate (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Sprint Skills")
 - **v5.0.0+**: Lead MUST trigger Tier 1 update of `{repo}-code` after detecting a PR merge per Step 11 — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
+
+## Loop Mode (autonomous)
+
+<!-- Governing: ADR-0028 (/loop Autonomous Mode for /sdd:work and /sdd:review), SPEC-0020 REQ "Loop Mode Opt-In", REQ "CLI Surface for Loop Controls", REQ "Backlog-Empty Stop", REQ "Iteration Budget Stop", REQ "PR-Touch Budget Stop", REQ "Wall-Clock Budget Stop", REQ "Repeated-Failure Stop", REQ "Dependency-Cycle Stop", REQ "User Interrupt Stop", REQ "Lockfile Contention Skip", REQ "Prior-Gate-Stop Honor", REQ "qmd-Unreachable Stop", REQ "Cost Budget Stop", REQ "Concurrency Invariants for /sdd:work", REQ "Backlog-Drift Gate", REQ "Ambiguous-Acceptance-Criteria Gate", REQ "Budget-Escalation Gate", REQ "Force-Unlock Gate", REQ "Repeated-Failure Gate", REQ "Gates Are Not Debounced Across Iterations", REQ "Final Report on Stop" -->
+
+When `/sdd:work` is invoked under `/loop` with the `--loop` flag (e.g. `/loop /sdd:work --loop`), the skill enters autonomous-mode and follows the contract below on every tick. Without `--loop`, the skill behaves exactly as the rest of this document specifies and creates **no** `.sdd/loop/` artifacts (per SPEC-0020 REQ "Loop Mode Opt-In").
+
+The runtime `/loop` skill is unchanged. `--loop` is a skill-side opt-in. `/loop` schedules ticks; everything inside a tick is the wrapped skill's concern.
+
+### CLI surface
+
+When `--loop` is set, `/sdd:work` accepts the following additional flags. All are optional with the documented conservative defaults (per SPEC-0020 REQ "CLI Surface for Loop Controls"). Budgets are inclusive **across the entire loop run**, not per-iteration.
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--loop` | off | Opt into autonomous-mode |
+| `--max-iterations N` | 5 | Iteration ceiling across the run |
+| `--max-prs N` | 20 | Distinct-PR ceiling across the run |
+| `--max-minutes N` | 60 | Wall-clock ceiling across the run |
+| `--max-dollars N` | 25 | Dollar-cost ceiling; `0` disables condition #12 (estimate still tracked) |
+| `--lock={skip\|wait\|force}` | `skip` | Concurrency mode on lockfile contention |
+| `--resume` | off | Recover state from the most recent `history.jsonl` line |
+| `--budget-file PATH` | `.sdd/loop/work.budget.json` | Override the budget-file location |
+| `--no-chain` | off | Skip the post-PR chain (`/sdd:review` + `/autofix-pr`); restores legacy "open PR, stop" behavior. See "Post-PR Chain" below. |
+
+The first write of `budget.json` records the active ceilings (per `references/loop-primitives.md` § First-write rule) so a later `--resume` cannot silently widen them.
+
+### Per-tick flow
+
+Each tick follows this canonical flow (control flow diagram in `docs/openspec/specs/loop-autonomous-mode/design.md`):
+
+1. **Acquire lockfile** at `.sdd/loop/work.lock` per `references/loop-primitives.md` § Acquisition flow (skip / wait / force per `--lock`).
+2. **Read budget** from `.sdd/loop/work.budget.json`; on first write, initialize ceilings, `started_at`, and `rate_table_source` (per `references/loop-primitives.md` § First-write rule).
+3. **Evaluate stop conditions on entry** (see "Stop conditions" below). Any matching condition halts the loop, emits the final report, and releases the lockfile.
+4. **Run the gate block** (see "AskUserQuestion Gates" below). Any gate answered `stop` halts the loop.
+5. **Run the iteration body** — discover workable issues per Step 4 of the main flow above (skipping issues labeled `in-progress` per "Concurrency invariants"), dispatch workers, open PRs.
+6. **For each PR opened in this iteration**, invoke the post-PR chain per "Post-PR Chain" below (unless `--no-chain` or `--dry-run`).
+7. **Update budget** — increment `iterations_used`, union `prs_touched`, accumulate `tokens_in`/`tokens_out`/`agents_dispatched`, recompute `dollars_estimate`, evaluate exit-time stop conditions 3 / 4 / 5 / 12.
+8. **Emit telemetry** — append a line to `.sdd/loop/work.history.jsonl` (per `references/loop-telemetry.md`) and emit the stdout status block.
+9. **Release lockfile** and let `/loop` schedule the next tick.
+
+### Stop conditions
+
+The loop halts on any matching condition. The cause is recorded in `stop_conditions_fired[]` of the final history line.
+
+| # | Condition | Behavior |
+|---|-----------|----------|
+| 1 | Backlog empty (no unblocked, unworked, in-scope issues on entry) | Final report names empty queue; release lock; do NOT signal another tick (SPEC-0020 REQ "Backlog-Empty Stop") |
+| 3 | `iterations_used >= max_iterations` (entry-time check) | `stop_conditions_fired: ["iteration_budget"]` (SPEC-0020 REQ "Iteration Budget Stop") |
+| 4 | `len(prs_touched) >= max_prs` (deduplicated set; entry-time + after each PR open) | `stop_conditions_fired: ["prs_touched_budget"]` (SPEC-0020 REQ "PR-Touch Budget Stop") |
+| 5 | `minutes_elapsed >= max_minutes` (clock anchored at `started_at`, persists across `--resume`) | `stop_conditions_fired: ["wall_clock_budget"]` (SPEC-0020 REQ "Wall-Clock Budget Stop") |
+| 6 | Same issue/PR failed twice consecutively with the same root cause | Fire the **Repeated-Failure** gate (does NOT silently halt) (SPEC-0020 REQ "Repeated-Failure Stop") |
+| 7 | Issue-dependency analysis (per SPEC-0015 Layer 2) detects a cycle | Halt and surface the cycle's edges; do NOT attempt automatic break (SPEC-0020 REQ "Dependency-Cycle Stop") |
+| 8 | User interrupt (Ctrl-C / session close / explicit `/loop stop`) | Drain in-flight workers (no new dispatch), release lock, emit final report, no half-states (SPEC-0020 REQ "User Interrupt Stop") |
+| 9 | Lockfile holds a live PID under `--lock=skip` | Emit one-line skip note; do NOT increment counters (SPEC-0020 REQ "Lockfile Contention Skip"). `--lock=wait` blocks bounded by `max_minutes`; `--lock=force` fires the Force-Unlock gate. |
+| 10 | Any prior `gates[]` entry recorded `answer == "stop"` | "Loop already stopped at gate {name} in iteration {N}"; release lock; do NOT increment counters (SPEC-0020 REQ "Prior-Gate-Stop Honor") |
+| 11 | qmd unreachable for **2 consecutive** iterations | Halt with the ADR-0024 remediation message; the wrapped skill signals via stderr token `qmd-unreachable` OR exit code `EX_QMD_UNREACHABLE=78`; any successful iteration resets `qmd_failures_consecutive` to 0 (SPEC-0020 REQ "qmd-Unreachable Stop") |
+| 12 | `dollars_estimate >= max_dollars` (and `max_dollars > 0`) | "Cost budget reached: $X / $Y"; `--max-dollars 0` disables the stop but `dollars_estimate` is still tracked (SPEC-0020 REQ "Cost Budget Stop") |
+
+Condition #2 (terminal PR state) does NOT apply to `/sdd:work` — it is a `/sdd:review --loop --pr <N>` condition.
+
+### qmd-unreachable detection protocol
+
+The wrapped skill signals qmd-unreachable using either of these signals (per SPEC-0020 REQ "qmd-Unreachable Stop"):
+
+1. **Stderr sentinel**: a line on stderr containing the literal token `qmd-unreachable` (per `references/qmd-helpers.md` § "Error Handling")
+2. **Reserved exit code**: `EX_QMD_UNREACHABLE = 78` (matches BSD `sysexits.h` `EX_CONFIG`)
+
+The loop reads exit status first; on non-zero, scans stderr for the sentinel as a fallback. Either signal is sufficient. On detection, increment `qmd_failures_consecutive`. On any successful iteration, reset to 0. On increment to 2, condition #11 trips.
+
+### AskUserQuestion gates
+
+All gates are re-evaluated **on every tick** (per SPEC-0020 REQ "Gates Are Not Debounced Across Iterations") — the skill MUST NOT cache or reuse a prior iteration's answer to suppress a current iteration's gate. Each invocation is captured verbatim in the iteration's `gates[]` array per `references/loop-telemetry.md`.
+
+| Gate | Trigger | Prompt template | Options |
+|------|---------|-----------------|---------|
+| **Backlog Drift** | Unblocked-issue snapshot differs from the prior iteration's recorded snapshot | "Backlog changed since last iteration. Re-propose the next batch?" | `re-propose`, `continue`, `stop` |
+| **Ambiguous Criteria** | Issue lacks `### Acceptance Criteria` OR section contains TBD/TODO markers | "Issue #{N} has ambiguous criteria. Skip, escalate, or proceed with my best interpretation?" | `skip`, `escalate`, `proceed`, `stop` |
+| **Budget Escalation (80%)** | One or more active budgets cross 80% on this tick | "Approaching {budget(s)} ({used}/{total} each). Continue, raise ceiling(s), or stop?" — combined into a single prompt across all simultaneously-tripped budgets | `continue`, `raise`, `stop` |
+| **Force-Unlock** | `--lock=force` AND lockfile is present | "Force-unlock previous iteration's lock? This may corrupt in-flight work." | `yes`, `no`, `stop` |
+| **Repeated Failure** | Same issue/PR failed in two consecutive iterations with the same root cause | "Issue/PR #{N} failed twice with: {root-cause}. Skip, retry once more, or stop the loop?" | `skip`, `retry`, `stop` |
+| **Resume-Divergence** (resume only) | A `tracked_prs[]` entry's `head_sha_at_iteration_end` does not match the live remote HEAD | "PR #{N} has diverged since the prior iteration crashed — re-attach, skip, or stop the loop?" | `re-attach`, `skip`, `stop` |
+
+Note: the **Post-Feedback Merge** gate is a `/sdd:review --loop` gate; it does NOT fire on the work side. Backlog-Drift is a work-side-only gate.
+
+#### Multi-budget batching (gate 80%)
+
+When two or more budgets cross 80% in the same tick, the gate fires **once** with a combined message listing every tripped budget (per SPEC-0020 REQ "Budget-Escalation Gate"). When any budget reaches 100% in the same tick that another crosses 80%, the **100%-stop wins** (conditions 3 / 4 / 5 / 12 take precedence) and the gate is suppressed. Pseudocode in `docs/openspec/specs/loop-autonomous-mode/design.md` § Multi-budget 80% gate batching.
+
+### Concurrency invariants
+
+`/sdd:work --loop` MUST NOT pick up an issue already labeled `in-progress` by a sibling iteration's worktree (per SPEC-0020 REQ "Concurrency Invariants for /sdd:work"). The check happens during workable-issue discovery in each iteration, before dispatch. The iteration MUST NOT clear or contest the label — it skips the issue and picks the next one.
+
+This invariant is independent of the lockfile (which scopes "is another *iteration* running?"). The label invariant scopes "is this *issue* already being implemented somewhere?".
+
+### Final report
+
+When the loop halts for any reason, the wrapped skill MUST emit a final report **before** lockfile release (per SPEC-0020 REQ "Final Report on Stop"). The report covers:
+
+- The stop cause (single line, machine-readable name + human prose)
+- Total iterations used / max
+- Total PRs touched (deduplicated count) / max
+- Total minutes elapsed / max
+- Total dollars estimated / max
+- List of every gate fired with its answer (across all iterations)
+- Path to `.sdd/loop/work.budget.json` and `.sdd/loop/work.history.jsonl` for further inspection
+
+The lockfile is released **after** the report is emitted so a stale-lock reaper on a subsequent tick sees a complete telemetry trail.
+
+### Post-PR Chain
+
+<!-- Governing: ADR-0030 (Post-PR Chain Pattern in /sdd:work), ADR-0010 (bounded one-round invariant), ADR-0024 (qmd as Hard Dependency), SPEC-0020 REQ "Post-PR Chain Invocation", SPEC-0020 REQ "Chain Outcome Telemetry" -->
+
+After each PR opened in an iteration, `/sdd:work` invokes the post-PR chain — a bounded architectural review pass (`/sdd:review`, exactly one round per ADR-0010) followed by an open-ended CI / conflict / comment maintenance pass (`/autofix-pr`, the Claude Code built-in). The chain is unconditional within an iteration unless `--no-chain` or `--dry-run` is set (per SPEC-0020 REQ "Post-PR Chain Invocation"). It also runs on single-shot `/sdd:work` invocations — not just under `--loop` — so single-PR sessions get the same autonomy benefit (per ADR-0030 sub-decision 1).
+
+**This contract applies to both `--loop` and non-loop invocations** of `/sdd:work`. In non-loop mode, the worker that opens a PR follows the same chain — and the per-PR `history.jsonl` line still records the chain outcome fields (per SPEC-0020 REQ "Chain Outcome Telemetry"; the file is single-line in non-loop mode rather than appended).
+
+#### Chain sequence (per PR)
+
+For each PR a worker opens in an iteration:
+
+1. **Check `--no-chain`**. If set: log "Chain skipped for PR #{N} (--no-chain)"; record `chain_invoked: false` in the iteration's `history.jsonl` line; **omit** `review_outcome`, `autofix_pr_invoked`, and `autofix_pr_invocation_status` (per SPEC-0020 REQ "Chain Outcome Telemetry"); proceed to next PR (or exit iteration body).
+2. **Check `--dry-run`**. If set: log "Would invoke /sdd:review on PR #{N}, then /autofix-pr"; record `chain_invoked: false`; omit the per-stage fields; proceed.
+3. **Invoke `/sdd:review`** on PR #{N}, scoped to exactly one architectural round (ADR-0010 invariant):
+   - Reviewer evaluates the PR diff against acceptance criteria
+   - If REQUEST_CHANGES: responder addresses, reviewer re-evaluates within the same round
+   - Round closes with one of four outcomes: `"approve"`, `"changes-requested"` (resolved in round), `"needs-human"`, or `"errored"` (qmd / infrastructure failure)
+4. **Branch on review outcome**:
+
+   | Outcome | Behavior |
+   |---------|----------|
+   | `"approve"` | Proceed to step 5 (`/autofix-pr` invocation) |
+   | `"changes-requested"` (resolved in round) | Proceed to step 5 |
+   | `"needs-human"` | Apply the `needs-human-follow-up` label to PR #{N}; proceed to step 5 (the maintenance loop may still resolve CI flakes / conflicts independently of the architectural concern) |
+   | `"errored"` | Apply the `chain-failed-pre-autofix` label to PR #{N}; **skip** step 5; record `autofix_pr_invoked: false`; **omit** `autofix_pr_invocation_status` (per SPEC-0020 REQ "Post-PR Chain Invocation"); proceed to next PR. The user can rerun `/sdd:review` after fixing the infrastructure issue (e.g., qmd unreachable per ADR-0024). |
+
+5. **Check `/autofix-pr` availability**. The command is a Claude Code built-in (not a plugin-provided skill). Probe by attempting to introspect the runtime's available commands.
+   - **Unavailable** (the build does not ship the command, or introspection returns "not found"): log a one-line warning ("`/autofix-pr` is not available in this Claude Code build — install or upgrade Claude Code to enable post-PR autofix chain"); open a tracker issue tagged `claude-code-version-required` (deduped per `/sdd:work` invocation — open at most one such issue per session); record `autofix_pr_invoked: false` and `autofix_pr_invocation_status: "unavailable"`; proceed to next PR. PR creation is NOT blocked.
+   - **Available**: continue to step 6.
+
+6. **Invoke `/autofix-pr`** on PR #{N} **fire-and-forget**: `/sdd:work` does NOT wait for `/autofix-pr` to terminate; the built-in runs in its own background lifecycle managed by Claude Code, watching CI failures, review comments, and merge conflicts, and pushing corrective commits until the PR merges or is closed. `/sdd:work` returns once the invocation is **accepted** (the command was parsed and the lifecycle started).
+   - On accepted invocation: record `autofix_pr_invoked: true`, `autofix_pr_invocation_status: "accepted"`.
+   - On invocation error (parse failure or other invocation-time error): record `autofix_pr_invoked: true`, `autofix_pr_invocation_status: "errored"`; emit a one-line warning. The PR is NOT blocked.
+
+7. **Telemetry**. The iteration's `history.jsonl` line records the four chain fields per the canonical schema in `references/loop-telemetry.md`:
+
+   ```json
+   {
+     "chain_invoked": true,
+     "review_outcome": "approve",
+     "autofix_pr_invoked": true,
+     "autofix_pr_invocation_status": "accepted"
+   }
+   ```
+
+   In non-loop mode, the same fields are still emitted (a non-loop `/sdd:work` writes a single-line `history.jsonl` for that invocation; this is the trade documented in ADR-0030 sub-decision 6 to keep telemetry shape uniform).
+
+#### Failure modes (summary)
+
+| Failure | Behavior |
+|---------|----------|
+| User passed `--no-chain` | Skip both invocations; record `chain_invoked: false` and omit per-stage fields. Legacy "open PR, stop" behavior. |
+| User passed `--dry-run` | Log "would invoke" for both; skip both invocations; record `chain_invoked: false`. |
+| `/sdd:review` returns `"approve"`, `"changes-requested"` (resolved in round), or `"needs-human"` | Proceed to `/autofix-pr` |
+| `/sdd:review` returns `"errored"` (qmd unreachable per ADR-0024 sub-decision 2, or other infrastructure failure) | Apply `chain-failed-pre-autofix` label; skip `/autofix-pr`; record `autofix_pr_invoked: false`; omit `autofix_pr_invocation_status` |
+| `/autofix-pr` unavailable in current Claude Code build | Log warning; open one tracker issue with `claude-code-version-required` label per `/sdd:work` session (deduped); exit cleanly. PR is NOT blocked. |
+| `/autofix-pr` invocation parse error | Record `autofix_pr_invocation_status: "errored"`; one-line warning; PR NOT blocked. |
+
+#### Concurrency under `--loop`
+
+Each loop iteration's per-PR chain is a self-contained unit (per ADR-0030 sub-decision 5). When a worker opens N PRs in parallel within a single iteration, the chain runs once per PR, in parallel across workers (one chain per PR). The chain invocations are NOT serialized across the workers in a single iteration.
+
+ADR-0028's gates (backlog drift, ambiguous criteria, budget escalation, force-unlock, repeated failure) fire **before** the chain — they decide whether to *start* the iteration. Once an iteration runs and a PR is opened, the chain is unconditional within that iteration unless `--no-chain` is set. There is no per-PR gate that interposes between PR creation and `/sdd:review`; the architectural review is the bounded round (ADR-0010), and the post-feedback-merge gate (`/sdd:review --loop` only) is the only human-mediated checkpoint that can pause the chain's eventual merge path.
+
+#### Cost accounting
+
+Each chain invocation is metered by its own tool's cost surface (per ADR-0030 sub-decision 6). `/sdd:work` does **not** double-count `/sdd:review`'s tokens or `/autofix-pr`'s tokens against its own budget; those costs accrue under the invoked command's accounting. What `/sdd:work` records in `history.jsonl` is the *event* of invocation (`chain_invoked`, `review_outcome`, `autofix_pr_invoked`) so users correlating cost spikes after the fact can map them back to the iteration that opened the PR. The chain is therefore visible in telemetry as an event but not as a token line item.
+
+#### Why this preserves ADR-0010
+
+`/sdd:review` is invoked **exactly once** by `/sdd:work` per PR (per chain invocation). The chain does NOT loop `/sdd:review`. A second architectural round on the same PR is forbidden by ADR-0010 and forbidden here. If the user wants another round, they invoke `/sdd:review` directly (or, under `--loop`, the next iteration's `/sdd:review --loop` invocation does its own one round on that PR).
+
+#### Bootstrap note (V1)
+
+This contract IS the implementation of the chain; before story #148 lands, `/sdd:work` opens a PR and stops (legacy behavior). Once #148 merges, the chain is the new default unless `--no-chain` is set.
+
+### Resume
+
+`--resume` recovers state from the most recent `history.jsonl` line per `references/loop-telemetry.md` § Resume Contract. Counters are restored; gate evaluations are recomputed; the lockfile is treated as stale per the PID-liveness rule; `tracked_prs[]` and `active_worktrees[]` are reconciled by SHA equality with no external probing substituted.
+
+### Telemetry
+
+Every iteration appends a line to `.sdd/loop/work.history.jsonl` and emits the stdout status block. Skipped ticks (lockfile contention) MUST also append a line with `outcome: "skipped_lock"` and MUST NOT increment `iterations_used`. Schema details in `references/loop-telemetry.md`.
+
+### Loop Mode Rules
+
+- MUST NOT modify the runtime `/loop` skill — re-invocation cadence is `/loop`'s concern; the wrapped skill enforces only intra-iteration semantics
+- MUST acquire the lockfile on entry, before any other work, per `references/loop-primitives.md` § Acquisition flow
+- MUST evaluate PID liveness as the **sole** staleness signal; worktree presence and team-membership state MUST NOT be consulted
+- MUST persist the budget atomically (write-temp + rename) on every tick
+- MUST record active ceilings on first write so `--resume` cannot silently widen them
+- MUST deduplicate `prs_touched` (a PR re-touched across iterations counts once)
+- MUST emit the stdout status block on every iteration including skipped ticks
+- MUST append a `history.jsonl` line on every iteration including skipped ticks
+- MUST NOT increment `iterations_used` for a skipped tick
+- MUST NOT cache or reuse a prior iteration's gate answer; every gate is re-evaluated on every tick
+- MUST refuse to start an iteration when any prior `gates[]` entry recorded `answer == "stop"` (condition #10)
+- MUST NOT pick up issues labeled `in-progress` by a sibling iteration's worktree (concurrency invariant)
+- MUST signal qmd unreachability via stderr token `qmd-unreachable` OR exit code `EX_QMD_UNREACHABLE=78` (the wrapped skill emits; the loop layer detects)
+- MUST emit the final report **before** releasing the lockfile on any halt path
+- MUST invoke the post-PR chain (per "Post-PR Chain" above) for every PR opened in an iteration unless `--no-chain` or `--dry-run` is set
+- The post-PR chain MUST also run on **non-loop** `/sdd:work` invocations (single-shot mode); the chain is not gated by `--loop` (per ADR-0030 sub-decision 1)
+- The chain MUST invoke `/sdd:review` exactly once per PR per chain invocation (preserves ADR-0010's bounded one-round invariant)
+- WHEN `/sdd:review` exits with `review_outcome: "errored"` THEN MUST apply the `chain-failed-pre-autofix` label, MUST NOT invoke `/autofix-pr`, and MUST omit `autofix_pr_invocation_status` from the per-iteration telemetry
+- WHEN `/sdd:review` exits with `"needs-human"` THEN MUST apply the `needs-human-follow-up` label AND proceed to `/autofix-pr` (the maintenance loop may resolve CI / conflicts independently)
+- WHEN `/autofix-pr` is unavailable THEN MUST log a warning AND open a tracker issue with the `claude-code-version-required` label (deduped at one issue per session) AND exit cleanly (PR creation MUST NOT be blocked)
+- The `/autofix-pr` invocation MUST be fire-and-forget — `/sdd:work` MUST NOT wait for `/autofix-pr` to terminate
+- The chain MUST NOT be double-counted in `/sdd:work`'s budget — costs of `/sdd:review` and `/autofix-pr` accrue under their own tool accounting; `/sdd:work` records only the invocation events in `history.jsonl`

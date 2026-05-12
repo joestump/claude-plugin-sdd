@@ -5,6 +5,7 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "build-content": "node scripts/build-docs.js",
+    "docs:refresh-overrides": "node scripts/refresh-overrides.js",
     "watch-content": "chokidar '../docs/openspec/**/*' '../docs/adrs/**/*' '../skills/**/*' -c 'npm run build-content' --initial",
     "start": "npm run build-content && docusaurus start",
     "dev": "concurrently --kill-others \"npm run watch-content\" \"docusaurus start\"",

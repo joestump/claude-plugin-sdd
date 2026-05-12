@@ -5,7 +5,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 argument-hint: [--module <name>]
 ---
 
-<!-- Governing: ADR-0015 (Markdown-Native Configuration), ADR-0024 (qmd as hard dependency), ADR-0025 (.sdd/ directory rationale), SPEC-0014 REQ "Migration from JSON to CLAUDE.md", SPEC-0019 REQ "qmd Preflight Enforcement", SPEC-0019 REQ "qmd Assumption in Consumer Skills", SPEC-0019 REQ ".sdd Gitignore Enforcement" -->
+<!-- Governing: ADR-0015 (Markdown-Native Configuration), ADR-0020 (Governing Comment Reform), ADR-0024 (qmd as hard dependency), ADR-0025 (.sdd/ directory rationale), SPEC-0002 REQ "Project Initialization", SPEC-0014 REQ "Migration from JSON to CLAUDE.md", SPEC-0019 REQ "qmd Preflight Enforcement", SPEC-0019 REQ "qmd Assumption in Consumer Skills", SPEC-0019 REQ ".sdd Gitignore Enforcement" -->
 
 # Initialize SDD Plugin
 
@@ -56,7 +56,7 @@ Before making any changes, read the current state and build a component checklis
 | CLAUDE.md | Does `CLAUDE.md` exist at the project root? | `exists` / `missing` |
 | Architecture Context | Does CLAUDE.md contain `## Architecture Context`? | `present` / `missing` |
 | Path References | Does CLAUDE.md contain both `docs/adrs/` and `docs/openspec/specs/`? | `both-present` / `partial` / `missing` |
-| Skills Table | Does the skills table contain ALL skills from the canonical template (`references/claude-md-template.md`)? Compare skill names (the `/sdd:*` values in the first column). | `up-to-date` / `outdated` / `missing` |
+| Skills Table | Does the skills table contain ALL plugin-owned skills discovered by enumerating `skills/*/SKILL.md` in the plugin directory (see Step 2b)? Compare skill names (the `/sdd:*` values in the first column). | `up-to-date` / `outdated` / `missing` |
 | Workflow Section | Does the Workflow section contain the same steps as the canonical template? | `up-to-date` / `outdated` / `missing` |
 | Session Coordination | Does CLAUDE.md contain `### Session Coordination`? | `present` / `missing` |
 | SDD Plugin Config | Does CLAUDE.md contain `### SDD Configuration`? | `present` / `missing` |
@@ -116,13 +116,63 @@ If `.claude-plugin-design.json` exists:
 
 **Precondition**: Always runs. Each sub-check acts independently.
 
-**If CLAUDE.md does not exist**: Read the canonical template from `references/claude-md-template.md` and create CLAUDE.md with its contents plus any config section generated in Step 1. Done — skip to Step 3.
+**If CLAUDE.md does not exist**: Read the canonical template from `references/claude-md-template.md` and create CLAUDE.md with its contents plus any config section generated in Step 1. The template's `### SDD Skills` section contains a placeholder marker (`<!-- SDD-SKILLS-TABLE -->`) where the skills table belongs — generate the table via **Skills Table Generation** (Step 2b below) and replace the marker with the generated GFM table. Then skip to Step 3.
 
 **If CLAUDE.md exists**, perform section-level convergence. Each sub-check below runs independently:
 
 a. **Path references**: If `docs/adrs/` or `docs/openspec/specs/` are missing from the `## Architecture Context` section, add them. If a DIFFERENT path exists (e.g., `docs/decisions/`), use `AskUserQuestion` to resolve — this is a genuine ambiguity that requires user input.
 
-b. **Skills table**: Read the canonical template's skills table from `references/claude-md-template.md`. For each skill row in the template that is NOT present in the current CLAUDE.md's skills table (match by skill name in the first column, e.g., `/sdd:review`), insert it at the end of the table. Do NOT remove existing rows — the user may have added custom entries.
+b. **Skills table**: Generate the canonical skills table dynamically by enumerating `skills/*/SKILL.md` in the plugin directory (the directory containing this `init/` skill — typically `${CLAUDE_PLUGIN_ROOT}/skills/` when the plugin is installed). Follow the procedure in **Skills Table Generation** below. For each plugin-owned skill row that is NOT present in the current CLAUDE.md's skills table (match by skill name in the first column, e.g., `/sdd:review`), insert it. Do NOT remove existing rows — the user may have added custom entries for third-party plugins or local skills, and those MUST be preserved (additive-only, per the Idempotency Rules below).
+
+   **Why dynamic, not template-driven**: The plugin's set of skills changes every release. A static template at `references/claude-md-template.md` would have to be hand-edited every time a new skill ships, and existing CLAUDE.md files would only pick up the addition if that hand-edit happened. Enumerating `skills/*/SKILL.md` at runtime makes adding a new skill a single drop-in operation — its row appears in the next `/sdd:init` run automatically.
+
+#### Skills Table Generation
+
+<!-- Governing: SPEC-0002 REQ "Project Initialization" -->
+
+This is the canonical algorithm for building the plugin-owned portion of the `### SDD Skills` table. It runs whenever Step 2b executes (skills table convergence) and whenever Step 0 needs to know the canonical row set (skills-table status check).
+
+1. **Locate the plugin's `skills/` directory**. From the running skill's perspective, this is one level up from `skills/init/` — i.e., the directory that contains all `skills/<name>/SKILL.md` files. When invoked as a Claude Code plugin skill, the working directory is typically the user's project root; resolve the plugin directory via `${CLAUDE_PLUGIN_ROOT}/skills/` if that env var is set, otherwise fall back to the path the running `init/SKILL.md` was loaded from. (If neither resolves, abort the dynamic generation and emit a clear error — do NOT silently fall back to a stale template.)
+
+2. **Enumerate `skills/*/SKILL.md`**. Use `Glob` with pattern `skills/*/SKILL.md` rooted at the plugin directory. Skip any path that does not exist or has empty frontmatter.
+
+3. **Extract frontmatter** from each `SKILL.md`. The frontmatter is a YAML block between two `---` lines at the top of the file (or directly after a leading HTML comment, which a few skills use for governing-comment hoisting). Required keys:
+   - `name` — the skill's slash-command suffix (e.g., `adr` → `/sdd:adr`)
+   - `description` — the full sentence-trigger description shown to the model
+
+   `disable-model-invocation: true` skills (currently `list`, `status`) are INCLUDED in the table — they remain user-invokable as slash commands even though the model cannot trigger them autonomously. No special markup.
+
+4. **Derive the Purpose column** for each skill by taking the **first sentence** of `description` (split on `. ` — the period-space boundary that separates the human-readable purpose from the `Use when ...` trigger guidance). Drop any trailing period. If the resulting string exceeds 80 characters, truncate at the last word boundary before the 80-character mark and append `…`. Examples:
+   - `description: "Create a new Architecture Decision Record (ADR) using MADR format. Use when the user wants ..."` → Purpose: `Create a new Architecture Decision Record (ADR) using MADR format`
+   - `description: "Quick-check code against ADRs and specs for drift. Use when ..."` → Purpose: `Quick-check code against ADRs and specs for drift`
+
+5. **Order the rows** using the canonical lifecycle ordering below. Skills not in this list are appended at the end, sorted alphabetically by name — this guarantees that **a newly added skill always shows up in the next init run with zero edits to this file**, while still letting maintainers nudge it into the lifecycle position by adding its name to the list during release prep.
+
+   Canonical lifecycle order (decide → specify → list/status → docs → init/prime → check/audit/discover → plan/organize/enrich → build/review → introspect → other):
+
+   ```
+   adr, spec, list, status, docs, init, prime, check, audit, discover,
+   plan, organize, enrich, work, review, graph, index, report-friction
+   ```
+
+   When adding a brand-new skill that fits the lifecycle, append it to this list in the appropriate position during the same PR that introduces the skill; if the maintainer forgets, the skill still appears (alphabetically at the end), so existing users still pick it up.
+
+6. **Build the table** as standard GFM markdown:
+
+   ```markdown
+   | Skill | Purpose |
+   |-------|---------|
+   | `/sdd:<name>` | <Purpose> |
+   ...
+   ```
+
+7. **Merge with the user's existing CLAUDE.md skills table**:
+   - Parse the existing `### SDD Skills` table (if any). Treat each row's first column (the skill name in backticks, e.g., `` `/sdd:plan` ``) as the merge key.
+   - For each generated plugin-owned row whose skill name is NOT already in the existing table, **insert** it at the position implied by the canonical order: walk the generated list in order; insert each missing row immediately after the previous canonical row that IS present, or at the end of the plugin-owned block if no prior anchor exists.
+   - Plugin-owned rows that ARE already present are left untouched (do not rewrite their Purpose column — the user may have edited the wording, and the additive-only rule applies).
+   - User-added rows (skill names that don't match any name in the enumerated plugin skills — e.g., a row for a third-party plugin like `` `/myplugin:foo` ``) are preserved in their original positions.
+
+   Idempotency invariant: running `/sdd:init` twice in a row MUST produce zero changes on the second run.
 
 c. **Workflow section**: Compare the current Workflow steps against the canonical template. If steps are missing (e.g., a "Review" step), insert them at the correct position and renumber subsequent steps. Preserve existing step content.
 
@@ -262,7 +312,9 @@ Created CLAUDE.md with architecture context.
 
 ## Content Reference
 
-When creating a new CLAUDE.md or checking for template drift, read the canonical template from the plugin's `references/claude-md-template.md` file. This is the single source of truth for what the `## Architecture Context` section should contain.
+When creating a new CLAUDE.md or checking for drift in any **non-skills-table** section (intro paragraph, qmd Dependency, Workflow, Session Coordination, Governing Comments), read the canonical content from the plugin's `references/claude-md-template.md` file. That file is the source of truth for everything except the `### SDD Skills` table.
+
+The `### SDD Skills` table is generated dynamically from `skills/*/SKILL.md` frontmatter — see **Skills Table Generation** under Step 2b. The template file contains a `<!-- SDD-SKILLS-TABLE -->` placeholder marker in the skills section; the running skill replaces that marker with the generated table when materializing a fresh CLAUDE.md, and uses the same generation procedure to drive convergence against an existing CLAUDE.md. The static template MUST NOT be hand-edited to add a new skill row — adding a new directory under `skills/` with a valid `SKILL.md` is sufficient for `/sdd:init` to start emitting that row on its next run.
 
 ## Idempotency Rules
 
@@ -298,7 +350,9 @@ Each component is independently idempotent:
 - MUST write `### Workspace Modules` table in root CLAUDE.md when workspace is detected
 - MUST skip submodules that already have CLAUDE.md (unless user explicitly requests update)
 - When `.gitmodules` and `.claude-plugin-design.json` both exist, migration (Step 1) runs before workspace setup (Step 4)
-- MUST read canonical template from `references/claude-md-template.md` for section-level diffing — never hardcode template content in this skill
+- MUST read canonical template from `references/claude-md-template.md` for section-level diffing of non-skills-table content — never hardcode template content in this skill
+- MUST generate the `### SDD Skills` table dynamically by enumerating `skills/*/SKILL.md` frontmatter at runtime (see **Skills Table Generation** under Step 2b) — adding a new skill MUST NOT require editing `references/claude-md-template.md`
+- MUST preserve user-added rows in the `### SDD Skills` table during convergence — rows whose skill name does not match any enumerated plugin skill MUST remain in their original position (additive-only, per Idempotency Rules)
 - MUST display component status scan before making changes
 - MUST report all changes in the final component status table
 - **v5.0.0+**: MUST run the qmd preflight (Step -1) before any other check or mutation. If `qmd` is not on PATH, MUST refuse to operate and emit the canonical install message — silent fall-through to the rest of init MUST NOT happen (Governing: ADR-0024, SPEC-0019 REQ "qmd Preflight Enforcement")

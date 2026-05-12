@@ -9,6 +9,11 @@
   {"query": "implement the highest-priority issue and open a PR when done", "should_trigger": true},
   {"query": "pick up the next planned story and code it up", "should_trigger": true},
   {"query": "fan out work across multiple SPEC-0017 stories using worktrees", "should_trigger": true},
+  {"query": "/loop /sdd:work --loop", "should_trigger": true},
+  {"query": "grind down the backlog autonomously", "should_trigger": true},
+  {"query": "/sdd:work --loop --max-iterations 10 --max-prs 5", "should_trigger": true},
+  {"query": "resume the loop after the crash with --resume", "should_trigger": true},
+  {"query": "open the PR and run /sdd:review then /autofix-pr automatically", "should_trigger": true},
 
   {"query": "what's a git worktree?", "should_trigger": false},
   {"query": "review the existing PRs", "should_trigger": false},
@@ -19,5 +24,7 @@
   {"query": "list the open issues on this repo", "should_trigger": false},
   {"query": "audit the codebase against our specs", "should_trigger": false},
   {"query": "let's work on the design before coding anything", "should_trigger": false},
-  {"query": "make this code work — it's throwing an error", "should_trigger": false}
+  {"query": "make this code work — it's throwing an error", "should_trigger": false},
+  {"query": "what is /loop?", "should_trigger": false},
+  {"query": "explain how /sdd:work --loop differs from /sdd:work", "should_trigger": false}
 ]

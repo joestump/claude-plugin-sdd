@@ -2,10 +2,10 @@
 name: index
 description: Index a repository's ADRs, OpenSpec specs, and source code into qmd collections for hybrid (BM25 + vector + reranker) semantic search. Use when the user says "index this repo", "load into qmd", "make my code/specs searchable", "set up qmd for this project", or wants agents to be able to search architecture artifacts and code semantically.
 allowed-tools: Bash, Read, Glob, Grep, AskUserQuestion
-argument-hint: [add|update|embed|status|remove] [--module <name>] [--foreground|--skip]
+argument-hint: [add|update|embed|status|remove] [--module <name>] [--foreground|--skip] [--reprobe]
 ---
 
-<!-- Governing: ADR-0015 (Markdown-Native Configuration), ADR-0016 (Workspace Mode), ADR-0024 (qmd hard dependency), ADR-0025 (Tracker Issues as Fourth qmd Collection), ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Issues Collection Layout", SPEC-0019 REQ "Issues Collection Sync via /sdd:index" -->
+<!-- Governing: ADR-0015 (Markdown-Native Configuration), ADR-0016 (Workspace Mode), ADR-0024 (qmd hard dependency), ADR-0025 (Tracker Issues as Fourth qmd Collection), ADR-0026 (Tiered Index Freshness), ADR-0031 (Embed-Session Retry Loop), ADR-0032 (qmd Version-Staleness Check), SPEC-0019 REQ "Issues Collection Layout", SPEC-0019 REQ "Issues Collection Sync via /sdd:index" -->
 
 # Index Repository into QMD
 
@@ -32,7 +32,7 @@ Read `$ARGUMENTS`. The first positional token (ignoring `--module <name>`) selec
 
 ### Step 2: Preflight Checks
 
-Before doing anything else, verify the environment. Each check has its own short-circuit message — do not chain them silently.
+Before doing anything else, verify the environment. Each check has its own short-circuit message — do not chain them silently. Checks 4 and 5 are non-blocking diagnostics: they emit warnings rendered at the top of the final report (see **Report Banner** in Step 5) but do not stop the operation. Checks 1–3 are hard preconditions and stop the skill on failure.
 
 1. **qmd installed**: Run `command -v qmd >/dev/null 2>&1`. If missing, output and stop:
 
@@ -49,6 +49,58 @@ Before doing anything else, verify the environment. Each check has its own short
    ```
 
    Then stop. The skill needs CLAUDE.md to know the ADR/spec paths and to extract the per-collection context summary (Step 4).
+
+4. **qmd version staleness check** (non-blocking; Governing: ADR-0032). Read the cache at `~/.cache/sdd-plugin/qmd-version.json`. Schema:
+
+   ```json
+   { "latest": "2.1.3", "checked_at": "2026-05-04T10:30:00Z" }
+   ```
+
+   - **Cache miss or stale (>7 days)**: refresh via `npm view @tobilu/qmd version 2>/dev/null`. Write the result back to the cache file (creating `~/.cache/sdd-plugin/` if absent). On any failure (offline, registry timeout, npm not in PATH), silently skip the warning — DO NOT block, DO NOT error. Network failures are common and should never gate indexing.
+   - **Cache hit (≤7 days old)**: use the cached `latest` value as-is — no `npm view` call.
+   - Read installed version: `qmd --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'`.
+   - If installed `<` latest (semver compare on major.minor.patch — pure numeric, no prerelease handling needed for qmd's release pattern), set the report banner:
+
+     ```
+     ⚠ qmd {installed} installed; {latest} available — `npm install -g @tobilu/qmd` (may include embed-session-timeout fixes)
+     ```
+
+   The banner renders at the top of every report template (see Step 5). If versions match, no banner.
+
+5. **qmd hardware mode** (non-blocking; Governing: ADR-0026 embed policy, ADR-0031 retry loop). Determines GPU vs. CPU for embed scheduling. The previous detection technique — scanning `qmd status` for the "running on CPU" warning — is structurally wrong because the warning emits only when the embedding model loads (during `qmd embed`), never in `qmd status`. Replaced with a cached probe of qmd's own emitted output.
+
+   Read the cache at `~/.cache/sdd-plugin/qmd-hardware.json`. Schema:
+
+   ```json
+   { "qmd_version": "2.1.0", "qmd_path": "/usr/bin/qmd", "hardware": "cpu", "detected_at": "2026-05-04T10:30:00Z" }
+   ```
+
+   - **Cache hit AND qmd_version matches `qmd --version` AND qmd_path matches `command -v qmd`**: use the cached `hardware` value (`gpu` or `cpu`). Skip the probe.
+   - **Cache miss, version mismatch, path mismatch, or `--reprobe` flag in `$ARGUMENTS`**: defer detection to the first embed run — see **Operation: embed** Step 1 below. Until then, **assume CPU** (conservative default; worst case is a backgrounded fast embed for a GPU machine on first run).
+   - The cache is keyed by `(qmd_version, qmd_path)` so an upgrade or relocation of qmd invalidates it automatically. The cache file is treated as untrusted input — if it fails to parse as JSON or is missing required fields, treat as a cache miss.
+
+   Surface the resolved hardware as a one-line note in the report header (`Hardware: GPU (cached)` or `Hardware: CPU (cached)` or `Hardware: assumed CPU (probing on next embed)`).
+
+6. **qmd install writability** (non-blocking; surfaces as report warning). When qmd was installed via `sudo npm install -g`, its `node-llama-cpp` GPU build artifacts cannot be written under `/usr/lib/node_modules/...` by a non-root user, which silently forces CPU mode even on GPU machines. Detect:
+
+   ```bash
+   qmd_root=$(npm root -g 2>/dev/null)/@tobilu/qmd/node_modules/node-llama-cpp/llama
+   if [ -d "$qmd_root" ] && [ ! -w "$qmd_root" ]; then
+     # surface warning
+   fi
+   ```
+
+   If unwritable, surface the diagnosis in the report (DO NOT auto-fix — destructive ownership changes need user consent):
+
+   ```
+   ⚠ qmd installed at {npm-root-g}/@tobilu/qmd is not writable by $USER.
+   node-llama-cpp cannot build GPU artifacts under it; embeds will fall back to CPU (~3.4s/chunk).
+   Fix options:
+     1. Reinstall under your home: npm config set prefix ~/.npm-global && npm install -g @tobilu/qmd
+     2. Take ownership: sudo chown -R $USER {npm-root-g}/@tobilu/qmd/node_modules/node-llama-cpp
+   ```
+
+   If `npm root -g` fails or the path does not exist, skip silently — qmd may be installed via a different package manager (bun, manual build) that doesn't have this problem.
 
 ### Step 3: Derive Collection Names
 
@@ -151,9 +203,15 @@ For each collection in the name set:
 
 #### Operation: embed
 
-Per ADR-0026's embed policy, this operation runs silently with a hardware-aware default. No `AskUserQuestion` prompt — prompting CPU users every time produced the same answer 95% of the time and was friction the user did not want.
+Per ADR-0026's embed policy, this operation runs silently with a hardware-aware default. No `AskUserQuestion` prompt — prompting CPU users every time produced the same answer 95% of the time and was friction the user did not want. Per ADR-0031, embed runs are wrapped in a bounded retry loop because qmd's embed sessions abort at ~30 minutes on CPU.
 
-1. **Detect GPU**: Run `qmd status` and scan for a "running on CPU" warning. The presence of that warning means CPU-only.
+1. **Resolve hardware mode** from the cache populated in Step 2 sub-step 5. Three states:
+
+   - `gpu` (cached) — proceed in foreground by default
+   - `cpu` (cached) — proceed in background by default
+   - `assumed cpu (probing)` — first invocation with no cache. Proceed in **background** (conservative default), AND tee stderr to the embed log so the post-run probe (Step 4b below) can detect the actual hardware mode and write the cache.
+
+   Override precedence: explicit `--foreground` / `--skip` flags in `$ARGUMENTS` always win over the cached default.
 
 2. **Choose mode** based on hardware and explicit flags in `$ARGUMENTS`:
 
@@ -176,7 +234,9 @@ Per ADR-0026's embed policy, this operation runs silently with a hardware-aware 
 
    This replaces the abstract "operates on the entire index" callout. Users with a single indexed repo see "0 from other repos" and the line is short; users with several repos see the cross-repo cost upfront and can choose to skip (`--skip`) and batch later.
 
-4. **Run the chosen mode**:
+4. **Run the chosen mode inside a bounded retry loop** (Governing: ADR-0031). qmd's embed sessions abort at ~30 minutes with `Session expired — skipping N remaining chunks` and exit 0 — a partial completion that the previous version of this skill mistook for full success. The retry loop closes that gap.
+
+   **Single round** is one invocation of:
 
    ```bash
    # Foreground
@@ -188,13 +248,96 @@ Per ADR-0026's embed policy, this operation runs silently with a hardware-aware 
 
    The `--chunk-strategy auto` flag uses tree-sitter for Go/TS/JS/Python/Rust files (cleaner chunks at function/class boundaries) and falls back to regex for everything else, including markdown. This produces dramatically better code-search recall than regex chunking and is non-negotiable for code collections.
 
+   **Loop control** (foreground mode — runs inline in the skill body):
+
+   ```
+   round=1
+   max_rounds=5
+   while round <= max_rounds:
+     run single round, capture stderr to /tmp/qmd-embed-{repo}.log
+     re-read `qmd status` → record `needsEmbedding`
+     if needsEmbedding == 0: break (full success)
+     if NOT (last log contains "Session expired" OR "skipping remaining"): break (genuine error, not a timeout)
+     round += 1
+   ```
+
+   Cap at **5 rounds**. Five 30-minute sessions covers ~2.5 hours of CPU embed wall time, which is enough for any reasonable repo (the user's stumpcloud poly-repo at 1181 chunks finishes in 2-3 rounds). If the cap is hit with `needsEmbedding > 0` still pending, surface in the report:
+
+   ```
+   ⚠ Embed retry cap hit ({max_rounds} rounds, ~{total_minutes}min wall time). {N} chunks still pending.
+   This usually means qmd is hitting the same chunks repeatedly without progress — possible chunk-level error.
+   Inspect /tmp/qmd-embed-{repo}.log for "Failed to embed" lines, then re-run `/sdd:index embed` to continue.
+   ```
+
+   **Loop control** (background mode — runs inside the backgrounded shell wrapper, NOT the foreground skill body, so the user gets the prompt back immediately):
+
+   ```bash
+   (
+     for round in 1 2 3 4 5; do
+       qmd embed --chunk-strategy auto >> /tmp/qmd-embed-{repo}.log 2>&1
+       pending=$(qmd status | awk '/Pending:/ {print $2}')
+       [ "$pending" = "0" ] && break
+       grep -qE 'Session expired|skipping remaining' /tmp/qmd-embed-{repo}.log || break
+     done
+   ) &
+   ```
+
+   The harness completion notification fires when the outer subshell exits.
+
+4a. **Surface multi-round nature in the report**. After the loop completes (foreground) OR is launched (background), include in the report:
+
+   ```
+   Embedded {total_chunks} chunks across {rounds_completed} round(s).
+   {if rounds_completed > 1: "(qmd embed sessions expire at ~30min on CPU; auto-relaunched per ADR-0031.)"}
+   ```
+
+   This makes the multi-round behavior legible — users running long CPU embeds need to understand why their 1-hour wall time produced multiple log entries.
+
+4b. **Hardware probe from stderr** (only when Step 1 hardware was `assumed cpu (probing)`). After at least one round has produced output to `/tmp/qmd-embed-{repo}.log`, parse that log for the canonical CPU sentinel:
+
+   ```bash
+   if grep -qiE 'running on cpu|gpu .* not available|cuda .* not found' /tmp/qmd-embed-{repo}.log; then
+     hardware="cpu"
+   else
+     hardware="gpu"
+   fi
+   ```
+
+   Write the result to `~/.cache/sdd-plugin/qmd-hardware.json` per Step 2 sub-step 5's schema, including the current `qmd --version` and `command -v qmd` for cache invalidation. On the next invocation, Step 2 sub-step 5 reads this directly without probing.
+
+   In background mode, the probe runs inside the same backgrounded wrapper after the retry loop completes, so the cache is populated by the time the next skill invocation starts.
+
 5. **Background mode reporting**: When backgrounded, the report uses the "After `embed` (background)" template below. The completion notification from the harness lands in the next session turn; the user can also run `/sdd:index status` to check progress against the log file.
 
 #### Operation: status
 
-1. Run `qmd status` and capture the output.
+1. Run `qmd status` and capture the output. Extract `needsEmbedding` (the index-wide pending count).
 2. Run `qmd collection list` and filter to rows whose name starts with the repo slug (or `{repo}-{module}-` in workspace mode).
-3. Render the filtered view in the templated output format below. If `qmd status` reports CPU-only mode, surface that warning verbatim under a `### Health` section.
+3. **Compute failed-vs-pending breakdown**. qmd does not currently expose a "failed chunks" field in `qmd status` (and ADR-0024 forbids reading the sqlite index directly). Approximate by parsing `/tmp/qmd-embed-{repo}.log` for the most recent run's session-expired tail:
+
+   ```bash
+   if [ -f /tmp/qmd-embed-{repo}.log ]; then
+     # Count "skipping remaining" mentions in the tail of the most recent embed run.
+     # Each "Session expired" line is followed by a count: "skipping N remaining chunks".
+     failed=$(grep -oE 'skipping ([0-9]+) remaining chunks' /tmp/qmd-embed-{repo}.log | tail -1 | grep -oE '[0-9]+')
+   fi
+   ```
+
+   - `embedded` = `Documents.Vectors` from `qmd status`
+   - `pending_total` = `Documents.Pending` from `qmd status`
+   - `failed_prior_run` = the count parsed above (0 if no log exists or no "skipping" lines found)
+   - `pending_never_tried` = `pending_total - failed_prior_run` (clamped to ≥0; if the math goes negative, the log is from a stale run — fall back to 0 failed)
+
+   Render under a new `### Index Health` section in the report. When `failed_prior_run > 0`, include a remediation hint:
+
+   ```
+   {failed} chunks failed on the prior embed run (session expired).
+   Re-run `/sdd:index embed` — the retry loop (ADR-0031) will pick them up.
+   ```
+
+   Note: this is a best-effort estimate. The log file is global per repo (not per round), so if multiple embed runs have happened since the last log rotation, the number may be conservative. Surface as "approximate" in the report when the log is older than 24h.
+
+4. Render the filtered view in the templated output format below. If the most recent embed log contains a "running on CPU" warning, surface that under `### Index Health` alongside the Hardware row from Step 2 sub-step 5.
 
 #### Operation: remove
 
@@ -214,11 +357,23 @@ Tell the user which path was taken at the top of the report so the auto-routing 
 
 Use the template that matches the operation. In workspace aggregate mode, render one collection table per module under per-module subheadings (`### [api] Collections`, `### [worker] Collections`).
 
+**Report Banner**: every report template below begins with a banner section that surfaces non-blocking preflight warnings from Step 2 sub-steps 4–6. The banner is omitted entirely when there are no warnings. Banner format:
+
+```
+{if version-staleness warning from sub-step 4: render that line}
+{if install-writability warning from sub-step 6: render that block}
+{if Hardware row was "assumed cpu (probing)" and probe just completed: "Detected hardware: {gpu|cpu} (cached for future runs)"}
+```
+
+Render the banner BEFORE the report's `## QMD ...` heading so it is the first thing the user sees.
+
 ## Output
 
 ### After `add` or default first run
 
 ```
+{Report Banner — see Step 5}
+
 ## QMD Index Created for {repo}
 
 {If invoked with no subcommand, include this line:}
@@ -271,9 +426,12 @@ Auto-routed: collections did not exist → ran `add` then started `embed` ({fore
 ### After `embed` (foreground)
 
 ```
+{Report Banner — see Step 5}
+
 ## QMD Embeddings {Generated|Refreshed}
 
-Embedded {N} chunks across {M} collections in {duration}.
+Embedded {N} chunks across {M} collections in {duration} ({rounds} round{s}).
+{if rounds > 1: "(qmd embed sessions expire at ~30min on CPU; auto-relaunched per ADR-0031.)"}
 
 ### Embedded Collections
 | Collection | Documents | Chunks |
@@ -283,15 +441,20 @@ Embedded {N} chunks across {M} collections in {duration}.
 | {repo}-code | {N} | {C} |
 | {repo}-issues | {N} | {C} |
 
+{if retry cap was hit with pending > 0: render the retry-cap warning block from Operation: embed Step 4}
+
 Hybrid search (`qmd query`) and vector search (`qmd vsearch`) are now available.
 ```
 
 ### After `embed` (background — embed kicked off, not yet complete)
 
 ```
+{Report Banner — see Step 5}
+
 ## QMD Embeddings In Progress for {repo}
 
-Embedding ~{N} chunks in the background. Log: `/tmp/qmd-embed-{repo}.log`. Re-run `/sdd:index status` to check progress, or wait for the background completion notification.
+Embedding ~{N} chunks in the background (up to 5 rounds, ~30min each on CPU; will auto-stop at 0 pending or 5 rounds).
+Log: `/tmp/qmd-embed-{repo}.log`. Re-run `/sdd:index status` to check progress, or wait for the background completion notification.
 
 While it runs, BM25 keyword search via `qmd search -c {repo}-{...}` is already available; vector and hybrid search will turn on as embeddings land.
 ```
@@ -299,6 +462,8 @@ While it runs, BM25 keyword search via `qmd search -c {repo}-{...}` is already a
 ### After `status`
 
 ```
+{Report Banner — see Step 5}
+
 ## QMD Status for {repo}
 
 ### Collections
@@ -309,10 +474,15 @@ While it runs, BM25 keyword search via `qmd search -c {repo}-{...}` is already a
 | {repo}-code | {N} | {V} | {timestamp} | {abs path} |
 | {repo}-issues | {N} | {V} | {timestamp} | `.sdd/issues/` (last sync: {iso-timestamp}) |
 
-### Health
+### Index Health
 - Index: {path to sqlite} ({size})
-- GPU: {available|none — running on CPU}
-- {Any qmd status warnings, verbatim}
+- Hardware: {GPU | CPU} ({cached|probing})
+- Embedded: {V} chunks
+- Pending (never tried): {pending_never_tried}
+- Failed (prior run): {failed_prior_run} {if approximate: "(approximate — log >24h old)"}
+- {if failed > 0: render the remediation hint from Operation: status Step 3}
+- {if log contains "running on CPU" and Hardware = CPU: "Confirmed: qmd is running on CPU (per /tmp/qmd-embed-{repo}.log)"}
+- {Any other qmd status warnings, verbatim}
 ```
 
 ### After `remove`
@@ -380,3 +550,13 @@ In aggregate mode, render one section per module before the report's shared sect
 - MUST suggest recording this capability with `/sdd:adr` in the report — no ADR exists yet for adopting qmd, and the user explicitly noted this is an architectural decision worth documenting after the skill is in use
 - In workspace aggregate mode, MUST iterate per-module and prefix collections as `{repo}-{module}-{kind}` so the same `--module` filter works in both `/sdd:index` and `/sdd:check`
 - When `--module` is provided, MUST scope to that single module — do not touch sibling modules' collections
+- MUST detect qmd hardware mode via the cached probe at `~/.cache/sdd-plugin/qmd-hardware.json` (Step 2 sub-step 5) — MUST NOT scan `qmd status` output for the "running on CPU" warning (the warning emits during `qmd embed` model-load only, never in `qmd status`; this was a real-world bug). MUST NOT read filesystem markers under `~/.cache/qmd/` to infer hardware — couples to qmd internals (Governing: ADR-0026 embed policy)
+- MUST key the hardware cache by `(qmd --version, command -v qmd)` so reinstalling or upgrading qmd invalidates the cache automatically. MUST treat the cache file as untrusted input — JSON parse errors or schema mismatches re-trigger detection
+- MUST default to CPU/background on first invocation when the hardware cache is cold — populating the cache from the embed run's own stderr is a one-time wasted-foreground cost for GPU users, acceptable in exchange for never blocking a CPU user's session unexpectedly (Governing: ADR-0026)
+- MUST wrap `qmd embed` in a bounded retry loop (max 5 rounds) that re-reads `qmd status` after each round and relaunches when `Pending > 0` AND the prior round's stderr contained `Session expired` or `skipping remaining` (Governing: ADR-0031). MUST surface the round count in the report when `rounds > 1` so users understand the multi-round wall time
+- MUST surface a retry-cap-hit warning with a remediation hint (inspect the log for "Failed to embed" lines) when the loop exits with `Pending > 0` after 5 rounds — the user needs to know it stopped progressing, not that it succeeded silently (Governing: ADR-0031)
+- MUST distinguish failed-on-prior-run from never-tried-pending in the status report by parsing the most recent embed log for `skipping ([0-9]+) remaining chunks`. The failed count is approximate (log granularity is per-repo, not per-round) and MUST be marked as such when the log is older than 24h
+- MUST render the qmd version-staleness banner at the top of every report when installed `<` cached latest. Cache lives at `~/.cache/sdd-plugin/qmd-version.json` with a 7-day refresh interval. MUST silently skip the banner when `npm view` fails (offline, registry timeout) — version checks NEVER block indexing (Governing: ADR-0032)
+- MUST NOT call `npm view` on every invocation — the 7-day cache is the rate limit. The cache file is keyed by package name only (`@tobilu/qmd`), so multiple SDD-using projects share the cache without interference
+- MUST run the qmd-install writability check (Step 2 sub-step 6) and surface the diagnosis-only warning when `$(npm root -g)/@tobilu/qmd/node_modules/node-llama-cpp/llama` is not writable by `$USER`. MUST NOT auto-fix — `chown` and `npm config set prefix` are user decisions with downstream effects
+- MUST NOT read or modify qmd's internal sqlite index (`~/.cache/qmd/index.sqlite`) directly — even when qmd doesn't expose the data we want (e.g., per-chunk failure markers), the boundary is "qmd CLI/MCP only" per ADR-0024. Use log-file parsing or wait for qmd to expose the field upstream

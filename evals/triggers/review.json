@@ -9,6 +9,10 @@
   {"query": "spec-aware review of PR #93 please", "should_trigger": true},
   {"query": "run the reviewer-responder cycle on the auth-rewrite PR", "should_trigger": true},
   {"query": "review PR #88 and post structured feedback as comments", "should_trigger": true},
+  {"query": "/loop /sdd:review --loop --pr 142", "should_trigger": true},
+  {"query": "watch PR #142 autonomously until it merges", "should_trigger": true},
+  {"query": "/sdd:review --loop --max-iterations 10 --pr 142", "should_trigger": true},
+  {"query": "resume the review loop on PR #142 after the crash", "should_trigger": true},
 
   {"query": "review my code for typos and grammar", "should_trigger": false},
   {"query": "review my decision to use Redis as a session store", "should_trigger": false},
@@ -19,5 +23,7 @@
   {"query": "look at this code and tell me if the algorithm is right", "should_trigger": false},
   {"query": "approve PR #88 directly via gh pr review --approve", "should_trigger": false},
   {"query": "merge PR #88 already, I've reviewed it manually", "should_trigger": false},
-  {"query": "review my essay for the Substack post", "should_trigger": false}
+  {"query": "review my essay for the Substack post", "should_trigger": false},
+  {"query": "what is /loop and how does it differ from --loop?", "should_trigger": false},
+  {"query": "explain how /sdd:review --loop preserves ADR-0010", "should_trigger": false}
 ]

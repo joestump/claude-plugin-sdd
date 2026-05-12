@@ -1635,6 +1635,196 @@
           "content": "# SPEC-0002: API Gateway \u2014 Design\n\n## Architecture\n\nReverse proxy with middleware pipeline.\n"
         }
       ]
+    },
+    {
+      "id": 214,
+      "skill": "index",
+      "prompt": "Run /sdd:index status. The qmd version cache at ~/.cache/sdd-plugin/qmd-version.json shows latest=2.1.5 (checked 1 day ago), and `qmd --version` reports 2.1.0.",
+      "expected_output": "Status report renders the qmd version-staleness banner at the top, before the ## QMD Status heading, with the installed and latest versions and the install command.",
+      "assertions": [
+        {
+          "text": "Banner line appears BEFORE the '## QMD Status' heading",
+          "type": "format"
+        },
+        {
+          "text": "Banner contains both '2.1.0 installed' and '2.1.5 available'",
+          "type": "content"
+        },
+        {
+          "text": "Banner suggests `npm install -g @tobilu/qmd`",
+          "type": "content"
+        },
+        {
+          "text": "Skill does NOT call `npm view` because cache is fresh (<7 days)",
+          "type": "structural"
+        },
+        {
+          "text": "Skill does NOT block or error if banner cannot render",
+          "type": "structural"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        }
+      ]
+    },
+    {
+      "id": 215,
+      "skill": "index",
+      "prompt": "Run /sdd:index. qmd is installed at /usr/lib/node_modules/@tobilu/qmd via `sudo npm install -g`, and the current user lacks write permission on /usr/lib/node_modules/@tobilu/qmd/node_modules/node-llama-cpp/llama.",
+      "expected_output": "Skill runs to completion, surfaces the install-writability diagnosis as a non-blocking warning, includes both fix options (reinstall under home OR chown), and does NOT auto-fix.",
+      "assertions": [
+        {
+          "text": "Warning identifies the unwritable path",
+          "type": "content"
+        },
+        {
+          "text": "Warning explains GPU artifacts cannot be built and embed will fall back to CPU",
+          "type": "content"
+        },
+        {
+          "text": "Warning includes 'npm config set prefix ~/.npm-global' as one fix option",
+          "type": "content"
+        },
+        {
+          "text": "Warning includes a `sudo chown` command as the other fix option",
+          "type": "content"
+        },
+        {
+          "text": "Skill does NOT execute chown, sudo, or any auto-fix command",
+          "type": "structural"
+        },
+        {
+          "text": "Indexing operations (add/update/embed) still proceed after the warning",
+          "type": "structural"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        }
+      ]
+    },
+    {
+      "id": 216,
+      "skill": "index",
+      "prompt": "Run /sdd:index embed on a CPU machine with 1181 pending chunks. Simulate qmd's session-expiry behavior: each round embeds ~547 chunks and stderr contains 'Session expired \u2014 skipping 149 remaining chunks'.",
+      "expected_output": "Skill runs the bounded retry loop, relaunches embed up to 5 times after detecting the session-expired sentinel, surfaces multi-round nature in the report, and stops cleanly at the 5-round cap if pending > 0.",
+      "assertions": [
+        {
+          "text": "Embed is invoked multiple rounds (not just once)",
+          "type": "structural"
+        },
+        {
+          "text": "Each round re-reads `qmd status` to check `Pending` count",
+          "type": "structural"
+        },
+        {
+          "text": "Loop exits early when `Pending == 0`",
+          "type": "structural"
+        },
+        {
+          "text": "Loop is capped at 5 rounds",
+          "type": "structural"
+        },
+        {
+          "text": "Report mentions the round count and references ADR-0031 when rounds > 1",
+          "type": "content"
+        },
+        {
+          "text": "If 5-round cap is hit with pending > 0, report includes the retry-cap warning with remediation hint",
+          "type": "content"
+        },
+        {
+          "text": "Skill does NOT report 'done' after a partial completion (the original bug)",
+          "type": "structural"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        }
+      ]
+    },
+    {
+      "id": 217,
+      "skill": "index",
+      "prompt": "Run /sdd:index status. The most recent /tmp/qmd-embed-myrepo.log contains 'Session expired \u2014 skipping 149 remaining chunks', and `qmd status` reports Pending: 200.",
+      "expected_output": "Status report distinguishes failed-on-prior-run (149) from pending-never-tried (51), surfaces both under Index Health, and includes the remediation hint to re-run /sdd:index embed.",
+      "assertions": [
+        {
+          "text": "Index Health section shows separate counts for 'Pending (never tried)' and 'Failed (prior run)'",
+          "type": "format"
+        },
+        {
+          "text": "Failed count is 149 (parsed from the log)",
+          "type": "content"
+        },
+        {
+          "text": "Pending-never-tried count is 51 (200 - 149)",
+          "type": "content"
+        },
+        {
+          "text": "Remediation hint suggests re-running /sdd:index embed",
+          "type": "content"
+        },
+        {
+          "text": "Remediation hint references the retry loop (ADR-0031) as the recovery mechanism",
+          "type": "content"
+        },
+        {
+          "text": "Skill does NOT read ~/.cache/qmd/index.sqlite directly",
+          "type": "structural"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        }
+      ]
+    },
+    {
+      "id": 218,
+      "skill": "index",
+      "prompt": "Run /sdd:index embed twice in succession on a CPU machine. The first invocation has no hardware cache; the second invocation runs immediately after.",
+      "expected_output": "First run defaults to CPU/background, runs embed, parses stderr for 'running on CPU' warning, writes ~/.cache/sdd-plugin/qmd-hardware.json. Second run reads the cache and skips the probe entirely.",
+      "assertions": [
+        {
+          "text": "First run defaults to background mode (CPU assumption) without prompting",
+          "type": "structural"
+        },
+        {
+          "text": "First run does NOT scan `qmd status` output for the CPU warning (broken signal)",
+          "type": "structural"
+        },
+        {
+          "text": "First run does NOT read ~/.cache/qmd/ filesystem markers (no internals peeking)",
+          "type": "structural"
+        },
+        {
+          "text": "After first run, ~/.cache/sdd-plugin/qmd-hardware.json exists with hardware=cpu, qmd_version, qmd_path, detected_at fields",
+          "type": "structural"
+        },
+        {
+          "text": "Second run reads the cache and reports Hardware: CPU (cached) without re-probing",
+          "type": "content"
+        },
+        {
+          "text": "Cache is invalidated when qmd --version differs from cached qmd_version",
+          "type": "structural"
+        }
+      ],
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "content": "## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n"
+        }
+      ]
     }
   ]
 }

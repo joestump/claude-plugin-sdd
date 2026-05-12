@@ -11,26 +11,26 @@ Starting with SDD plugin v5.0.0, [qmd](https://github.com/tobi/qmd) is a hard de
 
 ### SDD Skills
 
-| Skill | Purpose |
-|-------|---------|
-| `/sdd:adr` | Create a new Architecture Decision Record |
-| `/sdd:spec` | Create a new specification |
-| `/sdd:list` | List all ADRs and specs with status |
-| `/sdd:status` | Update the status of an ADR or spec |
-| `/sdd:docs` | Generate a documentation site |
-| `/sdd:init` | Set up CLAUDE.md with architecture context |
-| `/sdd:prime` | Load architecture context into session |
-| `/sdd:check` | Quick-check code against ADRs and specs for drift |
-| `/sdd:audit` | Comprehensive design artifact alignment audit |
-| `/sdd:discover` | Discover implicit architecture from existing code |
-| `/sdd:plan` | Break a spec into trackable issues with project grouping and branch conventions |
-| `/sdd:organize` | Retroactively group issues into tracker-native projects |
-| `/sdd:enrich` | Add branch naming and PR conventions to existing issues |
-| `/sdd:work` | Pick up tracker issues and implement them in parallel using git worktrees |
-| `/sdd:review` | Review and merge PRs using reviewer-responder agent pairs |
-| `/sdd:graph` | Build and query the artifact graph (validate, impact, ancestors, chain, orphans, cycles, backfill) |
-| `/sdd:index` | Index ADRs, specs, and code into qmd collections for hybrid semantic search |
-| `/sdd:report-friction` | File a feedback issue against the SDD plugin when one of its skills caused significant churn |
+<!-- SDD-SKILLS-TABLE -->
+
+<!--
+  AUTHORING NOTE: The skills table above is generated at runtime by /sdd:init
+  from `skills/*/SKILL.md` frontmatter (name + first sentence of description),
+  ordered by the canonical lifecycle list maintained in `skills/init/SKILL.md`
+  under "Skills Table Generation". When /sdd:init materializes a fresh
+  CLAUDE.md, it replaces the `<!-- SDD-SKILLS-TABLE -->` marker with the
+  generated GFM table. When converging an existing CLAUDE.md, it merges the
+  generated rows into the user's existing table additively.
+
+  Do NOT hand-edit a table into this file. Adding a new skill is a single
+  drop-in: create `skills/<name>/SKILL.md` with `name` and `description`
+  frontmatter, and the row will appear on the next `/sdd:init` run.
+
+  The static row list that used to live here was kept only as authoring
+  reference; it has been removed to prevent the two sources from drifting
+  out of sync.
+-->
+
 
 Run `/sdd:prime [topic]` at the start of a session to load relevant ADRs and specs into context.
 

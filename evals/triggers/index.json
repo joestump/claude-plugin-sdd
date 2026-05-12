@@ -1,0 +1,23 @@
+[
+  {"query": "index this repo into qmd", "should_trigger": true},
+  {"query": "/sdd:index", "should_trigger": true},
+  {"query": "/sdd:index embed", "should_trigger": true},
+  {"query": "make my code and specs searchable with qmd", "should_trigger": true},
+  {"query": "set up qmd for this project", "should_trigger": true},
+  {"query": "load my ADRs and specs into qmd collections", "should_trigger": true},
+  {"query": "rebuild the qmd index for this repo", "should_trigger": true},
+  {"query": "embed the pending chunks for the current project", "should_trigger": true},
+  {"query": "show qmd status for this repo's collections", "should_trigger": true},
+  {"query": "remove this repo's qmd collections", "should_trigger": true},
+  {"query": "add this module to qmd in workspace mode", "should_trigger": true},
+  {"query": "the qmd embed got cut off after 30 minutes — restart it", "should_trigger": true},
+
+  {"query": "search my notes for authentication ADRs", "should_trigger": false},
+  {"query": "qmd query 'how does auth work'", "should_trigger": false},
+  {"query": "create a new ADR for the qmd dependency", "should_trigger": false},
+  {"query": "what is qmd?", "should_trigger": false},
+  {"query": "list all ADRs", "should_trigger": false},
+  {"query": "check the index health of my elasticsearch cluster", "should_trigger": false},
+  {"query": "build a database index on the users table", "should_trigger": false},
+  {"query": "git index is corrupted, what do I do?", "should_trigger": false}
+]

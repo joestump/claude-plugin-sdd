@@ -51,16 +51,15 @@ function escapeLineForMdx(line) {
   let i = 0;
 
   while (i < line.length) {
-    if (line[i] === '`') {
-      const start = i;
-      i++;
-      while (i < line.length && line[i] !== '`') {
-        i++;
-      }
-      if (i < line.length) i++;
-      result += line.slice(start, i);
-      continue;
-    }
+    // NOTE: We do NOT skip escaping inside single-backtick inline code spans.
+    // Long lines with many `\`...\`` pairs (especially nested-looking patterns
+    // like `\`## Why \`git worktree add\` Instead of ...\``) make a per-line
+    // backtick tracker unreliable, and MDX 3 sometimes parses `{ident}` as a
+    // JS expression even when the surrounding backticks visually scope it.
+    // Always escaping `{}` outside fenced blocks is safer; fenced code blocks
+    // (handled by the outer escapeMdxUnsafe loop) are still preserved verbatim.
+    // Backticks themselves pass through unchanged so MDX still renders inline
+    // code, just with literal `\{` / `\}` characters inside.
 
     if (line[i] === '{' && (i === 0 || line[i - 1] !== '\\')) {
       result += '\\{';
