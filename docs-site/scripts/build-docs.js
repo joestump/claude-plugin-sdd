@@ -26,7 +26,7 @@ require('./transform-adrs');
 // for governing-comment cross-links, and MUST run before generate-graph.js
 // so generated skill pages can later participate in the artifact graph.
 // Governing: ADR-0029, SPEC-0021 REQ "Pipeline Integration".
-require('./transform-skills');
+require('./transform-skills').main();
 
 // Generate index page
 require('./generate-index');

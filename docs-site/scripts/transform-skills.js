@@ -820,8 +820,9 @@ function main() {
 }
 
 // Exported helpers for testing and for the override-pin helper script in
-// Story #141. Importing transform-skills.js does NOT run main().
+// Story #141. main() must be called explicitly when required from other modules.
 module.exports = {
+  main,
   loadManifest,
   checkBidirectionalConsistency,
   parseFrontmatter,
