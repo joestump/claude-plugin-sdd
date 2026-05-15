@@ -54,6 +54,16 @@ These comments help future sessions (and `/sdd:check`) trace implementation back
 
 When orchestrating multiple SDD plugin skills in a single session (e.g., running `/sdd:work` on several issues), use `TeamCreate` to coordinate agents. Do not spawn ad-hoc background agents for work that requires coordination — `SendMessage` only works within a Team, and isolated agents cannot see sibling file claims or type creations.
 
+### SDD Configuration
+
+**Tracker**: GitHub
+**Owner**: joestump
+**Repo**: claude-plugin-sdd
+**Branch Conventions**:
+- Prefix: `feature`
+- Epic Prefix: `epic`
+- Slug Max Length: 50
+
 ### Release Process
 
 When releasing a new version:
