@@ -464,8 +464,11 @@ jobs:
                       high_cost.append(sd.get('id', sf.stem))
               except Exception:
                   pass
-          if high_cost and pipeline_data:
-              lines.append(f'> 💰 **High-cost scenarios ran:** {", ".join(f"`{s}`" for s in high_cost)} — these create real GitHub repos and run reviewer-responder pairs. Check Actions billing if runs are frequent.')
+          if high_cost:
+              if pipeline_data:
+                  lines.append(f'> 💰 **High-cost scenarios ran:** {", ".join(f"`{s}`" for s in high_cost)} — these create real GitHub repos and run reviewer-responder pairs. Check Actions billing if runs are frequent.')
+              else:
+                  lines.append(f'> ℹ️ **High-cost scenarios exist** ({", ".join(f"`{s}`" for s in high_cost)}) but did not run in this build. They run only on release PRs or manual pipeline dispatch.')
               lines.append('')
 
           tier1 = tier_stats.get('1', {})

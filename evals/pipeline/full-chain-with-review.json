@@ -54,6 +54,6 @@
     "Step 2's issues reference the SPEC-XXXX id created in step 1 (verifies spec -> plan handoff)",
     "Step 3's branch name matches a Branch line from an issue created in step 2 (verifies plan -> work handoff)",
     "Step 4's review comment appears on the PR opened in step 3 (verifies work -> review handoff)",
-    "Cleanup: delete the disposable repo — run: gh repo delete joestump/sdd-eval-full-chain-with-review-{run-id} --yes"
+    "Cleanup: delete the disposable repo created in setup (name: joestump/sdd-eval-full-chain-with-review-{GITHUB_RUN_ID}) — run: gh repo delete joestump/sdd-eval-full-chain-with-review-{GITHUB_RUN_ID} --yes"
   ]
 }
