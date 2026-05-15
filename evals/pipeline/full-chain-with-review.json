@@ -1,0 +1,59 @@
+{
+  "id": "full-chain-with-review",
+  "description": "Full spec → plan → work → review chain on a real disposable GitHub repo. Exercises /sdd:review end-to-end: a reviewer-responder pair reviews the PR opened in the work step and posts a verdict comment.",
+  "cost_class": "high",
+  "setup": {
+    "repo_strategy": "gh-disposable",
+    "seed": {
+      "claude_md": "# Pipeline Eval Test Repo\n\nDisposable repo seeded by the SDD plugin's full-chain pipeline eval. This repo is temporary and will be deleted after the eval run.\n\n## Architecture Context\n\n- Architecture Decision Records are in `docs/adrs/`\n- Specifications are in `docs/openspec/specs/`\n\n## SDD Configuration\n\n**Tracker**: GitHub\n**Owner**: joestump\n**Repo**: {repo-name}\n\n### Branch Conventions\n- **Prefix**: feature\n- **Slug Max Length**: 50\n\n### PR Conventions\n- **Close keyword**: Closes\n- **Spec reference**: Include SPEC-XXXX in PR body\n",
+      "files": []
+    }
+  },
+  "steps": [
+    {
+      "skill": "spec",
+      "prompt": "Create a spec for a small webhook-delivery service: it accepts JSON payloads at POST /webhook, validates an HMAC-SHA256 signature header, and forwards verified payloads to a configurable downstream URL with at-most-once-per-request retry semantics.",
+      "verify": [
+        "A directory under docs/openspec/specs/ was created and contains a spec.md file",
+        "spec.md has a top-level heading matching '# SPEC-XXXX: <title>'",
+        "spec.md uses RFC 2119 keywords (MUST, SHOULD, MAY) at least three times",
+        "spec.md contains at least one '#### Scenario:' subsection per requirement"
+      ]
+    },
+    {
+      "skill": "plan",
+      "prompt": "Plan the spec we just created into trackable GitHub issues. The tracker config in CLAUDE.md points to this disposable repo — create the issues there.",
+      "verify": [
+        "At least one GitHub issue was created in the disposable repo",
+        "Each issue body includes a Branch line matching the feature/{slug} convention from CLAUDE.md",
+        "Each issue body includes a PR Convention section with a 'Closes #N' close keyword",
+        "Each issue references the spec by its SPEC-XXXX id"
+      ]
+    },
+    {
+      "skill": "work",
+      "prompt": "Pick the foundation story (or the first story if no foundation was detected) from the GitHub issues, implement it via a git worktree, push the branch, and open a draft PR in the disposable repo.",
+      "verify": [
+        "A git branch matching feature/{slug} exists on the remote",
+        "A PR is open (state: open or draft) in the disposable repo",
+        "At least one commit was made on that branch with files implementing the chosen story",
+        "The PR body contains 'Closes #N' referencing the issue"
+      ]
+    },
+    {
+      "skill": "review",
+      "prompt": "Review the open PR in the disposable repo using /sdd:review. Run the reviewer-responder pair and post the verdict.",
+      "verify": [
+        "A review comment was posted to the open PR in the disposable repo",
+        "The comment includes a verdict (LGTM, changes requested, or a mergeability decision)",
+        "The PR was either merged or a verdict comment was posted explaining why it was not merged"
+      ]
+    }
+  ],
+  "final_assertions": [
+    "Step 2's issues reference the SPEC-XXXX id created in step 1 (verifies spec -> plan handoff)",
+    "Step 3's branch name matches a Branch line from an issue created in step 2 (verifies plan -> work handoff)",
+    "Step 4's review comment appears on the PR opened in step 3 (verifies work -> review handoff)",
+    "Cleanup: delete the disposable repo created in setup (name: joestump/sdd-eval-full-chain-with-review-{GITHUB_RUN_ID}) — run: gh repo delete joestump/sdd-eval-full-chain-with-review-{GITHUB_RUN_ID} --yes"
+  ]
+}
