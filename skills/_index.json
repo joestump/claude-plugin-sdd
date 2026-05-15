@@ -3,7 +3,7 @@
   "Sprint Planning": ["plan", "organize", "enrich"],
   "Implementation": ["work", "review"],
   "Drift Detection": ["check", "audit"],
-  "Discovery": ["discover"],
+  "Discovery": ["discover", "search"],
   "Documentation": ["docs", "graph", "index"],
   "Session Management": ["init", "prime"],
   "Lifecycle Management": ["list", "status", "report-friction"]
