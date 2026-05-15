@@ -26,11 +26,19 @@ For each entry in the manifest's `files` object where `managed` is `true`:
 
 For entries where `managed` is `false`, skip entirely.
 
+## 3C.2b: Pre-plugin migration detection (Scaffold mode only)
+
+**If scaffold mode AND `{site}/scripts/` exists BUT `{site}/plugins/` does NOT exist:**
+
+This is a pre-plugin installation (using the old 8-script approach). Offer the user:
+- "Migrate to new plugin" → delete `{site}/scripts/`, `{site}/src/data/spec-mapping.json`, `{site}/src/data/spec-emojis.json` (if present); install the new `plugins/sdd-content/index.js`; update `package.json` (remove chokidar-cli, concurrently, build-content/watch-content scripts); update `docusaurus.config.ts` to register the plugin
+- "Keep current setup" → do not migrate; set all managed files to `managed: false`
+
 ## 3C.3: Detect new template files
 
 Check for files in the current plugin templates that are NOT listed in the manifest:
 
-- For **scaffold**: scan `templates/docusaurus/scripts/`, `templates/docusaurus/src/components/`, `templates/docusaurus/src/css/`, `templates/docusaurus/src/theme/`
+- For **scaffold**: scan `templates/docusaurus/plugins/sdd-content/`, `templates/docusaurus/src/components/`, `templates/docusaurus/src/css/`, `templates/docusaurus/src/theme/`
 - For **integration**: scan `templates/integration/sync-spec-docs/`, `templates/docusaurus/src/components/`
 
 For each new file: install it to the appropriate location and add to the manifest with `managed: true` and its SHA-256 checksum.

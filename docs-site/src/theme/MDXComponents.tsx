@@ -1,5 +1,6 @@
 import React from 'react';
 import MDXComponents from '@theme-original/MDXComponents';
+import CommandTile from '@site/src/components/CommandTile';
 import DateBadge from '@site/src/components/DateBadge';
 import DomainBadge from '@site/src/components/DomainBadge';
 import PriorityBadge from '@site/src/components/PriorityBadge';
@@ -13,6 +14,9 @@ import SkillTile from '@site/src/components/SkillTile';
 
 export default {
   ...MDXComponents,
+  // Governing: ADR-0029, SPEC-0021 REQ "Hero-Tile Index Page".
+  CommandTile,
+  SkillTile,
   DateBadge,
   DomainBadge,
   PriorityBadge,
@@ -22,6 +26,4 @@ export default {
   RequirementBox,
   Field,
   FieldGroup,
-  // Governing: ADR-0029, SPEC-0021 REQ "Hero-Tile Index Page".
-  SkillTile,
 };

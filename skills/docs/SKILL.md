@@ -125,7 +125,7 @@ Read and follow the plugin's `skills/docs/references/upgrade-mode.md` for the fu
 Runs after Step 3A or 3B to establish upgrade tracking.
 
 **Determine managed files** based on mode:
-- **Scaffold**: files in `docs-site/scripts/`, `docs-site/src/components/`, `docs-site/src/css/`, `docs-site/src/theme/`
+- **Scaffold**: files in `docs-site/plugins/sdd-content/`, `docs-site/src/components/`, `docs-site/src/css/`, `docs-site/src/theme/`
 - **Integration**: files in `{site}/plugins/sync-spec-docs/`, `{site}/src/components/design-docs/`, `{site}/src/css/design-docs.css`, `{site}/src/theme/MDXComponents.tsx` (if created/modified)
 
 Compute SHA-256 checksum for each file (`shasum -a 256 {file-path}`), then write `.sdd-docs.json`:
@@ -153,13 +153,14 @@ Tell the user: "Created `.sdd-docs.json` with {N} tracked files. Future runs of 
 
 The templates directory contains production-ready versions of all files. The `cp -r` approach copies everything; you only need to customize `docusaurus.config.ts` and `package.json`.
 
-#### Transform Scripts (scripts/)
-- `build-docs.js` -- Orchestrator that runs all transforms
-- `transform-adrs.js` -- Transforms ADR markdown to .mdx with badges, RFC 2119 keyword highlighting, cross-references
-- `transform-openspecs.js` -- Transforms OpenSpec markdown to .mdx with requirement boxes, domain badges, RFC 2119 highlighting. Generates separate pages for `spec.md` and `design.md` within a directory-per-spec structure, with a `_category_.json` file per spec directory for Docusaurus sidebar configuration (Governing: ADR-0006, SPEC-0004)
-- `mdx-escape.js` -- Escapes MDX v3 unsafe patterns (curly braces, angle brackets) while preserving JSX components
-- `build-spec-mapping.js` -- Scans specs for SPEC ID prefixes and generates mapping JSON
-- `generate-index.js` -- Creates the landing page (index.mdx) with links to ADRs and specs sections with counts
+#### Docusaurus Plugin (plugins/sdd-content/)
+- `index.js` -- Consolidated Docusaurus plugin that:
+  - Uses `lib-artifact-transforms` for YAML frontmatter parsing (replaces ~120 lines of custom YAML)
+  - Builds the artifact graph per SPEC-0018 edge schema with 5 ADR edge types + 4 spec edge types
+  - Generates MDX files from ADRs and specs with badges, RFC 2119 keyword highlighting, cross-references (Governing: ADR-0006, SPEC-0004)
+  - Generates index pages (landing page, ADR section, spec section) with sidebar hierarchy diagrams
+  - Generates the artifact graph page with stats, full Mermaid flowchart, and orphan lists
+  - Implements `getPathsToWatch()` for native Docusaurus hot reload (replaces chokidar-cli + concurrently)
 
 ### Integration Mode Templates (`templates/integration/sync-spec-docs/`)
 

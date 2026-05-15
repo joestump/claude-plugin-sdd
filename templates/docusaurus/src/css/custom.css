@@ -283,3 +283,44 @@
   opacity: 0.7;
 }
 
+/* ============================================
+   Command Tiles (guides/commands.mdx)
+   ============================================ */
+.command-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 2rem 0;
+}
+.command-tile {
+  display: block;
+  padding: 1rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  text-decoration: none !important;
+  color: inherit !important;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.command-tile:hover {
+  border-color: var(--ifm-color-primary);
+  transform: translateY(-2px);
+  text-decoration: none !important;
+}
+.command-tile__header {
+  margin-bottom: 0.5rem;
+}
+.command-tile__name {
+  font-family: var(--ifm-font-family-monospace);
+  font-weight: 600;
+  color: var(--ifm-color-primary);
+}
+.command-tile__description {
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+  color: var(--ifm-color-emphasis-700);
+}
+.command-tile__hint {
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-600);
+}
+

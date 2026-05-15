@@ -1,5 +1,6 @@
 import React from 'react';
 import MDXComponents from '@theme-original/MDXComponents';
+import CommandTile from '@site/src/components/CommandTile';
 import DateBadge from '@site/src/components/DateBadge';
 import DomainBadge from '@site/src/components/DomainBadge';
 import PriorityBadge from '@site/src/components/PriorityBadge';
@@ -12,6 +13,7 @@ import FieldGroup from '@site/src/components/FieldGroup';
 
 export default {
   ...MDXComponents,
+  CommandTile,
   DateBadge,
   DomainBadge,
   PriorityBadge,

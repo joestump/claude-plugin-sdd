@@ -7,6 +7,8 @@
  * is path-agnostic (paths come via parameters) but the algorithms are
  * identical to the scaffold variant.
  *
+ * Uses parseFrontmatter from lib-artifact-transforms for YAML parsing.
+ *
  * Authoritative implementation: `skills/graph/lib/graph.py`
  * (per ADR-0023 / SPEC-0018). This is a docs-side reflection used only
  * for static page rendering.
@@ -14,6 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { parseFrontmatter: libParseFrontmatter } = require('lib-artifact-transforms');
 
 const ADR_EDGE_FIELDS = ['supersedes', 'extends', 'enables', 'governs', 'related'];
 const SPEC_EDGE_FIELDS = ['implements', 'requires', 'extends', 'supersedes'];
@@ -26,85 +29,6 @@ const INVERSE_OF = {
   requires: 'depended-on-by',
   related: 'related',
 };
-
-function parseFrontmatter(text) {
-  const m = text.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
-  if (!m) return {};
-  const result = {};
-  for (const raw of m[1].split('\n')) {
-    const line = raw.replace(/\s+$/, '');
-    const stripped = line.replace(/^\s+/, '');
-    if (!stripped || stripped.startsWith('#')) continue;
-    const colonIdx = line.indexOf(':');
-    if (colonIdx < 0) continue;
-    const key = line.slice(0, colonIdx).trim();
-    let value = stripCommentOutsideQuotes(line.slice(colonIdx + 1).trim());
-    if (value.startsWith('[') && value.endsWith(']')) {
-      const inner = value.slice(1, -1).trim();
-      result[key] = splitCsv(inner)
-        .map((item) => unquote(item.trim()))
-        .filter(Boolean);
-    } else {
-      result[key] = unquote(value);
-    }
-  }
-  return result;
-}
-
-function stripCommentOutsideQuotes(value) {
-  let inQuote = null;
-  for (let i = 0; i < value.length; i++) {
-    const ch = value[i];
-    if (inQuote) {
-      if (ch === inQuote) inQuote = null;
-      continue;
-    }
-    if (ch === '"' || ch === "'") {
-      inQuote = ch;
-      continue;
-    }
-    if (ch === '#' && (i === 0 || /\s/.test(value[i - 1]))) {
-      return value.slice(0, i).replace(/\s+$/, '');
-    }
-  }
-  return value;
-}
-
-function splitCsv(s) {
-  const out = [];
-  let buf = '';
-  let inQuote = null;
-  let depth = 0;
-  for (const ch of s) {
-    if (inQuote) {
-      buf += ch;
-      if (ch === inQuote) inQuote = null;
-    } else if (ch === '"' || ch === "'") {
-      inQuote = ch;
-      buf += ch;
-    } else if (ch === '[') {
-      depth++;
-      buf += ch;
-    } else if (ch === ']') {
-      depth--;
-      buf += ch;
-    } else if (ch === ',' && depth === 0) {
-      out.push(buf);
-      buf = '';
-    } else {
-      buf += ch;
-    }
-  }
-  if (buf) out.push(buf);
-  return out;
-}
-
-function unquote(value) {
-  if (value.length >= 2 && value[0] === value[value.length - 1] && (value[0] === '"' || value[0] === "'")) {
-    return value.slice(1, -1);
-  }
-  return value;
-}
 
 function extractTitle(text) {
   const m = text.match(/^#\s+(.+?)\s*$/m);
@@ -123,7 +47,7 @@ function buildGraph({ adrsSource, specsSource }) {
       if (!m) continue;
       const id = `ADR-${m[1]}`;
       const text = fs.readFileSync(path.join(adrsSource, f), 'utf-8');
-      const fm = parseFrontmatter(text);
+      const { metadata: fm } = libParseFrontmatter(text);
       const title = extractTitle(text);
       nodes[id] = { id, kind: 'adr', title, path: path.join(adrsSource, f) };
       ingestEdges(edges, id, fm, ADR_EDGE_FIELDS);
@@ -135,12 +59,10 @@ function buildGraph({ adrsSource, specsSource }) {
       const specPath = path.join(specsSource, dir, 'spec.md');
       if (!fs.existsSync(specPath)) continue;
       const text = fs.readFileSync(specPath, 'utf-8');
-      // Match `# SPEC-XXXX:` or `# SPEC-XXXX Title` (no colon) for parity
-      // with the Python helper's word-boundary regex.
       const titleMatch = text.match(/^#\s+(SPEC-\d{4})\b/m);
       if (!titleMatch) continue;
       const id = titleMatch[1];
-      const fm = parseFrontmatter(text);
+      const { metadata: fm } = libParseFrontmatter(text);
       const title = extractTitle(text);
       nodes[id] = { id, kind: 'spec', title, path: specPath, dir };
       ingestEdges(edges, id, fm, SPEC_EDGE_FIELDS);
@@ -248,7 +170,6 @@ function renderNeighborMermaid(targetId, { nodes, edges }) {
 
 module.exports = {
   buildGraph,
-  parseFrontmatter,
   renderFullMermaid,
   renderNeighborMermaid,
 };

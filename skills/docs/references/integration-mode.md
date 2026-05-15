@@ -4,9 +4,15 @@ Generates a build-time Docusaurus plugin into an existing site. The plugin runs 
 
 Let `{site}` be the path to the existing Docusaurus site directory (e.g., `website/`).
 
-## 3B.1: Copy the sync plugin
+## 3B.1: Install dependencies and copy the plugin
 
-Copy the integration plugin template from the plugin's `templates/integration/sync-spec-docs/` directory to `{site}/plugins/sync-spec-docs/`:
+First, install `lib-artifact-transforms` in the site's `package.json`:
+
+```bash
+cd {site} && npm install lib-artifact-transforms@github:joestump/lib-artifact-transforms#main
+```
+
+Then copy the integration plugin template from the plugin's `templates/integration/sync-spec-docs/` directory to `{site}/plugins/sync-spec-docs/`:
 
 ```bash
 cp -r {plugin-path}/templates/integration/sync-spec-docs {site}/plugins/sync-spec-docs

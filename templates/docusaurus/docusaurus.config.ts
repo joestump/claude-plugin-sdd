@@ -34,6 +34,14 @@ const config: Config = {
 
   themes: ['@docusaurus/theme-mermaid'],
 
+  plugins: [
+    ['./plugins/sdd-content', {
+      adrsDir: '../docs/adrs',
+      specsDir: '../docs/openspec/specs',
+      outputDir: '../docs-generated',
+    }],
+  ],
+
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],

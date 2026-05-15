@@ -4,11 +4,8 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
-    "build-content": "node scripts/build-docs.js",
-    "watch-content": "chokidar '../docs/openspec/**/*' '../docs/adrs/**/*' -c 'npm run build-content' --initial",
-    "start": "npm run build-content && docusaurus start",
-    "dev": "concurrently --kill-others \"npm run watch-content\" \"docusaurus start\"",
-    "build": "npm run build-content && docusaurus build",
+    "start": "docusaurus start",
+    "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",
@@ -21,6 +18,10 @@
     "@docusaurus/theme-mermaid": "^3.9.2",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
+    "lib-artifact-transforms": "github:joestump/lib-artifact-transforms#main",
+    "plugin-content-adrs": "github:joestump/plugin-content-adrs#main",
+    "plugin-content-openspec": "github:joestump/plugin-content-openspec#main",
+    "plugin-content-skills": "github:joestump/plugin-content-skills#main",
     "prism-react-renderer": "^2.3.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
@@ -29,8 +30,6 @@
     "@docusaurus/module-type-aliases": "3.9.2",
     "@docusaurus/tsconfig": "3.9.2",
     "@docusaurus/types": "3.9.2",
-    "chokidar-cli": "^3.0.0",
-    "concurrently": "^9.0.0",
     "typescript": "~5.6.2"
   },
   "browserslist": {

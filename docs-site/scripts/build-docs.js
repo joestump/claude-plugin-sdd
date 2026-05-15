@@ -28,6 +28,11 @@ require('./transform-adrs');
 // Governing: ADR-0029, SPEC-0021 REQ "Pipeline Integration".
 require('./transform-skills').main();
 
+// Generate command tiles (extension of SPEC-0021 / ADR-0029).
+// Reads skills manifest and SKILL.md frontmatter to generate hero-tile
+// quick-start page for commands documentation.
+require('./generate-commands').main();
+
 // Generate index page
 require('./generate-index');
 
