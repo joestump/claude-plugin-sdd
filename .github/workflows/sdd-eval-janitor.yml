@@ -19,8 +19,7 @@ on:
         default: 'false'
         type: boolean
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   janitor:
