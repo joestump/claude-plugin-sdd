@@ -1,6 +1,7 @@
 {
   "id": "core-workflow",
-  "description": "spec -> plan -> work on a disposable local-tmp repo. Verifies that each skill consumes the prior skill's artifacts cleanly: the spec is parseable by /sdd:plan and the issue bodies are parseable by /sdd:work. Review coverage is deferred -- /sdd:review operates against real PRs and the offline-review path it would need for a local-tmp scenario does not exist yet (tracked separately).",
+  "description": "spec -> plan -> work on a disposable local-tmp repo. Verifies that each skill consumes the prior skill's artifacts cleanly: the spec is parseable by /sdd:plan and the issue bodies are parseable by /sdd:work.",
+  "cost_class": "low",
   "setup": {
     "repo_strategy": "local-tmp-init",
     "seed": {

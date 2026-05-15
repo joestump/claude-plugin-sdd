@@ -68,8 +68,9 @@ jobs:
           # Extract skill names from changed paths (skills/{name}/**)
           SKILLS=$(echo "$CHANGED_FILES" | grep '^skills/' | sed 's|^skills/\([^/]*\)/.*|\1|' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
 
-          # If evals or references changed, treat all skills as changed
-          if echo "$CHANGED_FILES" | grep -qE '^(evals/|references/)'; then
+          # If evals.json, eval triggers, or references changed, treat all skills as changed
+          # evals/pipeline/ and evals/benchmarks/ are meta-files — changes there don't affect skill eval coverage
+          if echo "$CHANGED_FILES" | grep -qE '^(evals/evals\.json|evals/triggers/|references/)'; then
             SKILLS='["all"]'
           fi
 
@@ -275,8 +276,8 @@ jobs:
                - "local-tmp-init": mktemp -d, cd into it, git init, write
                  setup.seed.claude_md to ./CLAUDE.md, write each
                  setup.seed.files entry, git add + initial commit.
-               - "gh-template": gh repo create with --template, clone, then
-                 enter the clone. Record the repo URL for cleanup.
+               - "gh-disposable": gh repo create --private joestump/sdd-eval-{id}-{run-id},
+                 seed from setup.seed via local push, record repo name for cleanup.
             3. Execute each step in order:
                a. cd into the test repo.
                b. Invoke the named skill via the matching slash command
@@ -288,7 +289,7 @@ jobs:
             4. Run final_assertions against the final repo state.
             5. Clean up:
                - local-tmp-init: rm -rf the temp dir.
-               - gh-template: gh repo delete --yes the created repo.
+               - gh-disposable: gh repo delete --yes the created repo.
 
             Output results to eval-results/pipeline.json:
             {

@@ -8,9 +8,7 @@ Governing: [ADR-0021](../../docs/adrs/ADR-0021-skill-evaluation-and-ci-testing.m
 
 The standard evals in `evals/evals.json` test each skill in isolation: one prompt, one skill, one set of assertions. That doesn't catch regressions in the *handoff* between skills — a `/sdd:plan` issue body that `/sdd:work` can't parse, a worktree branch that `/sdd:review` can't open a PR against, a spec format that `/sdd:plan` reads differently than `/sdd:spec` writes.
 
-Pipeline scenarios run a sequence (spec → plan → work, with review coverage planned) on a disposable repo and verify that the artifacts each skill produces are consumable by the next.
-
-> **Coverage note:** SPEC-0017 REQ "Cross-Skill Pipeline Testing" Scenario "Full pipeline test" specifies the full chain through `/sdd:review`. The current scaffold covers spec → plan → work only. `/sdd:review` operates against real GitHub/Gitea PRs, which is incompatible with the `local-tmp-init` repo strategy this scaffold uses. Review coverage will land in a follow-up scenario that adopts the `gh-template` strategy (real disposable repo, real PR), tracked separately.
+Pipeline scenarios run a sequence (spec → plan → work → review) on a disposable repo and verify that the artifacts each skill produces are consumable by the next.
 
 ## When these run
 
@@ -28,6 +26,7 @@ Each scenario is a JSON file in this directory. Schema:
 {
   "id": "core-workflow",
   "description": "Human-readable summary of what this scenario covers",
+  "cost_class": "low",
   "setup": {
     "repo_strategy": "local-tmp-init",
     "seed": {
@@ -56,11 +55,18 @@ Field reference:
 
 - `id` — kebab-case identifier, must match the filename stem
 - `description` — short human-readable purpose
-- `setup.repo_strategy` — `local-tmp-init` (preferred; `git init` in a temp dir) or `gh-template` (creates a real disposable repo via `gh repo create --template`)
-- `setup.seed.claude_md` — content for the seed `CLAUDE.md`. Tracker config in this file MUST select `tasks.md` fallback so the scenario doesn't pollute real issue trackers
+- `cost_class` — `"low"` (default; local-tmp scenarios, no real API calls beyond Claude) or `"high"` (scenarios that create real GitHub repos/PRs and run reviewer-responder pairs). The `report` job surfaces a cost notice for `"high"` scenarios.
+- `setup.repo_strategy`:
+  - `local-tmp-init` — `git init` in a temp dir; no GitHub interaction; preferred for skill-handoff testing
+  - `gh-disposable` — creates a real private repo via `gh repo create --private joestump/sdd-eval-{scenario-id}-{run-id}`, seeds it with a local push, then deletes it in `final_assertions` cleanup. Required when a scenario needs real GitHub PRs (e.g., `/sdd:review`). No template repo is needed — the strategy seeds the repo from `setup.seed` directly.
+- `setup.seed.claude_md` — content for the seed `CLAUDE.md`. For `local-tmp-init` scenarios, tracker config MUST select `tasks.md` fallback so the scenario doesn't pollute real issue trackers. For `gh-disposable` scenarios, tracker config points to the disposable repo itself.
 - `setup.seed.files` — additional seed files (e.g., a starter ADR if the scenario needs one)
 - `steps` — ordered skill invocations. Each step's `verify` list is checked before the next step runs
-- `final_assertions` — cross-step checks verifying artifacts flowed correctly between skills
+- `final_assertions` — cross-step checks verifying artifacts flowed correctly between skills; for `gh-disposable` scenarios, the cleanup `gh repo delete` runs here
+
+## Setup
+
+`gh-disposable` scenarios require a GitHub token with repo-delete scope. Set the `GH_JANITOR_TOKEN` secret in the repository settings (Settings → Secrets → Actions). The token needs: `repo` (full), `delete_repo`. The `eval-pipeline` job uses `GITHUB_TOKEN` for the scenario run itself and `GH_JANITOR_TOKEN` for the cleanup delete step.
 
 ## Running locally
 
@@ -80,12 +86,15 @@ The CI runner (`eval-pipeline` job in `skill-evals.yml`) automates all of the ab
 
 1. Pick a kebab-case `id` (e.g., `discover-then-spec`)
 2. Create `evals/pipeline/{id}.json` matching the schema above
-3. Use `tasks.md` fallback in the seeded CLAUDE.md so the scenario doesn't depend on a tracker
-4. Verify locally before pushing — pipeline tests are expensive in CI
-5. Update this README's scenario list
+3. Set `cost_class` appropriately (`"low"` for local-tmp, `"high"` for gh-disposable)
+4. For `local-tmp-init`: use `tasks.md` fallback in the seeded CLAUDE.md so the scenario doesn't depend on a tracker
+5. For `gh-disposable`: include a `gh repo delete` cleanup step in `final_assertions`
+6. Verify locally before pushing — pipeline tests are expensive in CI
+7. Update this README's scenario list
 
 ## Current scenarios
 
-| ID | Description |
-|----|-------------|
-| [`core-workflow`](core-workflow.json) | Spec → plan → work on a fresh local-tmp repo, verifying artifact flow at each handoff. Review coverage deferred (see "Coverage note" above) |
+| ID | Cost | Description |
+|----|------|-------------|
+| [`core-workflow`](core-workflow.json) | low | Spec → plan → work on a fresh local-tmp repo, verifying artifact flow at each handoff |
+| [`full-chain-with-review`](full-chain-with-review.json) | high | Full spec → plan → work → review chain on a real disposable GitHub repo; exercises `/sdd:review` end-to-end |
