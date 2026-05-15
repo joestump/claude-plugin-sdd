@@ -1,8 +1,8 @@
 ---
 name: discover
 description: Discover implicit architectural decisions and spec-worthy subsystems in an existing codebase. Use when the user says "discover architecture", "what decisions exist in this code", "bootstrap ADRs", or wants to reverse-engineer design artifacts from code.
-allowed-tools: Read, Glob, Grep, Task, AskUserQuestion
-argument-hint: [scope] [--module <name>]
+allowed-tools: Bash, Read, Glob, Grep, Task, AskUserQuestion
+argument-hint: [scope] [--module <name>] [--with-graphs]
 ---
 
 # Discover Implicit Architecture
@@ -101,6 +101,39 @@ Explore an existing codebase to discover implicit architectural decisions and sp
    - **Suggested ADRs**: Implicit decisions where an alternative existed (technology choices, pattern choices, architectural trade-offs)
    - **Suggested Specs**: Subsystem boundaries with enough complexity to warrant formal specification (3+ files, clear interface, distinct responsibility)
 
+7b. **Optional call graph enrichment** (v5.1.0+, `--with-graphs` flag):
+
+   <!-- Governing: ADR-0033 (cgg call graph integration), SPEC-0034 REQ "cgg Skill Integration With /sdd:discover" -->
+
+   This step only runs when `$ARGUMENTS` contains `--with-graphs`. Without the flag, skip directly to Step 8 — existing behavior is fully preserved.
+
+   For each proposed ADR from Step 7, enrich it with a call graph via `/sdd:search`:
+
+   1. **Extract query keywords**: From the ADR suggestion's decision title and evidence (technology names, subsystem names, pattern names), derive 2–4 key search terms. For example, a "Chose JWT for authentication" suggestion yields keywords `"JWT authentication"`.
+
+   2. **Determine scope**: If discovery is scoped to a specific directory (from Step 1) or `--module <name>` was passed, derive the `--module` argument for `/sdd:search` accordingly so qmd and cgg target only that subtree per `references/cgg-integration.md` § "Workspace-Mode Scoping".
+
+   3. **Invoke /sdd:search**: Run `/sdd:search "<keywords>" --output json` (with `--module <name>` appended when scoped). Parse the JSON response's `call_graphs[]` array.
+
+   4. **Embed if available**: If `call_graphs[0].mermaid` is non-null, embed the normalized Mermaid diagram in the ADR suggestion's `## Architecture Diagram` section in the discovery report, using the embedding format from `references/cgg-integration.md` § "Embedding in markdown":
+
+      ```markdown
+      <!-- Call graph: <filter used>, generated <YYYY-MM-DD> -->
+      ```mermaid
+      graph TD
+          ...
+      %% Showing entry points + main flow; internal helpers omitted
+      ```
+      ```
+
+   5. **Graceful degradation**: If `/sdd:search` is unavailable, errors, or returns `call_graphs[0].mermaid: null` (cgg degraded), record the failure and continue. After enriching all ADRs, if any call graphs could not be generated, add a single notice line at the top of the discovery report:
+
+      ```
+      Call graph enrichment unavailable for {N} of {total} suggested ADRs — cgg may not be installed or the codebase is too large. Install cgg with: cargo install cgg
+      ```
+
+      Never fail discovery because of cgg or `/sdd:search` unavailability.
+
 8. **Produce the discovery report** using the output format below.
 
 ## Output Format
@@ -197,3 +230,5 @@ This may indicate:
 - **v5.0.0+**: MUST run Tier 3 staleness check on entry per Step 3a — `qmd update` if older than configured threshold (default 120m) (Governing: ADR-0026, SPEC-0019 REQ "Tier 3 Staleness Threshold for Consumer Skills")
 - **v5.0.0+**: MUST run qmd-aware duplicate suppression per Step 5a — for each candidate suggestion, qmd-search `{repo}-adrs` for near-matches; if score ≥ 0.7 (configurable via `--similarity-threshold`), suppress and log to "Skipped (already documented)" section. The pre-v5 prose-overlap-only check is now first-pass; qmd is the second-pass net (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Drift Skills")
 - **v5.0.0+**: On qmd unreachable / timeout, MUST surface the error and stop. NEVER fall back to "just use the prose-overlap check" (per ADR-0024 — fallback paths were eliminated in v5)
+- **v5.1.0+ (`--with-graphs`)**: When `--with-graphs` is set, MUST invoke `/sdd:search "<keywords>" --output json` for each proposed ADR after Step 7 (Step 7b); MUST embed `call_graphs[0].mermaid` in the ADR's `## Architecture Diagram` when non-null; MUST degrade gracefully when `/sdd:search` or cgg is unavailable — surface a one-line count notice and continue; MUST NOT fail discovery because of cgg unavailability (Governing: ADR-0033, SPEC-0034 REQ "cgg Skill Integration With /sdd:discover")
+- **v5.1.0+ (`--with-graphs`)**: Without `--with-graphs`, Step 7b MUST be skipped entirely — existing `/sdd:discover` behavior is unchanged (Governing: SPEC-0034 REQ "Must Not Break Existing Workflows")
