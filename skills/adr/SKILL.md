@@ -54,6 +54,53 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
      - The drafter should research the codebase (read relevant files, understand the current architecture) before writing
      - If `TeamCreate` fails, fall back to single-agent mode: draft the ADR directly, then self-review against the architect's checklist in the Rules section before writing.
 
+2b. **Optional call graph embedding** (opt-in, SPEC-0034):
+
+   <!-- Governing: ADR-0033 (cgg call graph integration), SPEC-0034 REQ "Enhanced /sdd:adr" -->
+
+   After the ADR body is fully drafted and before writing to disk, ask the user whether to include a call graph:
+
+   Use `AskUserQuestion` with the prompt:
+
+   > Include a call graph showing where this decision applies in the codebase? (yes / no / skip)
+
+   **Default to "no"** when: the session is non-interactive (piped input), batch/CI mode is detected, or the question times out. In those cases, proceed directly to Step 3 as if the user answered "no" — no error, no deviation from existing behavior.
+
+   **If the user answers "no" or "skip"**: Proceed to Step 3 with an empty `## Architecture Diagram` section (the template placeholder text is omitted; write the section header with no body, or omit the section entirely). No call graph is generated.
+
+   **If the user answers "yes"**:
+
+   1. **Availability check**: Run `which cgg >/dev/null 2>&1`. If cgg is not found, surface the exact unavailability notice from `references/cgg-integration.md` § "Availability Check" and proceed to Step 3 without a call graph.
+
+   2. **Derive the filter**: Extract keywords from the ADR's `## Decision Outcome` section (the chosen option name, key technology names, system names, and any verbs describing the decision). Apply the **From requirement keywords** strategy from `references/cgg-integration.md` § "Filter Derivation Strategy" — lowercase, split on spaces/punctuation, strip stop words, compose a regex alternation. In workspace mode, use the module source directory as `<target-path>` per `references/cgg-integration.md` § "Workspace-Mode Scoping".
+
+   3. **Invoke cgg** using the canonical invocation pattern from `references/cgg-integration.md` § "cgg Invocation Pattern":
+      ```bash
+      timeout 30 cgg <target-path> --filter "<filter-regex>" --format mermaid 2>/tmp/cgg-stderr-$$.txt
+      CGG_EXIT=$?
+      CGG_STDERR=$(cat /tmp/cgg-stderr-$$.txt)
+      rm -f /tmp/cgg-stderr-$$.txt
+      ```
+
+   4. **Handle exit codes** per `references/cgg-integration.md` § "Exit code handling":
+      - Exit 0: normalize the Mermaid output per § "Mermaid Output Normalization" (sort nodes, rewrite to `graph TD`, strip hash prefixes, apply 20-node cap, append legend footer).
+      - Exit 1 or other non-zero: surface `"Call graph generation failed: "` + stderr; proceed to Step 3 without a call graph.
+      - Exit 124 (timeout): surface the exact timeout message from § "Timeout Handling"; proceed to Step 3 without a call graph.
+
+   5. **Handle unsupported-language warnings** per `references/cgg-integration.md` § "Unsupported Language Handling" — emit per-file skip notices; if all files were skipped, fall back to no call graph.
+
+   6. **Embed in the ADR**: On success, replace the `## Architecture Diagram` section with the normalized Mermaid block wrapped per `references/cgg-integration.md` § "Embedding in markdown":
+      ```markdown
+      <!-- Call graph: <filter used>, generated <YYYY-MM-DD> -->
+      ```mermaid
+      graph TD
+          ...
+      ```
+      ```
+      The caption comment MUST record the exact filter regex used and today's date.
+
+   In every degradation case (cgg missing, timeout, non-zero exit, all files skipped), the skill MUST complete and write the ADR without a call graph. Never surface a hard failure to the user when cgg is the only failing component.
+
 3. **Write the ADR** to `{adr-dir}/ADR-XXXX-short-title.md`. Include the user-confirmed frontmatter edges from Step 1a in the YAML frontmatter (per the canonical edge schema in `references/shared-patterns.md` § "Graph Edge Resolution").
 
 3a. **Tier 1 mutation update** (v5.0.0+):
@@ -176,6 +223,7 @@ Use flowchart, sequence, or C4 diagrams as appropriate.}
 - **v5.0.0+**: MUST run qmd-aware edge pre-search per Step 1a — surface candidate `supersedes`/`extends`/`related` edges to the user via AskUserQuestion before drafting. The user's confirmed edges land in the new ADR's frontmatter (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Authoring Skills")
 - **v5.0.0+**: MUST trigger Tier 1 `{repo}-adrs` re-sync after writing the new file per Step 3a — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
 - **v5.0.0+**: On qmd unreachable / timeout during the edge pre-search, MUST surface the error and stop — never fall back to "draft without edge suggestions" (per ADR-0024)
+- **v5.0.0+**: MUST offer the call graph opt-in via `AskUserQuestion` per Step 2b — default to "no" in non-interactive/batch/CI mode; MUST degrade gracefully on cgg absence or failure and never block ADR creation (Governing: ADR-0033, SPEC-0034 REQ "Enhanced /sdd:adr")
 
 ## Graph Edge Frontmatter (per ADR-0023 / SPEC-0018)
 
