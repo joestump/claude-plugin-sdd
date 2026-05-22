@@ -29,6 +29,27 @@ function HomepageHeader() {
   );
 }
 
+const SKILLS: { name: string; description: string }[] = [
+  { name: 'adr',            description: 'Create a new Architecture Decision Record' },
+  { name: 'spec',           description: 'Create a new specification' },
+  { name: 'plan',           description: 'Break specs into sprint issues' },
+  { name: 'organize',       description: 'Group issues into tracker projects' },
+  { name: 'enrich',         description: 'Add branch/PR conventions to issues' },
+  { name: 'work',           description: 'Implement issues in parallel worktrees' },
+  { name: 'review',         description: 'Review and merge PRs with spec-aware pairs' },
+  { name: 'check',          description: 'Quick-check code for drift' },
+  { name: 'audit',          description: 'Comprehensive alignment audit' },
+  { name: 'discover',       description: 'Discover implicit architecture' },
+  { name: 'search',         description: 'Search ADRs and specs with hybrid retrieval' },
+  { name: 'docs',           description: 'Generate this documentation site' },
+  { name: 'graph',          description: 'Build and query the artifact graph' },
+  { name: 'init',           description: 'Set up CLAUDE.md for the plugin' },
+  { name: 'prime',          description: 'Load architecture context into session' },
+  { name: 'list',           description: 'List all ADRs and specs with status' },
+  { name: 'status',         description: 'Update the status of an ADR or spec' },
+  { name: 'report-friction', description: 'File feedback when a skill causes churn' },
+];
+
 function SkillsSection() {
   return (
     <section className={styles.skills}>
@@ -40,62 +61,12 @@ function SkillsSection() {
           Claude Code slash commands for managing your architecture artifacts.
         </p>
         <div className={styles.skillGrid}>
-          <div className={styles.skillCard}>
-            <code>/sdd:adr</code>
-            <span>Create a new Architecture Decision Record</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:spec</code>
-            <span>Create a new specification</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:plan</code>
-            <span>Break specs into sprint issues</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:organize</code>
-            <span>Group issues into tracker projects</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:enrich</code>
-            <span>Add branch/PR conventions to issues</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:work</code>
-            <span>Implement issues in parallel worktrees</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:check</code>
-            <span>Quick-check code for drift</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:audit</code>
-            <span>Comprehensive alignment audit</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:discover</code>
-            <span>Discover implicit architecture</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:docs</code>
-            <span>Generate this documentation site</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:prime</code>
-            <span>Load architecture context into session</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:init</code>
-            <span>Set up CLAUDE.md for the plugin</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:list</code>
-            <span>List all ADRs and specs with status</span>
-          </div>
-          <div className={styles.skillCard}>
-            <code>/sdd:status</code>
-            <span>Update the status of an ADR or spec</span>
-          </div>
+          {SKILLS.map(({ name, description }) => (
+            <Link key={name} to={`/skills/${name}`} className={styles.skillCard}>
+              <code>/sdd:{name}</code>
+              <span>{description}</span>
+            </Link>
+          ))}
         </div>
       </div>
     </section>

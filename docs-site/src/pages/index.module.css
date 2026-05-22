@@ -38,6 +38,8 @@
   border: 1px solid var(--ifm-color-emphasis-200);
   background-color: var(--ifm-background-color);
   transition: border-color 0.2s, box-shadow 0.2s;
+  text-decoration: none;
+  color: inherit;
 }
 
 .skillCard:hover {

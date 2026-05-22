@@ -1,5 +1,3 @@
-<!-- Governing: ADR-0017 (Parallel Agent Coordination), SPEC-0015 REQ "Foundation Story Detection", SPEC-0015 REQ "Hotspot Analysis" -->
-
 ---
 name: plan
 description: Break an existing spec into trackable issues in your issue tracker. Use when the user says "plan a sprint", "create issues from spec", "break down the spec", or wants to turn requirements into tasks.
@@ -7,6 +5,7 @@ allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Task, AskUserQuestion, TeamC
 argument-hint: "[spec-name or SPEC-XXXX] [--review] [--scrum] [--project <name>] [--no-projects] [--branch-prefix <prefix>] [--no-branches] [--module <name>]"
 ---
 
+<!-- Governing: ADR-0017 (Parallel Agent Coordination), SPEC-0015 REQ "Foundation Story Detection", SPEC-0015 REQ "Hotspot Analysis" -->
 <!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
 
 # Plan Sprint from Specification

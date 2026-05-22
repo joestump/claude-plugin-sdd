@@ -171,7 +171,11 @@ function checkBidirectionalConsistency(manifest) {
  * `[a, b, c]`. We deliberately avoid pulling in a full YAML dependency.
  */
 function parseFrontmatter(content) {
-  const fmMatch = content.match(/^---\n([\s\S]*?)\n---\n?/);
+  // Some SKILL.md files have an HTML governing comment before the --- delimiter.
+  // Strip all leading HTML comments (and trailing blank lines) so the frontmatter
+  // regex matches at the true start of the YAML block.
+  const stripped = content.replace(/^(<!--[\s\S]*?-->\s*)+/, '');
+  const fmMatch = stripped.match(/^---\n([\s\S]*?)\n---\n?/);
   if (!fmMatch) return { frontmatter: {}, body: content };
 
   const fm = {};
@@ -205,7 +209,7 @@ function parseFrontmatter(content) {
     fm[key] = value;
   }
 
-  const body = content.slice(fmMatch[0].length);
+  const body = stripped.slice(fmMatch[0].length);
   return { frontmatter: fm, body };
 }
 

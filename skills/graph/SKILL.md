@@ -1,11 +1,11 @@
-<!-- Governing: ADR-0023 (Frontmatter DAG and /sdd:graph Skill), SPEC-0018 REQ "Graph Construction", SPEC-0018 REQ "Graph Validation" -->
-
 ---
 name: graph
 description: Build and query the SDD artifact graph. Use when the user wants to validate frontmatter edges, find impact/ancestors/chain for an ADR or spec, detect orphans or cycles, or backfill edges from prose. Currently supports validate / impact / ancestors / chain / orphans / cycles, with workspace-mode aggregation; backfill lands in Story 7.
 allowed-tools: Bash, Read, Glob, Grep, Task
 argument-hint: "<verb> [<artifact-id>] [--scope <subtree>] [--module <name>] [--table | --mermaid | --json]"
 ---
+
+<!-- Governing: ADR-0023 (Frontmatter DAG and /sdd:graph Skill), SPEC-0018 REQ "Graph Construction", SPEC-0018 REQ "Graph Validation" -->
 
 # /sdd:graph — Artifact Graph Skill
 

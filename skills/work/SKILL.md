@@ -1,5 +1,3 @@
-<!-- Governing: ADR-0017 (Parallel Agent Coordination), ADR-0020 (Governing Comments), SPEC-0015 REQ "Issue Lifecycle Labels", SPEC-0015 REQ "Pre-Flight PR Awareness", SPEC-0015 REQ "Topological Merge Ordering", SPEC-0015 REQ "Design Document Isolation" -->
-
 ---
 name: work
 description: Pick up tracker issues and implement them in parallel using git worktrees. Use when the user says "work on issues", "implement the spec", "start coding", or wants agents to build from planned issues.
@@ -7,6 +5,7 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, T
 argument-hint: "[SPEC-XXXX | issue numbers | (empty = propose from backlog)] [--max-agents N] [--draft] [--dry-run] [--no-tests] [--module <name>] [--loop [--max-iterations N] [--max-prs N] [--max-minutes N] [--max-dollars N] [--lock={skip|wait|force}] [--resume] [--budget-file PATH]] [--no-chain]"
 ---
 
+<!-- Governing: ADR-0017 (Parallel Agent Coordination), ADR-0020 (Governing Comments), SPEC-0015 REQ "Issue Lifecycle Labels", SPEC-0015 REQ "Pre-Flight PR Awareness", SPEC-0015 REQ "Topological Merge Ordering", SPEC-0015 REQ "Design Document Isolation" -->
 <!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
 
 # Work on Issues
