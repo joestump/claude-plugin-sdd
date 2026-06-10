@@ -9,10 +9,10 @@ This design covers the distillation sprint loop (`/sdd:distill`), the routing re
 ## Goals / Non-Goals
 
 ### Goals
-- Let Claude iteratively refine markdown skill artifacts until a local model reaches a measured, Claude-relative parity threshold on a given skill.
+- Let Claude iteratively refine — primarily by decomposing into smaller, discrete skills — until a local model reaches a measured, Claude-relative parity threshold on a given skill.
 - Reuse the existing eval harness (SPEC-0017) for parity scoring instead of building a second grader.
-- Keep all distilled artifacts as version-controlled, reviewable markdown (skills, references, scripts, manifest).
-- Insulate the design from harness and runner churn via an adapter contract and an OpenAI-compatible model endpoint.
+- Keep distilled skills as version-controlled, reviewable markdown; keep configuration in `CLAUDE.md` (ADR-0015) and noisy runtime artifacts in a gitignored `.sdd/distillation/` directory.
+- Insulate the design from harness and runner churn via a subprocess adapter contract and an OpenAI-compatible model endpoint configured by environment variables.
 - Surface, at plan time, which model/harness/skill can run an issue locally and when to escalate to the cloud.
 
 ### Non-Goals
@@ -31,25 +31,28 @@ This design covers the distillation sprint loop (`/sdd:distill`), the routing re
 - A bespoke distillation grader: rejected — duplicates SPEC-0017 and invites divergence.
 - Human spot-checking only: rejected — not repeatable, can't gate convergence.
 
-### Harness-agnostic adapters, runner-agnostic model layer
+### Subprocess adapters; endpoints/tokens from the environment
 
-**Choice**: Harnesses sit behind a three-operation adapter contract (install-skill, dispatch-task, capture-output); Crush is the reference adapter. Models are reached through a generic OpenAI-compatible endpoint configured in the manifest.
-**Rationale**: The open-harness and local-model ecosystems move fast. Pinning to one of either would date the plugin quickly. The adapter contract is the smallest surface that supports the loop, and the OpenAI-compatible endpoint is the de-facto common interface across Ollama, llama.cpp, and vLLM.
+**Choice**: Harnesses sit behind a three-operation adapter contract (install-skill, dispatch-task, capture-output) where dispatch shells out to the harness's own CLI as a subprocess; Crush is the reference adapter. The student model is reached through a generic OpenAI-compatible endpoint whose URL and token come from conventional environment variables (`OPENAI_BASE_URL`, `OPENAI_API_KEY`, plus each harness's native env conventions).
+**Rationale**: The student is a different model running in a different program, so it cannot be a Claude Code subagent (those run Claude); shelling out to the harness binary is the substrate that already exists. The open-harness and local-model ecosystems move fast, so pinning to one would date the plugin; the three-operation subprocess contract is the smallest surface that supports the loop, and env-var endpoints keep secrets out of the repo while making any OpenAI-compatible runner (Ollama, llama.cpp, vLLM) interchangeable.
 **Alternatives considered**:
-- Hard-code Crush + Ollama: rejected — couples the plugin to two fast-moving externals.
+- Claude Code subagents as the student: rejected — they run Claude models, not the local student.
+- A bespoke backend/daemon to manage harness+model selection: rejected for v1 — adds an always-on service; an MCP-backed adapter remains an optional variant for harnesses exposed that way.
+- Endpoints/tokens in committed config: rejected — leaks secrets and duplicates what env vars already standardize.
 - Support every harness up front: rejected — unbounded adapter work before the loop is proven; Crush-first proves the contract, others follow.
 
-### Refinements are additive and student-scoped
+### Convergence by skill decomposition
 
-**Choice**: Gap-closing changes prefer `references/` and `scripts/` over edits to the core `SKILL.md` body, and any change that would weaken the skill for the frontier teacher is rejected or relocated.
-**Rationale**: A single skill serves both teacher and student. Dumbing down the body to satisfy a weaker model would regress frontier quality and the skill's CI evals. Additive, student-scoped guidance closes the gap without that regression.
+**Choice**: Gap-closing happens primarily by decomposing a skill into smaller, single-purpose discrete skills with tightened triggers — not by accumulating additive guidance on one skill. Any decomposition that would change the frontier outcome is rejected.
+**Rationale**: Many local models have small context windows, so the binding constraint is per-skill context budget, not the teacher's. Small discrete skills keep each unit inside the student's context while remaining individually reviewable; routing then selects the minimal skill(s) per step. The decomposed set must still compose back to the frontier skill's behavior so the teacher's CI evals do not regress.
 **Alternatives considered**:
-- Maintain separate per-model skill forks: rejected for v1 — multiplies maintenance and diverges from the single-source-of-truth skill model; reconsider if additive guidance proves insufficient.
+- Additive references/scripts on one `SKILL.md`: rejected — inflates context, the opposite of what small-context students need.
+- Separate per-model skill forks: rejected for v1 — multiplies maintenance; decomposition keeps a single shared set that composes for both teacher and student.
 
-### Markdown-native manifest as the routing source of truth
+### Configuration in CLAUDE.md, runtime artifacts in a hidden directory
 
-**Choice**: A markdown manifest under `docs/distillation/` (per ADR-0015) records adapters, endpoints, and per-triple parity scores with dates; `/sdd:route` reads only this file.
-**Rationale**: Consistent with the plugin's markdown-native configuration convention; keeps distillation state diffable and reviewable through the same SDD flow as ADRs and specs.
+**Choice**: Registration of harness adapters and model identifiers lives in a structured **Distillation** section in `CLAUDE.md` (per ADR-0015), not a bespoke file. Pair-session transcripts and working parity state are written to a gitignored `.sdd/distillation/` directory; durable parity scores are recorded in `evals/benchmarks/` (per SPEC-0017). `/sdd:route` reads the CLAUDE.md registration plus the recorded scores.
+**Rationale**: ADR-0015 already mandates configuration as `CLAUDE.md` sections rather than parallel config files, so a separate "manifest" would reintroduce the split-truth problem that ADR retired. Transcripts are bulky and regenerable, so they belong in hidden, gitignored state (matching the repo's existing `.sdd-*` convention), not the committed docs tree.
 
 ### Plan integration is opt-in and non-destructive
 
@@ -62,19 +65,19 @@ This design covers the distillation sprint loop (`/sdd:distill`), the routing re
 flowchart TD
     subgraph Distill["/sdd:distill — sprint loop"]
         TASK[Task input] --> TEACH[Claude teacher run]
-        TASK --> DISP[Harness adapter:\ninstall · dispatch · capture]
-        DISP --> ENDPT[(OpenAI-compatible\nmodel endpoint)]
+        TASK --> DISP[Harness adapter:\nsubprocess install · dispatch · capture]
+        DISP --> ENDPT[(OpenAI-compatible endpoint\nURL/token from env vars)]
         ENDPT --> STUD[Student pair run]
         TEACH --> SCORE[Eval harness\nSPEC-0017 assertions]
         STUD --> SCORE
         SCORE --> THRESH{Parity ≥ threshold\nor max iters?}
-        THRESH -- below, iters left --> REFINE[Refine references/\nscripts/ · SKILL.md]
+        THRESH -- below, iters left --> REFINE[Decompose into small\ndiscrete skills, tighten triggers]
         REFINE --> TASK
-        THRESH -- converged / ceiling --> WRITE[Write parity\nto manifest + benchmarks]
+        THRESH -- converged / ceiling --> WRITE[Record parity\n+ persist transcripts]
     end
 
-    WRITE --> MANIFEST[(docs/distillation/\nmanifest)]
-    MANIFEST --> ROUTE["/sdd:route"]
+    WRITE --> STORE[(.sdd/distillation/ transcripts\nCLAUDE.md config · evals/benchmarks)]
+    STORE --> ROUTE["/sdd:route"]
     ROUTE --> PLAN["/sdd:plan --distill\n### Execution section"]
     ROUTE --> DECISION{Triple ≥ threshold\nfor this skill?}
     DECISION -- yes --> LOCAL[Recommend local\nminimill execution]
@@ -83,15 +86,15 @@ flowchart TD
 
 ## Risks / Trade-offs
 
-- **Parity is Claude-relative, not absolute** → label every score as parity-relative-to-Claude in outputs and the manifest; document that a high score inherits Claude's own task variance.
-- **Refining for the student dilutes the teacher** → enforce the additive/student-scoped refinement rule; reject core-body edits that regress the skill's own CI evals.
+- **Parity is Claude-relative, not absolute** → label every score as parity-relative-to-Claude in outputs and benchmarks; document that a high score inherits Claude's own task variance.
+- **Decomposition diverges from the teacher** → require the decomposed set to compose back to the frontier outcome; reject splits that regress the skill's own CI evals.
 - **Local harness/endpoint absent in many environments** → every dependent operation degrades gracefully, names the missing dependency, and never fabricates results or blocks the SDD flow.
-- **Manifest drift vs. reality** → record the measurement date per triple; treat stale parity as a routing signal to re-distill rather than trust silently.
-- **Adapter sprawl** → keep the adapter contract to three operations; add harness adapters only after Crush proves the contract.
+- **Parity drift vs. reality** → record the measurement date per triple in `evals/benchmarks/`; treat stale parity as a routing signal to re-distill rather than trust silently.
+- **Adapter sprawl** → keep the adapter contract to three subprocess operations; add harness adapters only after Crush proves the contract.
 
 ## Migration Plan
 
-Greenfield capability — additive only. The two new skills, the manifest directory, and the `--distill` flag introduce no changes to existing skill behavior; `/sdd:plan` without `--distill` is unchanged. No data migration is required. Initial rollout seeds an empty manifest, so `/sdd:route` and `/sdd:plan --distill` default to cloud recommendations until the first sprint records a distilled triple.
+Greenfield capability — additive only. The two new skills, the `.sdd/distillation/` artifact directory (gitignored), the `CLAUDE.md` Distillation section, and the `--distill` flag introduce no changes to existing skill behavior; `/sdd:plan` without `--distill` is unchanged. No data migration is required. With no triples recorded yet, `/sdd:route` and `/sdd:plan --distill` default to cloud recommendations until the first sprint records a distilled triple.
 
 ## Open Questions
 

@@ -9,7 +9,7 @@ requires: [SPEC-0017, SPEC-0007]
 
 ## Overview
 
-This capability lets Claude (the frontier **teacher**) iteratively author and refine markdown skill artifacts that a cheaper, locally-hosted **student** model can execute inside an open agent harness at measured, Claude-relative parity. It adds two skills — `/sdd:distill` (the distillation sprint loop) and `/sdd:route` (model/harness/skill recommendation) — a markdown-native distillation manifest, and an integration point in `/sdd:plan` that annotates issues with suggested local execution. See ADR-0034. Parity is measured by reusing the evaluation harness from SPEC-0017; routing annotations extend the planning flow from SPEC-0007.
+This capability lets Claude (the frontier **teacher**) iteratively author and refine small, discrete markdown skills that a cheaper, locally-hosted **student** model can execute inside an open agent harness at measured, Claude-relative parity. It adds two skills — `/sdd:distill` (the distillation sprint loop) and `/sdd:route` (model/harness/skill recommendation), an integration point in `/sdd:plan` that annotates issues with suggested local execution, configuration carried in `CLAUDE.md` per ADR-0015, and runtime artifacts under a gitignored `.sdd/distillation/` directory. See ADR-0034. The student runs by shelling out to the harness's own CLI; endpoints and tokens come from conventional environment variables. Parity is measured by reusing the evaluation harness from SPEC-0017; routing annotations extend the planning flow from SPEC-0007.
 
 ## Requirements
 
@@ -55,51 +55,56 @@ Parity scoring MUST reuse the evaluation harness defined in SPEC-0017 rather tha
 - **WHEN** a sprint records a parity score
 - **THEN** the score is persisted under the eval benchmarks directory keyed by the `{skill, model, harness}` triple, consistent with the SPEC-0017 benchmark format
 
-### Requirement: Artifact Refinement and Convergence
+### Requirement: Convergence by Skill Decomposition
 
-When parity is below threshold, the skill MUST refine the student-facing artifacts — the skill's `references/` and helper `scripts/`, and the `SKILL.md` where necessary — to close the measured gap. Refinements that target the weaker student (added procedural detail, sharper trigger keywords, tool-call scaffolding) SHOULD be additive (references and scripts) and MUST NOT degrade the skill's quality for the frontier teacher.
+When parity is below threshold, the skill MUST close the gap primarily by **decomposing** the target skill into smaller, single-purpose discrete skills, each sized to fit a local model's limited context window, and by tightening each skill's trigger keywords so the right small skill surfaces for the right step. The skill MUST NOT close gaps by accumulating guidance that inflates a single skill's context beyond what the student model can hold. Decomposition MUST preserve behavior: the decomposed set MUST compose back to the frontier skill's outcome and MUST NOT degrade the skill's quality for the frontier teacher.
 
-#### Scenario: Gap closed by additive guidance
+#### Scenario: Gap closed by splitting a skill
 
-- **WHEN** a parity gap is traced to a step the student performed incorrectly
-- **THEN** the refinement adds clarifying guidance via references or scripts, and the change is recorded so the next iteration can be attributed to it
+- **WHEN** a parity gap is traced to a step the student performed incorrectly and the student's context is a limiting factor
+- **THEN** the failing concern is split into a smaller discrete skill with focused triggers, and the split is recorded so the next iteration's parity change can be attributed to it
 
-#### Scenario: Refinement must not regress the teacher
+#### Scenario: Decomposition must not regress the teacher
 
-- **WHEN** a proposed refinement would reduce the skill's effectiveness for the frontier model
-- **THEN** the refinement MUST be rejected or relocated into student-scoped references rather than applied to the core skill body
+- **WHEN** a proposed decomposition would change or reduce the skill's outcome for the frontier model
+- **THEN** the decomposition MUST be rejected or reworked so the small skills still compose to the original frontier behavior
+
+#### Scenario: Context budget respected
+
+- **WHEN** a candidate skill's instructions would exceed the configured student model's context budget
+- **THEN** the skill MUST be split further rather than shipped as a single oversized unit
 
 ### Requirement: Harness Adapter Abstraction
 
-Harnesses MUST be integrated through an adapter contract exposing three operations: install a skill into the harness, dispatch a task, and capture the task's output. **Crush** MUST be provided as the reference adapter. The model layer MUST target a generic OpenAI-compatible endpoint so that any runner (e.g., Ollama, llama.cpp, vLLM) serving any compatible model is interchangeable via configuration. No skill in this capability MAY hard-code a specific harness or runner.
+Harnesses MUST be integrated through an adapter contract exposing three operations: install a skill into the harness, dispatch a task, and capture the task's output. The dispatch operation MUST execute by **shelling out to the harness's own CLI as a subprocess** — it MUST NOT depend on Claude Code's Task/subagent mechanism (which runs Claude models) and MUST NOT require a bespoke backend service. An MCP-backed adapter MAY be provided as an alternative variant for harnesses exposed that way. **Crush** MUST be provided as the reference adapter. The student model MUST be reached through a generic OpenAI-compatible endpoint whose location and credentials are resolved from **conventional environment variables** (e.g., `OPENAI_BASE_URL`, `OPENAI_API_KEY`, plus each harness's native env conventions) so that any runner (e.g., Ollama, llama.cpp, vLLM) serving any compatible model is interchangeable. Endpoints and tokens MUST NOT be stored in committed configuration. No skill in this capability MAY hard-code a specific harness or runner.
 
 #### Scenario: Crush adapter dispatches a pair run
 
-- **WHEN** the manifest selects the Crush adapter for a triple
-- **THEN** `/sdd:distill` installs the skill into Crush, dispatches the task, and captures the output through the adapter contract without harness-specific logic leaking into the skill body
+- **WHEN** the registered configuration selects the Crush adapter for a triple
+- **THEN** `/sdd:distill` installs the skill into Crush, dispatches the task by invoking the Crush CLI as a subprocess, and captures the output through the adapter contract without harness-specific logic leaking into the skill body
 
-#### Scenario: Model runner swapped via configuration
+#### Scenario: Model runner swapped via environment
 
-- **WHEN** the manifest's OpenAI-compatible endpoint is repointed from one runner to another serving a different model
-- **THEN** the distillation loop runs unchanged against the new endpoint with no skill edits required
+- **WHEN** the OpenAI-compatible endpoint environment variables are repointed from one runner to another serving a different model
+- **THEN** the distillation loop runs unchanged against the new endpoint with no skill or committed-config edits required
 
-### Requirement: Distillation Manifest
+### Requirement: Configuration and Artifact Layout
 
-The capability MUST persist a markdown-native manifest (per ADR-0015) under `docs/distillation/` that registers the available harness adapters, model endpoints, and per-`{skill, model, harness}`-triple parity scores with the date each was measured. The manifest MUST be the single source of truth that `/sdd:route` reads.
+Configuration — which harness adapters and model identifiers are registered for distillation — MUST live in a structured **Distillation** section in `CLAUDE.md` per ADR-0015, NOT in a bespoke config file. Endpoints and tokens MUST be resolved from environment variables rather than recorded in that section. Runtime artifacts — pair-session transcripts and working parity state — MUST be written under a gitignored `.sdd/distillation/` directory consistent with the repo's existing `.sdd-*` hidden state. Durable parity scores MUST be recorded in `evals/benchmarks/` per `{skill, model, harness}` triple per SPEC-0017. `/sdd:route` MUST read the registered configuration together with the recorded parity scores.
 
-#### Scenario: Manifest updated after a sprint
+#### Scenario: Configuration registered in CLAUDE.md
 
-- **WHEN** a distillation sprint completes
-- **THEN** the manifest's entry for that triple is created or updated with the converged (or best) parity score and the measurement date
+- **WHEN** a harness adapter or model is registered for distillation
+- **THEN** the registration appears as a human-readable entry in the `CLAUDE.md` Distillation section, and no endpoint URL or token is committed there
 
-#### Scenario: Manifest is human-readable and diffable
+#### Scenario: Runtime artifacts are gitignored
 
-- **WHEN** a manifest entry changes
-- **THEN** the change is expressed as a reviewable markdown diff rather than an opaque binary or generated blob
+- **WHEN** a sprint writes pair-session transcripts or working parity state
+- **THEN** those artifacts land under `.sdd/distillation/` and are excluded from version control, while the durable parity score is recorded in `evals/benchmarks/`
 
 ### Requirement: Routing Recommendation
 
-The `/sdd:route` skill MUST, given a task description or a tracker issue, read the manifest and recommend a `{harness, model, skill}` for local execution together with an explicit cloud-escalation condition. When no triple meets the parity threshold for the relevant skill, the recommendation MUST default to frontier-model (cloud) execution.
+The `/sdd:route` skill MUST, given a task description or a tracker issue, read the registered configuration and recorded parity scores and recommend a `{harness, model, skill}` for local execution together with an explicit cloud-escalation condition. When no triple meets the parity threshold for the relevant skill, the recommendation MUST default to frontier-model (cloud) execution.
 
 #### Scenario: Local recommendation above threshold
 
@@ -129,9 +134,9 @@ The `/sdd:route` skill MUST, given a task description or a tracker issue, read t
 
 Every part of the capability that depends on an external harness or model endpoint MUST degrade gracefully and MUST NOT block the SDD flow when those dependencies are absent. Distillation-specific failures MUST surface a clear, actionable message naming the missing dependency rather than producing fabricated or silent results.
 
-#### Scenario: Routing with an empty manifest
+#### Scenario: Routing with no registered triples
 
-- **WHEN** `/sdd:route` or `/sdd:plan --distill` runs and no distilled triples exist yet
+- **WHEN** `/sdd:route` or `/sdd:plan --distill` runs and no distilled triples have been recorded yet
 - **THEN** the recommendation defaults to cloud execution with a note that no local triples are available, and the plan/route operation still completes successfully
 
 #### Scenario: Harness adapter missing on the host

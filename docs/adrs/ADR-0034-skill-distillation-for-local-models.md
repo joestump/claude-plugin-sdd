@@ -33,12 +33,15 @@ How should the SDD plugin let Claude "train" cheaper, locally-hosted models to r
 
 Chosen option: **Option A — Skill distillation loop**, because it reuses the plugin's existing skill, evaluation, and planning primitives; produces durable, inspectable, version-controlled markdown artifacts (not opaque weights); and keeps the iteration loop fully inside the SDD lifecycle the plugin already practices. It is the most direct mechanical translation of Tunguz's method onto what this plugin already is.
 
-The decision has four structural commitments, formalized in SPEC-0035:
+The decision has five structural commitments, formalized in SPEC-0035:
 
-1. **A new `/sdd:distill` skill** runs a *distillation sprint* for a `{skill, model, harness}` triple: Claude performs the task to produce a gold **reference run**, the same task is dispatched to the local model via the harness adapter (the **pair run**), the **existing `evals/` harness** scores the pair run against the reference to produce a **parity score**, Claude then **refines** the `SKILL.md` / `references/` / helper `scripts/` to close the gap, and the loop repeats until parity converges past a threshold.
-2. **A new `/sdd:route` skill** reads the distillation manifest and, given a task or issue, recommends `{harness, model, skill}` plus a "fall back to cloud when…" condition.
-3. **Harness-agnostic adapters with a runner-agnostic model layer.** Harnesses are abstracted behind an adapter contract (install-skill, dispatch-task, capture-output); **Crush** is the reference adapter, others plug in later. The model layer targets a generic **OpenAI-compatible endpoint**, so Ollama / llama.cpp / vLLM serving Qwen/Gemma/GPT-OSS are all interchangeable and configured in the manifest.
-4. **`/sdd:plan` integration.** Behind a `--distill` flag (default off, mirroring `--no-branches`), each issue body gains an `### Execution` section populated by `/sdd:route`: suggested model, suggested harness, required distilled skills, and the cloud-escalation condition.
+1. **A new `/sdd:distill` skill** runs a *distillation sprint* for a `{skill, model, harness}` triple: Claude performs the task to produce a gold **reference run**; the same task is dispatched to the local model by **shelling out to the harness's own CLI** (the **pair run**); the **existing `evals/` harness** scores the pair run against the reference to produce a **parity score**; Claude then closes the gap primarily by **decomposing the skill into smaller, single-purpose discrete skills** (and tightening their trigger keywords) so each unit fits a local model's limited context window; the loop repeats until parity converges past a threshold.
+2. **Execution substrate is subprocess dispatch, not Claude subagents.** The student runs in an external harness *process* (e.g. `crush`/`opencode` invoked headless) pointed at the local model — it does **not** use Claude Code's Task/subagent mechanism (those run Claude models), and it does **not** require a bespoke backend. An MCP-backed adapter is an optional future variant for harnesses exposed that way; the baseline contract is shelling out to the harness binary.
+3. **A new `/sdd:route` skill** reads the registered harnesses/models and recorded parity scores and, given a task or issue, recommends `{harness, model, skill}` plus a "fall back to cloud when…" condition.
+4. **Harness-agnostic adapters; endpoints/tokens from the environment.** Each harness is integrated through an adapter exposing three operations (install-skill, dispatch-task, capture-output); **Crush** is the reference adapter, others plug in later. The student model is reached through a standard **OpenAI-compatible endpoint configured by conventional environment variables** (`OPENAI_BASE_URL`, `OPENAI_API_KEY`, plus each harness's native env conventions) — never committed config — so Ollama / llama.cpp / vLLM serving Qwen/Gemma/GPT-OSS are interchangeable with no plugin-specific wiring.
+5. **`/sdd:plan` integration.** Behind a `--distill` flag (default off, mirroring `--no-branches`), each issue body gains an `### Execution` section populated by `/sdd:route`: suggested model, suggested harness, required distilled skills, and the cloud-escalation condition.
+
+Configuration — which harness adapters and model identifiers are registered — lives in a structured **Distillation** section in `CLAUDE.md` per ADR-0015 (not a bespoke config file). Runtime artifacts — pair-session transcripts and working parity state — are written to a **gitignored `.sdd/distillation/`** directory (consistent with the repo's existing `.sdd-*` hidden state); durable parity scores are recorded in `evals/benchmarks/` per SPEC-0017.
 
 Option B (weight distillation / DSPy/GEPA) is explicitly deferred to a **later, optional second track** layered on top of A — it is heavier, pulls in a Python optimizer dependency, and produces opaque artifacts. The skill-distillation loop is a prerequisite for it (it produces the logged pair sessions a training track would consume).
 
@@ -47,9 +50,10 @@ Option B (weight distillation / DSPy/GEPA) is explicitly deferred to a **later, 
 * Good, because routine SDD work can run on a cheap local model at measured, Claude-relative parity, cutting cost and dodging rate limits.
 * Good, because the distilled artifacts are markdown in the repo — inspectable, diffable, reviewable through the same SDD flow as everything else.
 * Good, because parity is a number from the existing evals harness, so "ready to run locally" is gated, not guessed.
-* Good, because the adapter + OpenAI-compatible-endpoint abstraction insulates the plugin from harness/model churn.
+* Good, because the adapter + OpenAI-compatible-endpoint abstraction (configured via standard env vars) insulates the plugin from harness/model churn and keeps secrets out of the repo.
+* Good, because decomposing skills into small, discrete, single-purpose units keeps each one inside a local model's limited context window — the unit of distillation is a small skill, not a monolith.
 * Bad, because the loop requires a working local harness + model endpoint in the environment, which not every operator will have — distillation must degrade gracefully when the endpoint is unreachable.
-* Bad, because refining a single `SKILL.md` to satisfy a weaker student risks diluting it for the frontier teacher; the design must keep distilled guidance additive (references/scripts) rather than dumbing down the core skill.
+* Bad, because decomposition adds surface area — more, smaller skills to maintain and route between — and the teacher must ensure the decomposed set still composes back to the frontier skill's behavior.
 * Neutral, because parity is *relative to Claude*, not absolute correctness — a high parity score inherits Claude's own variance on that task and must be read as such.
 
 ### Confirmation
@@ -57,7 +61,8 @@ Option B (weight distillation / DSPy/GEPA) is explicitly deferred to a **later, 
 * The presence and eval coverage of the `/sdd:distill` and `/sdd:route` skills under `skills/`, tracked by the existing `evals/` framework (ADR-0021).
 * Parity benchmarks persisted under `evals/benchmarks/` per `{skill, model, harness}` triple, with a documented convergence threshold.
 * `/sdd:plan --distill` issues containing a populated `### Execution` section, validated by a plan eval assertion.
-* A markdown-native distillation manifest (per ADR-0015) under `docs/distillation/` registering harnesses, model endpoints, and per-triple parity scores.
+* A structured **Distillation** configuration section in `CLAUDE.md` (per ADR-0015) registering harness adapters and model identifiers — with endpoints/tokens resolved from environment variables, not committed.
+* Pair-session transcripts and working parity state under a gitignored `.sdd/distillation/` directory; durable parity scores in `evals/benchmarks/` per `{skill, model, harness}` triple.
 
 ## Pros and Cons of the Options
 
@@ -102,13 +107,13 @@ Every skill always runs against a frontier model.
 flowchart TD
     subgraph Sprint["/sdd:distill sprint (per skill × model × harness)"]
         T[Claude teacher\nperforms task] --> REF[Gold reference run]
-        ADP[Harness adapter\nCrush / ...] --> PAIR[Local model pair run\nOpenAI-compatible endpoint]
+        ADP[Harness adapter\nshell out to crush/opencode CLI] --> PAIR[Local model pair run\nOpenAI-compatible endpoint via env vars]
         REF --> EVAL[evals/ harness\nscore pair vs reference]
         PAIR --> EVAL
         EVAL --> PAR{Parity ≥ threshold?}
-        PAR -- no --> REFINE[Claude refines\nSKILL.md / references / scripts]
+        PAR -- no --> REFINE[Claude decomposes skill into\nsmall discrete skills, tightens triggers]
         REFINE --> T
-        PAR -- yes --> MAN[(Distillation manifest\ndocs/distillation/)]
+        PAR -- yes --> MAN[(.sdd/distillation/ artifacts\n+ CLAUDE.md config + evals/benchmarks)]
     end
 
     MAN --> ROUTE["/sdd:route\nrecommend model/harness/skill"]
