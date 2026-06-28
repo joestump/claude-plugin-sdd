@@ -1,7 +1,7 @@
 {
   "Creating Artifacts": ["adr", "spec"],
   "Sprint Planning": ["plan", "organize", "enrich"],
-  "Implementation": ["work", "review"],
+  "Implementation": ["work", "review", "respond"],
   "Drift Detection": ["check", "audit"],
   "Discovery": ["discover", "search"],
   "Documentation": ["docs", "graph", "index"],

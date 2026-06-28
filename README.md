@@ -20,6 +20,7 @@ A Claude Code plugin for architecture governance: ADRs, specifications, sprint p
 | **Enrich** | `/sdd:enrich [SPEC-XXXX or spec-name] [--branch-prefix <prefix>] [--dry-run]` | Add branch naming and PR conventions to existing issue bodies |
 | **Work** | `/sdd:work [SPEC-XXXX \| issue numbers \| (empty = propose from backlog)] [--max-agents N] [--draft] [--dry-run] [--no-tests] [--module <name>]` | Pick up tracker issues and implement them in parallel using git worktrees |
 | **Review** | `/sdd:review [SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run] [--module <name>]` | Review and merge PRs using reviewer-responder agent pairs |
+| **Respond** | `/sdd:respond [PR numbers or URL \| (empty = infer from current branch)] [--reply-only] [--fix-only] [--no-push] [--dry-run] [--module <name>]` | Address review feedback on a PR: make the code fixes, push, and reply to each thread |
 | **Status** | `/sdd:status [ID] [status]` | Change the status of an ADR or spec |
 | **Graph** | `/sdd:graph <verb> [<artifact-id>] [--scope <subtree>] [--module <name>] [--table\|--mermaid\|--json]` | Build and query the artifact graph: `validate`, `impact`, `ancestors`, `chain`, `orphans`, `cycles`, `backfill`. ASCII DAG default; `--json` is the stable contract for downstream consumers |
 

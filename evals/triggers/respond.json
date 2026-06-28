@@ -1,0 +1,23 @@
+[
+  {"query": "respond to the review comments on PR #142", "should_trigger": true},
+  {"query": "/sdd:respond 142", "should_trigger": true},
+  {"query": "address the feedback on my PR and push the fixes", "should_trigger": true},
+  {"query": "the reviewer requested changes on PR #88 — handle them", "should_trigger": true},
+  {"query": "fix the review on this PR and reply to each thread", "should_trigger": true},
+  {"query": "work through the PR comments, make the changes, and explain what you did", "should_trigger": true},
+  {"query": "someone left review feedback on my branch's PR, can you take care of it?", "should_trigger": true},
+  {"query": "respond to the failing CI and reviewer notes on PR #93", "should_trigger": true},
+  {"query": "/sdd:respond --reply-only 142", "should_trigger": true},
+  {"query": "address review comments on the PR for the current branch", "should_trigger": true},
+
+  {"query": "review and merge the open PRs from this sprint", "should_trigger": false},
+  {"query": "/sdd:review 93", "should_trigger": false},
+  {"query": "do a spec-aware review of PR #93 before I merge", "should_trigger": false},
+  {"query": "implement the open issues for SPEC-0009 in parallel", "should_trigger": false},
+  {"query": "merge PR #88 already, I've reviewed it manually", "should_trigger": false},
+  {"query": "respond to this email from the customer", "should_trigger": false},
+  {"query": "reply to the comment on issue #50", "should_trigger": false},
+  {"query": "write a response to the RFC in our docs", "should_trigger": false},
+  {"query": "kick off a reviewer-responder pair for the open SPEC-0017 PRs", "should_trigger": false},
+  {"query": "check this file for drift against the spec", "should_trigger": false}
+]
