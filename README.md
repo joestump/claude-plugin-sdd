@@ -44,7 +44,7 @@ Add to your project's `.claude/settings.json`:
 }
 ```
 
-Then restart Claude Code. The plugin's 16 skills will be available as `/sdd:init`, `/sdd:prime`, `/sdd:adr`, `/sdd:spec`, `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:work`, `/sdd:review`, `/sdd:check`, `/sdd:audit`, `/sdd:discover`, `/sdd:docs`, `/sdd:list`, `/sdd:status`, and `/sdd:graph`.
+Then restart Claude Code. The plugin's skills will be available as `/sdd:init`, `/sdd:prime`, `/sdd:adr`, `/sdd:spec`, `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:work`, `/sdd:review`, `/sdd:respond`, `/sdd:check`, `/sdd:audit`, `/sdd:discover`, `/sdd:docs`, `/sdd:list`, `/sdd:status`, `/sdd:graph`, `/sdd:index`, `/sdd:search`, and `/sdd:report-friction`.
 
 ## Configuration
 
@@ -233,6 +233,20 @@ Reviews and merges PRs produced by `/sdd:work` using reviewer-responder agent pa
 - `--module <name>` resolves artifact paths for a specific module in workspace mode
 - Configurable via CLAUDE.md `### SDD Configuration` section (max_pairs, merge_strategy, auto_cleanup)
 - Falls back to single-agent sequential mode if team creation fails
+
+### `/sdd:respond` -- Address PR Review Feedback
+
+Works through review feedback that already exists on a PR — the author-driven counterpart to `/sdd:review` (which is reviewer-driven). Use it when a human or external reviewer leaves comments on your PR:
+- Targets a PR by number or URL, or infers it from the current git branch
+- Gathers the full feedback surface: review threads and line comments, requested-changes reviews, top-level comments, and **failing CI** (failing-check logs are treated as feedback too)
+- Loads governing spec/ADRs (when inferable) and triages each item as `fix`, `reply`, `reject`, or `defer`
+- Makes the code fixes on the PR branch (reusing `/sdd:work` worktrees when present), runs tests, commits, and pushes
+- Replies to each thread explaining how it was addressed; resolves threads where supported
+- **Declines** changes that would violate a governing spec/ADR, with a cited explanation, instead of complying blindly
+- **Captures deferred feedback as tracked issues** via the tracker's issue API (not `/sdd:plan`), linked back to the PR/thread; suppress with `--no-defer-issues`
+- Never merges — responding is not approving; merge stays with `/sdd:review` or you
+- One bounded round per invocation; offers to watch the PR until CI is green via `subscribe_pr_activity`
+- `--reply-only` / `--fix-only` / `--no-push` scope the actions; `--dry-run` previews the plan; `--module <name>` for workspace mode
 
 ### `/sdd:init` -- Initialize SDD Plugin
 

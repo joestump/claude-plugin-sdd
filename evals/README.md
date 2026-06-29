@@ -1,21 +1,18 @@
 # Skill Evaluations
 
-Automated evaluation framework for the 15 SDD plugin skills.
+Automated evaluation framework for the SDD plugin skills.
 
 ## Tier Structure
 
 | Tier | Skills | Threshold | Description |
 |------|--------|-----------|-------------|
-| 1 | plan, work, review, audit | **>80% required** | High-complexity, multi-agent skills |
+| 1 | plan, work, review, respond, audit | **>80% required** | High-complexity, multi-agent or PR-mutating skills |
 | 2 | spec, check, discover, docs | Tracked | Medium-complexity analysis skills |
 | 3 | adr, init, prime, list, status, organize, enrich | Tracked | Low-complexity, fast-executing skills |
 
 ## Eval Files
 
-- `evals.json` - All 39 evals in a single file
-- `tier1.json` - Tier 1 evals only (15 prompts)
-- `tier2.json` - Tier 2 evals only (10 prompts)
-- `tier3.json` - Tier 3 evals only (14 prompts)
+- `evals.json` - All functional evals in a single file (the canonical source; tier membership is defined by the Tier Structure table above)
 - `pipeline/` - Cross-skill end-to-end scenarios (release-only, see [`pipeline/README.md`](pipeline/README.md))
 - `triggers/` - Per-skill trigger eval sets for description optimization via `run_loop.py` (see [`triggers/README.md`](triggers/README.md))
 - `benchmarks/` - Persisted benchmark results on merge

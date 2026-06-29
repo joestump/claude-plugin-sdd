@@ -2,9 +2,10 @@
 name: respond
 description: Respond to review feedback on a PR — gather review comments, requested changes, and failing CI, make the code fixes on the PR branch, push, and reply to each thread explaining what was done. Use when the user says "respond to PR", "address review comments", "handle PR feedback", or "fix the review on PR #N".
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, AskUserQuestion, ToolSearch
-argument-hint: "[PR number(s) or URL | (empty = infer from current branch)] [--reply-only] [--fix-only] [--no-push] [--dry-run] [--module <name>]"
+argument-hint: "[PR number(s) or URL | (empty = infer from current branch)] [--reply-only] [--fix-only] [--no-push] [--no-defer-issues] [--dry-run] [--module <name>]"
 ---
 
+<!-- Governing: ADR-0034 (Author-Side PR Response Skill), SPEC-0035 REQ "Feedback Gathering", SPEC-0035 REQ "Response Protocol", SPEC-0035 REQ "Deferred Feedback Capture" -->
 <!-- Governing: ADR-0010 (Parallel PR Review and Response Skill — responder protocol), SPEC-0009 REQ "Response Protocol" -->
 <!-- Governing: ADR-0015 (Markdown-Native Configuration), SPEC-0014 REQ "Config Resolution Pattern" -->
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
@@ -51,6 +52,9 @@ use `/sdd:respond` to address the review someone left on your PR.
      threads. Default: off.
    - `--no-push`: Make code changes locally but do not push (and do not reply,
      since replies referencing unpushed commits would be misleading). Default: off.
+   - `--no-defer-issues`: Do not file follow-up tracker issues for `defer`-class
+     feedback; reply acknowledging the deferral instead. Default: off (deferred
+     items are captured as issues — see Step 9).
    - `--dry-run`: Preview the feedback inventory and the planned actions without
      changing code, pushing, or replying. Default: off.
    - `--module <name>`: Resolve artifact paths relative to the named module.
@@ -106,8 +110,8 @@ use `/sdd:respond` to address the review someone left on your PR.
    - **reply** — a question or discussion point answerable without code.
    - **reject** — a requested change you should NOT make (conflicts with a spec/ADR,
      or is technically wrong); the reply explains why, citing the governing artifact.
-   - **defer** — legitimate but out of scope for this PR; the reply proposes a
-     follow-up issue.
+   - **defer** — legitimate but out of scope for this PR; capture it as a tracked
+     follow-up issue (Step 9) and link it in the reply.
 
    Resolved/outdated threads and already-addressed comments are skipped. Approving
    reviews with no change requests need no response.
@@ -127,8 +131,9 @@ use `/sdd:respond` to address the review someone left on your PR.
    | 2 | review comment | auth.ts:120 | reject | Conflicts with SPEC-0009 "Token Validation"; will explain |
    | 3 | CI: unit tests | token.test.ts | fix   | Update assertion for new error shape |
    | 4 | top-level | — | reply | Answer question about refresh-token rotation |
+   | 5 | review comment | auth.ts:60 | defer | Out of scope — would file follow-up issue |
 
-   No changes, pushes, or replies performed.
+   No changes, pushes, replies, or issues created.
    ```
 
 7. **Make the code changes** (skip if `--reply-only`):
@@ -164,12 +169,33 @@ use `/sdd:respond` to address the review someone left on your PR.
    - **reject** → a courteous explanation citing the governing spec/ADR
      (e.g., "Leaving as-is: SPEC-0009 REQ \"Token Validation\" requires the expiry
      check to run before signature verification; reordering would violate it.").
-   - **defer** → acknowledge and propose a follow-up (offer to file an issue).
+   - **defer** → **capture it as a tracked issue** (unless `--no-defer-issues`),
+     then reply linking it: "Good idea, but out of scope for this PR — filed as
+     #{issue} to track it." See "Capturing deferred feedback" below.
    - **reply** → answer the question directly.
 
    Where the tracker supports it and the item is fully addressed, resolve the
    review thread (GitHub: `mcp__github__resolve_review_thread`). Be frugal — one
    substantive reply per thread, not a running commentary.
+
+   **Capturing deferred feedback.** A `defer` item is a single follow-up, so file
+   a single issue **directly via the tracker's issue API** — do NOT invoke
+   `/sdd:plan`. (`/sdd:plan` decomposes an entire spec into an epic plus many
+   story issues; using it to capture one review comment would be the wrong tool.
+   If several deferred items together amount to a new capability, say so in the
+   summary and suggest the user run `/sdd:spec` then `/sdd:plan` instead.)
+
+   - **GitHub**: `gh issue create --title "{concise title}" --body "{context}"`.
+   - **Gitea / GitLab**: MCP tools via `ToolSearch`, or `glab issue create`.
+
+   The issue body MUST link back to the source: the PR number, the review thread
+   URL, and the governing spec/ADR if one applies. Apply a tracker label such as
+   `follow-up` when the **Try-Then-Create Label Pattern** in
+   `references/shared-patterns.md` confirms it exists or can be created. In an
+   interactive session, confirm via `AskUserQuestion` before creating issues
+   (filing trackable work is outward-facing); in non-interactive/CI runs, file
+   them and list every created issue in the summary. With `--no-defer-issues`,
+   skip creation and reply acknowledging the deferral without an issue link.
 
 10. **Re-check CI**: After pushing, note that CI will re-run. Do not block the turn
     polling for it. If the user wants the PR watched until checks pass, point them
@@ -185,9 +211,10 @@ use `/sdd:respond` to address the review someone left on your PR.
     - a1b2c3d Add expiry check before signature verification (auth.ts:88)
     - d4e5f6a Update token.test.ts assertion for new error shape
 
-    Replies posted: 4 threads (2 fixed, 1 explained/declined, 1 question answered)
+    Replies posted: 5 threads (2 fixed, 1 explained/declined, 1 answered, 1 deferred)
     Threads resolved: 2
     Declined: auth.ts:120 reorder — conflicts with SPEC-0009 "Token Validation"
+    Follow-up issues filed: #151 (auth.ts:60 — extract token parser, deferred)
 
     CI re-running. Want me to watch the PR until checks pass? (subscribe_pr_activity)
     ```

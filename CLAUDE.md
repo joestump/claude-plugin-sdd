@@ -49,7 +49,8 @@ These comments help future sessions (and `/sdd:check`) trace implementation back
 4. **Enrich**: `/sdd:organize` and `/sdd:enrich` — add projects and branch conventions
 5. **Build**: `/sdd:work` — pick up issues and implement in parallel using git worktrees
 6. **Review**: `/sdd:review` — review and merge PRs with spec-aware code review
-7. **Validate**: `/sdd:check` and `/sdd:audit` to catch drift
+7. **Respond**: `/sdd:respond` — address review feedback on a PR (fix, push, reply); the author-side counterpart to `/sdd:review`
+8. **Validate**: `/sdd:check` and `/sdd:audit` to catch drift
 
 ### Session Coordination
 
