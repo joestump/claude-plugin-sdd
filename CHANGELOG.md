@@ -2,13 +2,13 @@
 
 All notable changes to the SDD plugin (`claude-plugin-sdd`) are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/) and the project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [5.2.0] — 2026-06-30
 
 ### Added
 
 - **`/sdd:respond`**: new author-side skill that addresses review feedback already present on a PR — gathers review threads, requested-changes reviews, top-level comments, and failing CI; makes the code fixes on the PR branch and pushes; replies to each thread; and captures out-of-scope feedback as tracked follow-up issues. It judges requested changes against governing specs/ADRs (declining, with citation, those that would violate them) and never merges. Complements `/sdd:review` (reviewer-driven) by handling feedback that originated outside the plugin — the common human-review case. See [ADR-0034](docs/adrs/ADR-0034-author-side-pr-response-skill.md) and SPEC-0035. Functional and trigger evals added under `evals/`.
 
-## [5.0.0] — Unreleased
+## [5.0.0] — 2026-05-15
 
 ### Breaking Changes
 
