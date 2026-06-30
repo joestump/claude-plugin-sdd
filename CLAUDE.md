@@ -24,6 +24,7 @@ This project uses the [SDD plugin](https://github.com/joestump/claude-plugin-sdd
 | `/sdd:enrich` | Add branch naming and PR conventions to existing issues |
 | `/sdd:work` | Pick up tracker issues and implement them in parallel using git worktrees |
 | `/sdd:review` | Review and merge PRs using reviewer-responder agent pairs |
+| `/sdd:respond` | Address review feedback on a PR: make the code fixes, push, and reply to each thread |
 | `/sdd:graph` | Build and query the artifact graph (validate, impact, ancestors, chain, orphans, cycles, backfill) |
 | `/sdd:index` | Index ADRs, specs, and code into qmd collections for hybrid semantic search |
 | `/sdd:report-friction` | File a feedback issue against the SDD plugin when one of its skills caused significant churn |
@@ -48,7 +49,8 @@ These comments help future sessions (and `/sdd:check`) trace implementation back
 4. **Enrich**: `/sdd:organize` and `/sdd:enrich` — add projects and branch conventions
 5. **Build**: `/sdd:work` — pick up issues and implement in parallel using git worktrees
 6. **Review**: `/sdd:review` — review and merge PRs with spec-aware code review
-7. **Validate**: `/sdd:check` and `/sdd:audit` to catch drift
+7. **Respond**: `/sdd:respond` — address review feedback on a PR (fix, push, reply); the author-side counterpart to `/sdd:review`
+8. **Validate**: `/sdd:check` and `/sdd:audit` to catch drift
 
 ### Session Coordination
 
