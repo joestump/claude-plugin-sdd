@@ -14,13 +14,13 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
 <!-- Governing: ADR-0028 (/loop Autonomous Mode), SPEC-0020 REQ "Lockfile Schema and Acquisition", SPEC-0020 REQ "Budget Schema and Persistence", SPEC-0020 REQ "Telemetry Schema", SPEC-0020 REQ "Resume Contract", SPEC-0020 REQ "Resume Contract Reconciliation" -->
 
-> **Loop Mode (V1, opt-in).** When invoked under `/loop` with the `--loop` flag, this skill enters autonomous-mode and uses the lockfile + budget primitives documented in `references/loop-primitives.md` (acquired on entry, released on exit) and the telemetry + resume contract documented in `references/loop-telemetry.md` (every iteration appends a `history.jsonl` line and emits a stdout status block; `--resume` reconciles `tracked_prs[]` and `active_worktrees[]` from the last line). The full CLI surface, all 12 stop conditions, and all 6 AskUserQuestion gates are wired in story #144 (SPEC-0020). Without `--loop`, behavior is unchanged from the rest of this document and no `.sdd/loop/` artifacts are created.
+> **Loop Mode (V1, opt-in).** When invoked under `/loop` with the `--loop` flag, this skill enters autonomous-mode and uses the lockfile + budget primitives documented in `${CLAUDE_PLUGIN_ROOT}/references/loop-primitives.md` (acquired on entry, released on exit) and the telemetry + resume contract documented in `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md` (every iteration appends a `history.jsonl` line and emits a stdout status block; `--resume` reconciles `tracked_prs[]` and `active_worktrees[]` from the last line). The full CLI surface, all 12 stop conditions, and all 6 AskUserQuestion gates are wired in story #144 (SPEC-0020). Without `--loop`, behavior is unchanged from the rest of this document and no `.sdd/loop/` artifacts are created.
 
 ## Process
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
 
 1. **Parse arguments**: Parse `$ARGUMENTS`.
 
@@ -57,13 +57,13 @@ You are picking up tracker issues and implementing them in parallel using git wo
    - `--no-tests`: Skip test execution in workers. Default: off.
    - `--module <name>`: Resolve artifact paths relative to the named module. Default: none.
 
-2. **Load architecture context** (when a spec is provided or issues reference a spec): Read the spec's `spec.md` and `design.md`. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation". Scan for referenced ADRs (e.g., `ADR-0001`) and read those too. This context will be sent to every worker. If no spec is associated with the selected issues, skip this step — workers will rely on issue body and codebase context alone.
+2. **Load architecture context** (when a spec is provided or issues reference a spec): Read the spec's `spec.md` and `design.md`. Validate spec pairing per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation". Scan for referenced ADRs (e.g., `ADR-0001`) and read those too. This context will be sent to every worker. If no spec is associated with the selected issues, skip this step — workers will rely on issue body and codebase context alone.
 
-3. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`. Fallback to `tasks.md` parsing if no tracker is found.
+3. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Fallback to `tasks.md` parsing if no tracker is found.
 
 3a. **Ensure lifecycle labels exist** (Governing: SPEC-0015 REQ "Issue Lifecycle Labels"):
 
-   Create the lifecycle labels using the try-then-create pattern (see `references/shared-patterns.md`) — attempt to use each label, and only create it if it doesn't exist. This avoids failures on repeated runs.
+   Create the lifecycle labels using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`) — attempt to use each label, and only create it if it doesn't exist. This avoids failures on repeated runs.
 
    | Label | Color | Meaning |
    |-------|-------|---------|
@@ -103,10 +103,10 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
    <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills" -->
 
-   Before discovering workable issues (Step 4), sync the `{repo}-issues` qmd collection from the tracker so the lead and all workers see current issue state. This also feeds the Sibling PR Manifest (Step 8a) with fresh data. Subject to the 5-min dedup window per `references/tracker-sync.md` § "Cursor Management".
+   Before discovering workable issues (Step 4), sync the `{repo}-issues` qmd collection from the tracker so the lead and all workers see current issue state. This also feeds the Sibling PR Manifest (Step 8a) with fresh data. Subject to the 5-min dedup window per `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md` § "Cursor Management".
 
    1. Read `.sdd/issues/_meta.json`. If `last_sync` is within the last 5 minutes, skip the sync silently.
-   2. Otherwise, invoke per-tracker fetch+normalize per `references/tracker-sync.md`. Print: "Syncing N issues from {tracker}…".
+   2. Otherwise, invoke per-tracker fetch+normalize per `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md`. Print: "Syncing N issues from {tracker}…".
    3. On sync failure, surface a one-line warning per `tracker-sync.md` § "Failure Modes and Degradation" and proceed with live tracker queries (the pre-v5 path) for this run. Do NOT block; work dispatch is the user's primary intent.
 
 4. **Discover workable issues**: Search the tracker for open issues:
@@ -170,7 +170,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
      - If the user says stop, halt and report.
    - Run `git fetch` to ensure we have the latest remote state.
 
-7. **Read worktree config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `#### Worktrees` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Base Dir`=`.claude/worktrees/`, `Max Agents`=3, `Auto Cleanup`=false, `PR Mode`="ready". CLI flags override config values.
+7. **Read worktree config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Read the `#### Worktrees` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Base Dir`=`.claude/worktrees/`, `Max Agents`=3, `Auto Cleanup`=false, `PR Mode`="ready". CLI flags override config values.
 
 7a. **Resolve parallelism limit** (Governing: SPEC-0015 REQ "Parallelism Limits", ADR-0017 Layer 1):
 
@@ -198,13 +198,13 @@ You are picking up tracker issues and implementing them in parallel using git wo
    ```
    Example: "Starting 4 of 8 ready stories (4 queued, max-parallel-agents: 4)"
 
-8. **Create team**: Use `TeamCreate` to create a coordination team following the "Worker Coordination" protocol from `references/shared-patterns.md` § "Multi-Agent Team Protocols". The lead (you) manages the task queue and monitors progress. Spawn up to the resolved parallelism limit (from step 7a) worker agents using `Task` with `subagent_type: "general-purpose"`.
+8. **Create team**: Use `TeamCreate` to create a coordination team following the "Worker Coordination" protocol from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Multi-Agent Team Protocols". The lead (you) manages the task queue and monitors progress. Spawn up to the resolved parallelism limit (from step 7a) worker agents using `Task` with `subagent_type: "general-purpose"`.
 
    If `TeamCreate` fails, fall back to single-agent sequential mode: work through each issue one at a time in the main session using `git worktree add` for each.
 
 8a. **Build sibling PR manifest** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"):
 
-   Before dispatching any workers, build a pre-flight awareness manifest so each agent knows what siblings are doing. Follow the **Pre-Flight PR Awareness** pattern in `references/shared-patterns.md`.
+   Before dispatching any workers, build a pre-flight awareness manifest so each agent knows what siblings are doing. Follow the **Pre-Flight PR Awareness** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`.
 
    1. **Query the tracker for all open PRs** in the current sprint, epic, or spec scope:
       ```bash
@@ -225,7 +225,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
       - **Shared Types Available** — types, helpers, and their locations (with merge status)
       - **In-Progress Sibling PRs** — table of PR number, issue, branch, files, and status
 
-   This manifest is injected into each worker's context in step 9.4. Workers keep it current via live `SendMessage` broadcasts per the **Worker Communication Protocol** in `references/shared-patterns.md`.
+   This manifest is injected into each worker's context in step 9.4. Workers keep it current via live `SendMessage` broadcasts per the **Worker Communication Protocol** in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`.
 
 9. **Create worktrees and assign work**: For each workable issue (respecting dependency order and max-agents concurrency):
 
@@ -277,7 +277,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
        Before writing any new helper, type, struct, interface, or substantial code block, qmd-search `{repo}-code` for existing patterns. This complements the Sibling PR Manifest (which covers in-flight work) by surfacing patterns already on main that the worker would otherwise re-create. Mitigates the duplicate-implementation drift Foundation Story Detection (per ADR-0017) was designed to catch.
 
-       1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval":
+       1. Construct a hybrid query per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval":
           - `lex`: the planned helper / type / function name AND key terms from its purpose (e.g., for a `parseUserID` helper: "parseUserID parse user id authentication token")
           - `vec`: a one-sentence framing of what the worker is about to implement (e.g., "extract a numeric user ID from an authenticated request context")
           - `intent: "/sdd:work — find existing helpers/types/patterns to import rather than recreate"`
@@ -293,7 +293,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
        4. On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error to the lead via SendMessage and stop work on this issue. Per ADR-0024, the pre-v5 fallback ("just write new code") is gone in v5; the failure mode is "fix qmd, retry."
 
-    3b. **Coordinate with sibling workers** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"). Follow the "Worker Communication Protocol" in `references/shared-patterns.md`. Before modifying any file:
+    3b. **Coordinate with sibling workers** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"). Follow the "Worker Communication Protocol" in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Before modifying any file:
        - **Check the Sibling PR Manifest** for files already claimed by siblings. If the file appears under "Files Currently Being Modified by Siblings", send `CONFLICT_ALERT` and wait for lead coordination instead of modifying it.
        - **Check for shared types** in the manifest's "Shared Types Available" section. If a needed type, struct, interface, or helper already exists (from a merged foundation PR or an in-progress sibling), import it from the expected location instead of creating a duplicate.
        - **Broadcast live updates** via `SendMessage` to all siblings:
@@ -305,7 +305,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
          - On `TYPE_CREATED` from a sibling: add the type to "Shared Types Available" and import it rather than recreating
          - On `AVAILABILITY` from lead: move artifacts from "in-progress" to "available on main" and lift file avoidance for those files
     4. Implement changes to satisfy the acceptance criteria.
-    5. If spec context was provided, leave governing comments in the code per `references/shared-patterns.md` § "Governing Comment Format":
+    5. If spec context was provided, leave governing comments in the code per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Governing Comment Format":
        ```
        // Governing: ADR-XXXX (short description), SPEC-XXXX REQ "Requirement Name"
        ```
@@ -371,7 +371,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
       gh issue edit {issue-number} --remove-label "in-review" --add-label "merged"
       ```
       If the work session itself does not merge PRs, the `merged` transition will be handled by `/sdd:review` or the next `/sdd:work` invocation that detects merged PRs.
-    - **Tier 1 mutation update on merge** (v5.0.0+, Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates"): After detecting a PR merge, before transitioning to `merged`, trigger a narrow re-sync of `{repo}-code` so the qmd index reflects the newly-merged code. Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns". Best-effort and silent on success. On failure, append a one-line warning to the run log ("Index refresh failed for `{repo}-code` after merging PR #{N} — run `/sdd:index update` manually") but the merged-label transition still proceeds.
+    - **Tier 1 mutation update on merge** (v5.0.0+, Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates"): After detecting a PR merge, before transitioning to `merged`, trigger a narrow re-sync of `{repo}-code` so the qmd index reflects the newly-merged code. Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns". Best-effort and silent on success. On failure, append a one-line warning to the run log ("Index refresh failed for `{repo}-code` after merging PR #{N} — run `/sdd:index update` manually") but the merged-label transition still proceeds.
     - **Unblock deferred issues**: After any issue transitions to `merged`, re-check the deferred queue from step 4. For each deferred issue, re-query its dependencies. If ALL dependencies now have the `merged` label, move the issue to the ready queue and start it if an agent slot is available.
     - When a worker finishes, check if there are queued issues waiting.
     - If queued issues have dependency requirements, check if dependencies are now satisfied.
@@ -382,7 +382,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
 11a. **Compute topological merge order** (Governing: SPEC-0015 REQ "Topological Merge Ordering"):
 
-   After all workers have completed and PRs are in `in-review` state, compute the optimal merge order before merging begins. Follow the **Topological Merge Ordering** pattern in `references/shared-patterns.md`.
+   After all workers have completed and PRs are in `in-review` state, compute the optimal merge order before merging begins. Follow the **Topological Merge Ordering** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`.
 
    1. **Collect file lists for each PR:**
       ```bash
@@ -532,13 +532,13 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - When no arguments are provided, MUST analyze the backlog and propose a batch to the user before starting any work
 - MUST read spec.md and design.md before dispatching workers only when a spec is provided or resolvable from issue bodies
 - MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
-- MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
+- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to read configuration from CLAUDE.md
 - MUST extract branch names from issue bodies — never invent branch names
 - MUST skip epics (labeled `epic` or titled "Implement ...") — only work on implementation issues
 - MUST skip issues without `### Branch` sections and suggest `/sdd:enrich`
 - MUST respect dependency ordering when queuing work
 - MUST create regular (non-draft) PRs by default — only create draft PRs with `--draft`
-- MUST leave governing comments per `references/shared-patterns.md` § "Governing Comment Format" in implemented code when spec context is available; omit when there is no spec
+- MUST leave governing comments per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Governing Comment Format" in implemented code when spec context is available; omit when there is no spec
 - MUST report all failures with actionable details — never silently skip
 - MUST preserve worktrees for failed issues — never auto-clean failures
 - Workers MUST use worktree absolute paths for all file operations
@@ -560,7 +560,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - Workers MUST broadcast `TYPE_CREATED` via `SendMessage` after creating new types, structs, interfaces, or shared helpers
 - Workers receiving `TYPE_CREATED` MUST import the type rather than creating a duplicate
 - Workers receiving `FILE_CLAIM` for a file they also need MUST send `CONFLICT_ALERT` and wait for lead coordination
-- MUST ensure lifecycle labels (`queued`, `in-progress`, `in-review`, `merged`) exist before assigning work — using the try-then-create pattern (see `references/shared-patterns.md`) (Governing: SPEC-0015 REQ "Issue Lifecycle Labels")
+- MUST ensure lifecycle labels (`queued`, `in-progress`, `in-review`, `merged`) exist before assigning work — using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`) (Governing: SPEC-0015 REQ "Issue Lifecycle Labels")
 - MUST apply `queued` label to all workable issues upon discovery
 - MUST transition `queued` -> `in-progress` when an agent picks up an issue, removing the previous label first
 - MUST transition `in-progress` -> `in-review` when a PR is created, removing the previous label first
@@ -621,20 +621,20 @@ When `--loop` is set, `/sdd:work` accepts the following additional flags. All ar
 | `--budget-file PATH` | `.sdd/loop/work.budget.json` | Override the budget-file location |
 | `--no-chain` | off | Skip the post-PR chain (`/sdd:review` + `/autofix-pr`); restores legacy "open PR, stop" behavior. See "Post-PR Chain" below. |
 
-The first write of `budget.json` records the active ceilings (per `references/loop-primitives.md` § First-write rule) so a later `--resume` cannot silently widen them.
+The first write of `budget.json` records the active ceilings (per `${CLAUDE_PLUGIN_ROOT}/references/loop-primitives.md` § First-write rule) so a later `--resume` cannot silently widen them.
 
 ### Per-tick flow
 
 Each tick follows this canonical flow (control flow diagram in `docs/openspec/specs/loop-autonomous-mode/design.md`):
 
-1. **Acquire lockfile** at `.sdd/loop/work.lock` per `references/loop-primitives.md` § Acquisition flow (skip / wait / force per `--lock`).
-2. **Read budget** from `.sdd/loop/work.budget.json`; on first write, initialize ceilings, `started_at`, and `rate_table_source` (per `references/loop-primitives.md` § First-write rule).
+1. **Acquire lockfile** at `.sdd/loop/work.lock` per `${CLAUDE_PLUGIN_ROOT}/references/loop-primitives.md` § Acquisition flow (skip / wait / force per `--lock`).
+2. **Read budget** from `.sdd/loop/work.budget.json`; on first write, initialize ceilings, `started_at`, and `rate_table_source` (per `${CLAUDE_PLUGIN_ROOT}/references/loop-primitives.md` § First-write rule).
 3. **Evaluate stop conditions on entry** (see "Stop conditions" below). Any matching condition halts the loop, emits the final report, and releases the lockfile.
 4. **Run the gate block** (see "AskUserQuestion Gates" below). Any gate answered `stop` halts the loop.
 5. **Run the iteration body** — discover workable issues per Step 4 of the main flow above (skipping issues labeled `in-progress` per "Concurrency invariants"), dispatch workers, open PRs.
 6. **For each PR opened in this iteration**, invoke the post-PR chain per "Post-PR Chain" below (unless `--no-chain` or `--dry-run`).
 7. **Update budget** — increment `iterations_used`, union `prs_touched`, accumulate `tokens_in`/`tokens_out`/`agents_dispatched`, recompute `dollars_estimate`, evaluate exit-time stop conditions 3 / 4 / 5 / 12.
-8. **Emit telemetry** — append a line to `.sdd/loop/work.history.jsonl` (per `references/loop-telemetry.md`) and emit the stdout status block.
+8. **Emit telemetry** — append a line to `.sdd/loop/work.history.jsonl` (per `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md`) and emit the stdout status block.
 9. **Release lockfile** and let `/loop` schedule the next tick.
 
 ### Stop conditions
@@ -661,14 +661,14 @@ Condition #2 (terminal PR state) does NOT apply to `/sdd:work` — it is a `/sdd
 
 The wrapped skill signals qmd-unreachable using either of these signals (per SPEC-0020 REQ "qmd-Unreachable Stop"):
 
-1. **Stderr sentinel**: a line on stderr containing the literal token `qmd-unreachable` (per `references/qmd-helpers.md` § "Error Handling")
+1. **Stderr sentinel**: a line on stderr containing the literal token `qmd-unreachable` (per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Error Handling")
 2. **Reserved exit code**: `EX_QMD_UNREACHABLE = 78` (matches BSD `sysexits.h` `EX_CONFIG`)
 
 The loop reads exit status first; on non-zero, scans stderr for the sentinel as a fallback. Either signal is sufficient. On detection, increment `qmd_failures_consecutive`. On any successful iteration, reset to 0. On increment to 2, condition #11 trips.
 
 ### AskUserQuestion gates
 
-All gates are re-evaluated **on every tick** (per SPEC-0020 REQ "Gates Are Not Debounced Across Iterations") — the skill MUST NOT cache or reuse a prior iteration's answer to suppress a current iteration's gate. Each invocation is captured verbatim in the iteration's `gates[]` array per `references/loop-telemetry.md`.
+All gates are re-evaluated **on every tick** (per SPEC-0020 REQ "Gates Are Not Debounced Across Iterations") — the skill MUST NOT cache or reuse a prior iteration's answer to suppress a current iteration's gate. Each invocation is captured verbatim in the iteration's `gates[]` array per `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md`.
 
 | Gate | Trigger | Prompt template | Options |
 |------|---------|-----------------|---------|
@@ -740,7 +740,7 @@ For each PR a worker opens in an iteration:
    - On accepted invocation: record `autofix_pr_invoked: true`, `autofix_pr_invocation_status: "accepted"`.
    - On invocation error (parse failure or other invocation-time error): record `autofix_pr_invoked: true`, `autofix_pr_invocation_status: "errored"`; emit a one-line warning. The PR is NOT blocked.
 
-7. **Telemetry**. The iteration's `history.jsonl` line records the four chain fields per the canonical schema in `references/loop-telemetry.md`:
+7. **Telemetry**. The iteration's `history.jsonl` line records the four chain fields per the canonical schema in `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md`:
 
    ```json
    {
@@ -784,16 +784,16 @@ This contract IS the implementation of the chain; before story #148 lands, `/sdd
 
 ### Resume
 
-`--resume` recovers state from the most recent `history.jsonl` line per `references/loop-telemetry.md` § Resume Contract. Counters are restored; gate evaluations are recomputed; the lockfile is treated as stale per the PID-liveness rule; `tracked_prs[]` and `active_worktrees[]` are reconciled by SHA equality with no external probing substituted.
+`--resume` recovers state from the most recent `history.jsonl` line per `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md` § Resume Contract. Counters are restored; gate evaluations are recomputed; the lockfile is treated as stale per the PID-liveness rule; `tracked_prs[]` and `active_worktrees[]` are reconciled by SHA equality with no external probing substituted.
 
 ### Telemetry
 
-Every iteration appends a line to `.sdd/loop/work.history.jsonl` and emits the stdout status block. Skipped ticks (lockfile contention) MUST also append a line with `outcome: "skipped_lock"` and MUST NOT increment `iterations_used`. Schema details in `references/loop-telemetry.md`.
+Every iteration appends a line to `.sdd/loop/work.history.jsonl` and emits the stdout status block. Skipped ticks (lockfile contention) MUST also append a line with `outcome: "skipped_lock"` and MUST NOT increment `iterations_used`. Schema details in `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md`.
 
 ### Loop Mode Rules
 
 - MUST NOT modify the runtime `/loop` skill — re-invocation cadence is `/loop`'s concern; the wrapped skill enforces only intra-iteration semantics
-- MUST acquire the lockfile on entry, before any other work, per `references/loop-primitives.md` § Acquisition flow
+- MUST acquire the lockfile on entry, before any other work, per `${CLAUDE_PLUGIN_ROOT}/references/loop-primitives.md` § Acquisition flow
 - MUST evaluate PID liveness as the **sole** staleness signal; worktree presence and team-membership state MUST NOT be consulted
 - MUST persist the budget atomically (write-temp + rename) on every tick
 - MUST record active ceilings on first write so `--resume` cannot silently widen them

@@ -13,7 +13,7 @@ Explore an existing codebase to discover implicit architectural decisions and sp
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
 1. **Parse the scope**: Extract the optional scope from `$ARGUMENTS`.
    - A directory path: `src/auth/` -- limit analysis to that subtree
@@ -27,11 +27,11 @@ Explore an existing codebase to discover implicit architectural decisions and sp
 
    <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 3 Staleness Threshold for Consumer Skills" -->
 
-   On entry, check the qmd index's last-modified timestamp for this repo's collections (use the exact-prefix match algorithm from `references/qmd-helpers.md` § "This-Repo Collection Identification"). If older than the configured staleness threshold (default 120m, set in CLAUDE.md `### SDD Configuration` `#### Index Freshness` `**Staleness Threshold**`), trigger a silent `qmd update` first and emit a one-line note in the report header: `Index was {age} stale — refreshed before running.` On fresh, proceed silently.
+   On entry, check the qmd index's last-modified timestamp for this repo's collections (use the exact-prefix match algorithm from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "This-Repo Collection Identification"). If older than the configured staleness threshold (default 120m, set in CLAUDE.md `### SDD Configuration` `#### Index Freshness` `**Staleness Threshold**`), trigger a silent `qmd update` first and emit a one-line note in the report header: `Index was {age} stale — refreshed before running.` On fresh, proceed silently.
 
 3. **Load existing design artifacts**:
    - Glob `{adr-dir}/ADR-*.md` and read each file's title, context, and decision outcome
-   - Glob `{spec-dir}/*/spec.md` and read each file's title and overview. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
+   - Glob `{spec-dir}/*/spec.md` and read each file's title and overview. Validate spec pairing per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation".
    - Build an exclusion list of already-documented decisions and subsystems
    - If neither directory exists, note that no existing artifacts were found (this is expected for first-time discovery)
 
@@ -79,7 +79,7 @@ Explore an existing codebase to discover implicit architectural decisions and sp
 
    Step 5 already removes findings that overlap with existing ADRs/specs from step 3 (which read the corpus directly). v5.0.0 adds a second-pass qmd-based check to catch near-duplicates that the prose-level overlap check missed. For each remaining suggestion:
 
-   1. Construct a qmd query per `references/qmd-helpers.md` § "Hybrid Retrieval" using the suggestion text:
+   1. Construct a qmd query per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval" using the suggestion text:
       - `lex`: the candidate suggestion's title + key technologies/concepts
       - `vec`: the candidate suggestion's one-sentence rationale
       - `intent: "/sdd:discover — rule out near-duplicates of existing decisions"`
@@ -111,11 +111,11 @@ Explore an existing codebase to discover implicit architectural decisions and sp
 
    1. **Extract query keywords**: From the ADR suggestion's decision title and evidence (technology names, subsystem names, pattern names), derive 2–4 key search terms. For example, a "Chose JWT for authentication" suggestion yields keywords `"JWT authentication"`.
 
-   2. **Determine scope**: If discovery is scoped to a specific directory (from Step 1) or `--module <name>` was passed, derive the `--module` argument for `/sdd:search` accordingly so qmd and cgg target only that subtree per `references/cgg-integration.md` § "Workspace-Mode Scoping".
+   2. **Determine scope**: If discovery is scoped to a specific directory (from Step 1) or `--module <name>` was passed, derive the `--module` argument for `/sdd:search` accordingly so qmd and cgg target only that subtree per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Workspace-Mode Scoping".
 
    3. **Invoke /sdd:search**: Run `/sdd:search "<keywords>" --output json` (with `--module <name>` appended when scoped). Parse the JSON response's `call_graphs[]` array.
 
-   4. **Embed if available**: If `call_graphs[0].mermaid` is non-null, embed the normalized Mermaid diagram in the ADR suggestion's `## Architecture Diagram` section in the discovery report, using the embedding format from `references/cgg-integration.md` § "Embedding in markdown":
+   4. **Embed if available**: If `call_graphs[0].mermaid` is non-null, embed the normalized Mermaid diagram in the ADR suggestion's `## Architecture Diagram` section in the discovery report, using the embedding format from `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Embedding in markdown":
 
       ````markdown
       <!-- Call graph: <filter used>, generated <YYYY-MM-DD> -->

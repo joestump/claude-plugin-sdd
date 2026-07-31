@@ -17,7 +17,7 @@ Starting v5.0.0, init also enforces a hardware/install precondition: the `qmd` C
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-**Module support**: If `$ARGUMENTS` contains `--module <name>`, resolve the module root using the Workspace Detection pattern from `references/shared-patterns.md`. All CLAUDE.md reads and writes in the steps below target the module's `CLAUDE.md` at the module root instead of the project root. If workspace detection finds no modules and `--module` is provided, error: "No modules detected. Run `/sdd:init` without `--module` first to set up workspace."
+**Module support**: If `$ARGUMENTS` contains `--module <name>`, resolve the module root using the Workspace Detection pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. All CLAUDE.md reads and writes in the steps below target the module's `CLAUDE.md` at the module root instead of the project root. If workspace detection finds no modules and `--module` is provided, error: "No modules detected. Run `/sdd:init` without `--module` first to set up workspace."
 
 ### Step -1: qmd Preflight (v5.0.0+)
 
@@ -116,7 +116,7 @@ If `.claude-plugin-design.json` exists:
 
 **Precondition**: Always runs. Each sub-check acts independently.
 
-**If CLAUDE.md does not exist**: Read the canonical template from `references/claude-md-template.md` and create CLAUDE.md with its contents plus any config section generated in Step 1. The template's `### SDD Skills` section contains a placeholder marker (`<!-- SDD-SKILLS-TABLE -->`) where the skills table belongs — generate the table via **Skills Table Generation** (Step 2b below) and replace the marker with the generated GFM table. Then skip to Step 3.
+**If CLAUDE.md does not exist**: Read the canonical template from `${CLAUDE_PLUGIN_ROOT}/references/claude-md-template.md` and create CLAUDE.md with its contents plus any config section generated in Step 1. The template's `### SDD Skills` section contains a placeholder marker (`<!-- SDD-SKILLS-TABLE -->`) where the skills table belongs — generate the table via **Skills Table Generation** (Step 2b below) and replace the marker with the generated GFM table. Then skip to Step 3.
 
 **If CLAUDE.md exists**, perform section-level convergence. Each sub-check below runs independently:
 
@@ -124,7 +124,7 @@ a. **Path references**: If `docs/adrs/` or `docs/openspec/specs/` are missing fr
 
 b. **Skills table**: Generate the canonical skills table dynamically by enumerating `skills/*/SKILL.md` in the plugin directory (the directory containing this `init/` skill — typically `${CLAUDE_PLUGIN_ROOT}/skills/` when the plugin is installed). Follow the procedure in **Skills Table Generation** below. For each plugin-owned skill row that is NOT present in the current CLAUDE.md's skills table (match by skill name in the first column, e.g., `/sdd:review`), insert it. Do NOT remove existing rows — the user may have added custom entries for third-party plugins or local skills, and those MUST be preserved (additive-only, per the Idempotency Rules below).
 
-   **Why dynamic, not template-driven**: The plugin's set of skills changes every release. A static template at `references/claude-md-template.md` would have to be hand-edited every time a new skill ships, and existing CLAUDE.md files would only pick up the addition if that hand-edit happened. Enumerating `skills/*/SKILL.md` at runtime makes adding a new skill a single drop-in operation — its row appears in the next `/sdd:init` run automatically.
+   **Why dynamic, not template-driven**: The plugin's set of skills changes every release. A static template at `${CLAUDE_PLUGIN_ROOT}/references/claude-md-template.md` would have to be hand-edited every time a new skill ships, and existing CLAUDE.md files would only pick up the addition if that hand-edit happened. Enumerating `skills/*/SKILL.md` at runtime makes adding a new skill a single drop-in operation — its row appears in the next `/sdd:init` run automatically.
 
 #### Skills Table Generation
 
@@ -180,7 +180,7 @@ d. **Session Coordination section**: If `### Session Coordination` heading is mi
 
 e. **SDD Configuration section**: If Step 1 produced config markdown and no `### SDD Configuration` section exists yet, append it at the end of the `## Architecture Context` section. If the section already exists, Step 1 already handled the merge.
 
-f. **qmd Assumption Note** (v5.0.0+, per SPEC-0019 REQ "qmd Assumption in Consumer Skills"): Read the canonical template's `### qmd Dependency` paragraph from `references/claude-md-template.md`. If the current CLAUDE.md's `## Architecture Context` section does not include this paragraph (match by the heading text "qmd Dependency"), append it after the existing intro paragraph and before the `### SDD Skills` heading. The paragraph documents that qmd-aware consumer skills MAY assume qmd is installed (because /sdd:init enforced it) and MUST NOT include conditional fallback paths — this gives future readers and contributors the v5 invariant in plain language.
+f. **qmd Assumption Note** (v5.0.0+, per SPEC-0019 REQ "qmd Assumption in Consumer Skills"): Read the canonical template's `### qmd Dependency` paragraph from `${CLAUDE_PLUGIN_ROOT}/references/claude-md-template.md`. If the current CLAUDE.md's `## Architecture Context` section does not include this paragraph (match by the heading text "qmd Dependency"), append it after the existing intro paragraph and before the `### SDD Skills` heading. The paragraph documents that qmd-aware consumer skills MAY assume qmd is installed (because /sdd:init enforced it) and MUST NOT include conditional fallback paths — this gives future readers and contributors the v5 invariant in plain language.
 
 **Duplicate prevention**: Before inserting any section, check for the section heading. Before inserting a skills table row, check for the skill name. This makes the step idempotent.
 
@@ -239,7 +239,7 @@ If `.gitmodules` does not exist, skip this step silently (single-module project 
 
 If `.gitmodules` exists:
 
-a. Parse it to extract submodule names and paths (using the algorithm in `references/shared-patterns.md` § "Workspace Detection > Step 1").
+a. Parse it to extract submodule names and paths (using the algorithm in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Workspace Detection > Step 1").
 
 b. Display the discovered submodules to the user.
 
@@ -312,7 +312,7 @@ Created CLAUDE.md with architecture context.
 
 ## Content Reference
 
-When creating a new CLAUDE.md or checking for drift in any **non-skills-table** section (intro paragraph, qmd Dependency, Workflow, Session Coordination, Governing Comments), read the canonical content from the plugin's `references/claude-md-template.md` file. That file is the source of truth for everything except the `### SDD Skills` table.
+When creating a new CLAUDE.md or checking for drift in any **non-skills-table** section (intro paragraph, qmd Dependency, Workflow, Session Coordination, Governing Comments), read the canonical content from the plugin's `${CLAUDE_PLUGIN_ROOT}/references/claude-md-template.md` file. That file is the source of truth for everything except the `### SDD Skills` table.
 
 The `### SDD Skills` table is generated dynamically from `skills/*/SKILL.md` frontmatter — see **Skills Table Generation** under Step 2b. The template file contains a `<!-- SDD-SKILLS-TABLE -->` placeholder marker in the skills section; the running skill replaces that marker with the generated table when materializing a fresh CLAUDE.md, and uses the same generation procedure to drive convergence against an existing CLAUDE.md. The static template MUST NOT be hand-edited to add a new skill row — adding a new directory under `skills/` with a valid `SKILL.md` is sufficient for `/sdd:init` to start emitting that row on its next run.
 
@@ -350,8 +350,8 @@ Each component is independently idempotent:
 - MUST write `### Workspace Modules` table in root CLAUDE.md when workspace is detected
 - MUST skip submodules that already have CLAUDE.md (unless user explicitly requests update)
 - When `.gitmodules` and `.claude-plugin-design.json` both exist, migration (Step 1) runs before workspace setup (Step 4)
-- MUST read canonical template from `references/claude-md-template.md` for section-level diffing of non-skills-table content — never hardcode template content in this skill
-- MUST generate the `### SDD Skills` table dynamically by enumerating `skills/*/SKILL.md` frontmatter at runtime (see **Skills Table Generation** under Step 2b) — adding a new skill MUST NOT require editing `references/claude-md-template.md`
+- MUST read canonical template from `${CLAUDE_PLUGIN_ROOT}/references/claude-md-template.md` for section-level diffing of non-skills-table content — never hardcode template content in this skill
+- MUST generate the `### SDD Skills` table dynamically by enumerating `skills/*/SKILL.md` frontmatter at runtime (see **Skills Table Generation** under Step 2b) — adding a new skill MUST NOT require editing `${CLAUDE_PLUGIN_ROOT}/references/claude-md-template.md`
 - MUST preserve user-added rows in the `### SDD Skills` table during convergence — rows whose skill name does not match any enumerated plugin skill MUST remain in their original position (additive-only, per Idempotency Rules)
 - MUST display component status scan before making changes
 - MUST report all changes in the final component status table

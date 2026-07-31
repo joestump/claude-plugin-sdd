@@ -19,7 +19,7 @@ When creating a new spec from scratch, both files are created together — align
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is referred to as `{spec-dir}` below.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is referred to as `{spec-dir}` below.
 
 1. **Determine the capability name**: Use kebab-case (e.g., `web-dashboard`, `webhook-trigger`). If converting from an ADR, derive from the ADR title. If `$ARGUMENTS` is empty (ignoring flags like `--review` and `--module`), use `AskUserQuestion` to ask the user what capability they want to specify.
 
@@ -33,7 +33,7 @@ When creating a new spec from scratch, both files are created together — align
 
    Before drafting, qmd-search the existing spec corpus to find related prior specs whose IDs SHOULD appear in the new spec's frontmatter as `requires`, `extends`, or `supersedes` edges. Also search ADRs to identify which ADRs the new spec should declare it `implements`.
 
-   1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval":
+   1. Construct a hybrid query per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval":
       - `lex`: capability name + key technologies/concepts
       - `vec`: a one-sentence framing of what the new spec covers
       - `intent: "/sdd:spec — find related prior specs and governing ADRs to suggest as frontmatter edges"`
@@ -79,16 +79,16 @@ When creating a new spec from scratch, both files are created together — align
 
    **When user answers yes**:
 
-   1. **Availability check**: Run `which cgg >/dev/null 2>&1` per `references/cgg-integration.md` § "Availability Check". If cgg is not found, surface the one-line unavailability notice from that section and skip to Step 5 — write spec.md without an `## Implementation` section.
+   1. **Availability check**: Run `which cgg >/dev/null 2>&1` per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Availability Check". If cgg is not found, surface the one-line unavailability notice from that section and skip to Step 5 — write spec.md without an `## Implementation` section.
 
-   2. **Extract requirement keywords**: For each `### Requirement:` section heading in the drafted spec.md, extract the requirement name (text after `### Requirement:`). Apply the **From requirement keywords** filter derivation from `references/cgg-integration.md` § "Filter Derivation Strategy":
+   2. **Extract requirement keywords**: For each `### Requirement:` section heading in the drafted spec.md, extract the requirement name (text after `### Requirement:`). Apply the **From requirement keywords** filter derivation from `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Filter Derivation Strategy":
       - Lowercase and split on spaces/punctuation
       - Strip common stop words
       - Compose a regex alternation from remaining terms (e.g., `payment|processing|token|validation`)
 
    3. **Find implementing code files via qmd**: Search the `{repo}-code` collection (or `{repo}-{module}-code` in workspace mode) using the requirement keywords as query terms. This surfaces the file paths most likely to implement each requirement.
 
-   4. **Invoke cgg**: Use the invocation pattern from `references/cgg-integration.md` § "cgg Invocation Pattern":
+   4. **Invoke cgg**: Use the invocation pattern from `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "cgg Invocation Pattern":
       - Derive `--filter` by combining qmd file-path stems with requirement keyword terms per § "Filter Derivation Strategy" → "From qmd code matches"
       - Apply the 20-node cap and Mermaid normalization per § "Node cap" and § "Mermaid Output Normalization"
       - Handle all exit codes and degradation cases per § "Exit code handling" and § "Graceful Degradation"
@@ -142,14 +142,14 @@ When creating a new spec from scratch, both files are created together — align
       Preserve the prior Mermaid block exactly as it appeared in the existing spec.md.
 
 5. **Write both files**:
-   - `{spec-dir}/{capability-name}/spec.md` — include the user-confirmed frontmatter edges from Step 3a (per the canonical edge schema in `references/shared-patterns.md` § "Graph Edge Resolution")
+   - `{spec-dir}/{capability-name}/spec.md` — include the user-confirmed frontmatter edges from Step 3a (per the canonical edge schema in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Graph Edge Resolution")
    - `{spec-dir}/{capability-name}/design.md`
 
 5a. **Tier 1 mutation update** (v5.0.0+):
 
    <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 1 Mutation-Aware Updates" -->
 
-   After writing both files, trigger a narrow re-sync of `{repo}-specs` so the qmd index reflects the new artifacts. Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns" → "Narrow update". Synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{repo}-specs` — run `/sdd:index update` manually") but report the spec creation itself as successful.
+   After writing both files, trigger a narrow re-sync of `{repo}-specs` so the qmd index reflects the new artifacts. Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns" → "Narrow update". Synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{repo}-specs` — run `/sdd:index update` manually") but report the spec creation itself as successful.
 
 6. **Clean up** the team when done (if `--review` was used).
 
@@ -166,7 +166,7 @@ When creating a new spec from scratch, both files are created together — align
 
 ### Team Handoff Protocol (only for `--review` mode)
 
-Follow the standard team handoff protocol from the plugin's `references/shared-patterns.md`. The drafter is the spec-writer; the reviewer is the architect who checks both spec.md and design.md against the Rules checklist below.
+Follow the standard team handoff protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. The drafter is the spec-writer; the reviewer is the architect who checks both spec.md and design.md against the Rules checklist below.
 
 ## Web-Facing Detection and Security Injection
 
@@ -481,7 +481,7 @@ date: {YYYY-MM-DD}
   - **Accessibility section present for UI-facing specs** (Governing: ADR-0019, SPEC-0016)
 - If converting from an ADR, reference the ADR number in the spec's Overview section
 - design.md MUST include at least one Mermaid architecture diagram. Prefer C4 context/container diagrams for system-level, sequence diagrams for flows, and ERDs for data models.
-- When implementing code governed by this spec, agents MUST leave governing comments per `references/shared-patterns.md` § "Governing Comment Format": `// Governing: ADR-XXXX (desc), SPEC-XXXX REQ "Requirement Name"`
+- When implementing code governed by this spec, agents MUST leave governing comments per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Governing Comment Format": `// Governing: ADR-XXXX (desc), SPEC-XXXX REQ "Requirement Name"`
 - For web-facing specs: MUST inject the Security Requirements section covering authentication, rate limiting, security headers, body size limits, CSRF protection, and redirect validation (Governing: ADR-0018, SPEC-0016 REQ "Mandatory Security Section in Web Specs")
 - For web-facing specs: MUST apply auth-by-default — every endpoint defaults to "Auth: Required"; public endpoints need "Auth: Public" with explicit justification (Governing: ADR-0018, SPEC-0016 REQ "Auth-by-Default")
 - MUST NOT inject the Security Requirements section for non-web specs (CLI tools, libraries, batch jobs, data migrations, background workers)
@@ -496,8 +496,8 @@ date: {YYYY-MM-DD}
 - ALL backend quality guidelines MUST be language-agnostic — use "structured logging" not "slog", "error wrapping" not "%w", "project manifest" not "go.mod", "parallel workers" not "goroutines"
 - MUST NOT inject backend quality requirements for non-backend specs (static docs, pure frontend, CSS, declarative config)
 - **v5.1.0+ call graph (opt-in)**: MUST use `AskUserQuestion` with text "Generate call graphs showing current implementation scope? (yes / no / skip)" AFTER requirements are drafted and BEFORE writing files (Step 4b). Default to **no** on timeout or in batch mode (Governing: ADR-0033, SPEC-0034 REQ "Call Graph Generation Uses cgg With Filtering")
-- **v5.1.0+ call graph (opt-in)**: When user answers yes, MUST probe for cgg availability before invoking; if unavailable, surface the one-line notice from `references/cgg-integration.md` § "Availability Check" and write spec.md without `## Implementation` section — no hard failure (Governing: ADR-0033, SPEC-0034)
-- **v5.1.0+ call graph (opt-in)**: When generating, MUST derive `--filter` from requirement keywords per `references/cgg-integration.md` § "Filter Derivation Strategy" → "From requirement keywords"; MUST apply 20-node cap and Mermaid normalization per that reference; MUST handle all exit codes and degradation cases (Governing: SPEC-0034 REQ "Call Graph Generation Uses cgg With Filtering")
+- **v5.1.0+ call graph (opt-in)**: When user answers yes, MUST probe for cgg availability before invoking; if unavailable, surface the one-line notice from `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Availability Check" and write spec.md without `## Implementation` section — no hard failure (Governing: ADR-0033, SPEC-0034)
+- **v5.1.0+ call graph (opt-in)**: When generating, MUST derive `--filter` from requirement keywords per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Filter Derivation Strategy" → "From requirement keywords"; MUST apply 20-node cap and Mermaid normalization per that reference; MUST handle all exit codes and degradation cases (Governing: SPEC-0034 REQ "Call Graph Generation Uses cgg With Filtering")
 - **v5.1.0+ call graph (opt-in)**: The `## Implementation` section MUST list each requirement name alongside the functions from the call graph in the format: `**REQ "{name}"**: functions \`fn_a()\` → \`fn_b()\` → \`fn_c()\`` (Governing: SPEC-0034)
 - **v5.1.0+ call graph (opt-in)**: When user answers no or skip, MUST write spec.md without `## Implementation` section; MUST NOT produce any error or deviation from normal workflow (Governing: SPEC-0034)
 - **v5.1.0+ call graph (opt-in)**: When `/sdd:spec --update SPEC-XXXX` is used and existing spec.md already has `## Implementation`, MUST produce side-by-side "Before" / "After" Mermaid blocks preserving the prior block exactly as it appeared (Governing: SPEC-0034)
@@ -516,7 +516,7 @@ Specs MAY declare relationships to other artifacts via optional frontmatter fiel
 | `extends` | Behavioral extension of another spec | `extends: [SPEC-0007]` |
 | `supersedes` | Hard replacement — referenced spec moves to status `deprecated` | `supersedes: [SPEC-0XXX]` |
 
-**Forward-only convention.** Only forward edges are authored. Reverse edges (`governed-by`, `implemented-by`, `depended-on-by`, `extended-by`) are derived by `/sdd:graph` at build time and MUST NOT appear in frontmatter — the graph builder will reject them with a warning. See `references/shared-patterns.md` § "Graph Edge Resolution" for the full forward→inverse derivation table.
+**Forward-only convention.** Only forward edges are authored. Reverse edges (`governed-by`, `implemented-by`, `depended-on-by`, `extended-by`) are derived by `/sdd:graph` at build time and MUST NOT appear in frontmatter — the graph builder will reject them with a warning. See `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Graph Edge Resolution" for the full forward→inverse derivation table.
 
 **Cross-module edges (workspace mode).** When referencing artifacts in another module, use the quoted `[module]/ID` syntax: `requires: ["[shared-lib]/SPEC-0001"]`. The unquoted form `[[shared-lib]/SPEC-0001]` parses as YAML nested lists and will be rejected.
 

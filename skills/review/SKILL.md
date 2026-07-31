@@ -14,13 +14,13 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
 <!-- Governing: ADR-0028 (/loop Autonomous Mode), SPEC-0020 REQ "Lockfile Schema and Acquisition", SPEC-0020 REQ "Budget Schema and Persistence", SPEC-0020 REQ "Telemetry Schema", SPEC-0020 REQ "Resume Contract", SPEC-0020 REQ "Resume Contract Reconciliation" -->
 
-> **Loop Mode (V1, opt-in).** When invoked under `/loop` with the `--loop` flag (and optionally `--pr <N>` for single-PR watch mode), this skill enters autonomous-mode and uses the lockfile + budget primitives documented in `references/loop-primitives.md` (acquired on entry, released on exit) and the telemetry + resume contract documented in `references/loop-telemetry.md` (every iteration appends a `history.jsonl` line; `--resume` reconciles `tracked_prs[]` via SHA equality with `head_sha_at_iteration_end`). The full CLI surface, the active stop conditions (#2 / #3 / #5 / #6 / #8 / #9 / #10 / #11 / #12, with #4 inactive in single-PR mode), and the review-side gates (ambiguous-criteria, budget-escalation, post-feedback-merge, force-unlock, repeated-failure — note: ADR-0010's bounded one-round invariant is preserved per iteration) are wired in story #145 (SPEC-0020). Without `--loop`, behavior is unchanged from the rest of this document and no `.sdd/loop/` artifacts are created.
+> **Loop Mode (V1, opt-in).** When invoked under `/loop` with the `--loop` flag (and optionally `--pr <N>` for single-PR watch mode), this skill enters autonomous-mode and uses the lockfile + budget primitives documented in `${CLAUDE_PLUGIN_ROOT}/references/loop-primitives.md` (acquired on entry, released on exit) and the telemetry + resume contract documented in `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md` (every iteration appends a `history.jsonl` line; `--resume` reconciles `tracked_prs[]` via SHA equality with `head_sha_at_iteration_end`). The full CLI surface, the active stop conditions (#2 / #3 / #5 / #6 / #8 / #9 / #10 / #11 / #12, with #4 inactive in single-PR mode), and the review-side gates (ambiguous-criteria, budget-escalation, post-feedback-merge, force-unlock, repeated-failure — note: ADR-0010's bounded one-round invariant is preserved per iteration) are wired in story #145 (SPEC-0020). Without `--loop`, behavior is unchanged from the rest of this document and no `.sdd/loop/` artifacts are created.
 
 ## Process
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
 
 1. **Parse arguments**: Parse `$ARGUMENTS`.
 
@@ -35,7 +35,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
    - `--dry-run`: Preview which PRs would be reviewed without taking any action. Default: off.
    - `--module <name>`: Resolve artifact paths relative to the named module. Default: none.
 
-2. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `references/shared-patterns.md`, but only GitHub, GitLab, and Gitea are supported (PR/MR capability required). If the saved tracker is Beads, Jira, or Linear, inform the user that `/sdd:review` requires a tracker with PR support.
+2. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`, but only GitHub, GitLab, and Gitea are supported (PR/MR capability required). If the saved tracker is Beads, Jira, or Linear, inform the user that `/sdd:review` requires a tracker with PR support.
 
 3. **Discover target PRs**: Search the tracker for open PRs matching the target.
    - **GitHub**: `gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url --limit 50` or `gh pr view {number} --json number,title,headRefName,body,url` for explicit PR numbers.
@@ -83,14 +83,14 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
    <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills" -->
 
-   Before computing the topological merge order (Step 11a) and before reviewers query for missing ADR/issue references (Step 4a), sync the `{repo}-issues` qmd collection from the tracker. Subject to the 5-min dedup window per `references/tracker-sync.md` § "Cursor Management".
+   Before computing the topological merge order (Step 11a) and before reviewers query for missing ADR/issue references (Step 4a), sync the `{repo}-issues` qmd collection from the tracker. Subject to the 5-min dedup window per `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md` § "Cursor Management".
 
    1. Read `.sdd/issues/_meta.json`. If `last_sync` is within the last 5 minutes, skip the sync silently.
-   2. Otherwise, invoke per-tracker fetch+normalize per `references/tracker-sync.md`. Print: "Syncing N issues from {tracker}…".
+   2. Otherwise, invoke per-tracker fetch+normalize per `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md`. Print: "Syncing N issues from {tracker}…".
    3. On sync failure, surface a one-line warning per `tracker-sync.md` § "Failure Modes and Degradation" and proceed with live tracker queries (the pre-v5 path) for this run. Do NOT block; PR review is the user's primary intent.
 
 4. **Load architecture context** (Governing: SPEC-0009 REQ "Architecture Context Loading"):
-   - If a spec identifier is provided or can be inferred from PR metadata (e.g., PR body contains "SPEC-XXXX"), read `spec.md`, `design.md`, and any referenced ADRs from the resolved spec directory. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
+   - If a spec identifier is provided or can be inferred from PR metadata (e.g., PR body contains "SPEC-XXXX"), read `spec.md`, `design.md`, and any referenced ADRs from the resolved spec directory. Validate spec pairing per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation".
    - If no governing spec can be inferred (e.g., PRs specified by number with no spec reference), proceed with general code review only and note in the report that spec compliance could not be verified.
    - This context will be sent to all reviewer agents.
 
@@ -102,7 +102,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
    For each PR being reviewed:
 
-   1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval" derived from the PR's diff:
+   1. Construct a hybrid query per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval" derived from the PR's diff:
       - `lex`: keywords from the PR title + file path basenames + named symbols touched
       - `vec`: a one-sentence summary of what the PR changes
       - `intent: "/sdd:review — find ADRs and prior issues this PR should reference"`
@@ -117,7 +117,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
    4. On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error and stop. Per ADR-0024, no fallback in v5.
 
-5. **Read review config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `references/shared-patterns.md`. Read the `#### Review` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Max Pairs`=2, `Merge Strategy`="squash", `Auto Cleanup`=false. CLI flags override: `--pairs N` overrides `Max Pairs`, `--no-merge` prevents merging.
+5. **Read review config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Read the `#### Review` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Max Pairs`=2, `Merge Strategy`="squash", `Auto Cleanup`=false. CLI flags override: `--pairs N` overrides `Max Pairs`, `--no-merge` prevents merging.
 
 6. **Dry-run gate**: If `--dry-run` is set, output a preview table and stop:
 
@@ -207,7 +207,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
        - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to merge.
        - **GitLab**: Use MCP tools or `glab mr merge`.
        - The tracker's native close-on-merge behavior will automatically close the linked story issue.
-    5a. **Tier 1 mutation update on merge** (v5.0.0+, Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates"): After a successful merge, trigger narrow re-syncs of BOTH `{repo}-code` (the merge changed code) AND `{repo}-issues` (the linked story issue closed). Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns". Best-effort and silent on success. On failure of either, append a one-line warning to the run log ("Index refresh failed for `{collection}` after merging PR #{N} — run `/sdd:index update` manually") but the merge itself is reported as successful.
+    5a. **Tier 1 mutation update on merge** (v5.0.0+, Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates"): After a successful merge, trigger narrow re-syncs of BOTH `{repo}-code` (the merge changed code) AND `{repo}-issues` (the linked story issue closed). Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns". Best-effort and silent on success. On failure of either, append a one-line warning to the run log ("Index refresh failed for `{collection}` after merging PR #{N} — run `/sdd:index update` manually") but the merge itself is reported as successful.
     6. **Close parent epic if all stories are done**: After a successful merge, check whether the closed story's parent epic should also be closed:
        a. Parse the PR body for an epic reference (e.g., `Part of #XX` or the configured `Ref Keyword` from CLAUDE.md `PR Conventions`). If no epic reference is found, skip this step.
        b. Fetch the epic issue and extract its child story references. Read the `PR Conventions > Ref Keyword` from CLAUDE.md config (default: "Part of") and use it to find child issues:
@@ -287,7 +287,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
 - MUST load spec and design context before dispatching reviewers
 - MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
-- MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
+- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to read configuration from CLAUDE.md
 - MUST use round-robin distribution across pairs (Governing: SPEC-0009 REQ "PR Distribution")
 - MUST limit to exactly one review-response round per PR — no unbounded iteration (Governing: ADR-0010)
 - Reviewers MUST reference spec acceptance criteria in their reviews — not just style (Governing: SPEC-0009 REQ "Review Protocol")
@@ -339,13 +339,13 @@ When `--loop` is set, `/sdd:review` accepts the following additional flags. All 
 | `--budget-file PATH` | `.sdd/loop/review.budget.json` | Override the budget-file location |
 | `--pr N` | none | Single-PR watch mode — see "Single-PR Review Loop Semantics" below |
 
-The first write of `budget.json` records the active ceilings (per `references/loop-primitives.md` § First-write rule) so a later `--resume` cannot silently widen them.
+The first write of `budget.json` records the active ceilings (per `${CLAUDE_PLUGIN_ROOT}/references/loop-primitives.md` § First-write rule) so a later `--resume` cannot silently widen them.
 
 ### Per-tick flow
 
 Each tick follows this canonical flow:
 
-1. **Acquire lockfile** at `.sdd/loop/review.lock` per `references/loop-primitives.md` § Acquisition flow (skip / wait / force per `--lock`).
+1. **Acquire lockfile** at `.sdd/loop/review.lock` per `${CLAUDE_PLUGIN_ROOT}/references/loop-primitives.md` § Acquisition flow (skip / wait / force per `--lock`).
 2. **Read budget** from `.sdd/loop/review.budget.json`; on first write, initialize ceilings, `started_at`, and `rate_table_source`.
 3. **Evaluate stop conditions on entry** (see "Stop conditions" below). Any matching condition halts the loop, emits the final report, and releases the lockfile.
 4. **Run the gate block** (see "AskUserQuestion Gates" below).
@@ -354,7 +354,7 @@ Each tick follows this canonical flow:
 7. **Run the review round** for each non-deferred PR — exactly one round per PR per iteration (ADR-0010 invariant).
 8. **Before merging an APPROVED PR**, evaluate the **Post-Feedback-Merge** gate (see below).
 9. **Update budget** — increment `iterations_used`, `comments_pushed` (top-level + replies both count, per SPEC-0020 REQ "Budget Schema — comments_pushed Definition"), `merges_attempted`, `agents_dispatched`, `tokens_in`/`tokens_out`, recompute `dollars_estimate`, evaluate exit-time stop conditions 3 / 5 / 12 (and #4 in multi-PR mode).
-10. **Emit telemetry** — append a line to `.sdd/loop/review.history.jsonl` (per `references/loop-telemetry.md`) and emit the stdout status block.
+10. **Emit telemetry** — append a line to `.sdd/loop/review.history.jsonl` (per `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md`) and emit the stdout status block.
 11. **Release lockfile** and let `/loop` schedule the next tick.
 
 ### Stop conditions
@@ -385,7 +385,7 @@ The loop reads exit status first; on non-zero, scans stderr for the sentinel as 
 
 ### AskUserQuestion gates
 
-All gates are re-evaluated **on every tick** (per SPEC-0020 REQ "Gates Are Not Debounced Across Iterations") — the skill MUST NOT cache or reuse a prior iteration's answer. Each invocation is captured verbatim in the iteration's `gates[]` array per `references/loop-telemetry.md`.
+All gates are re-evaluated **on every tick** (per SPEC-0020 REQ "Gates Are Not Debounced Across Iterations") — the skill MUST NOT cache or reuse a prior iteration's answer. Each invocation is captured verbatim in the iteration's `gates[]` array per `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md`.
 
 The review-side gate set is:
 
@@ -458,16 +458,16 @@ When the loop halts for any reason, the wrapped skill MUST emit a final report *
 
 ### Resume
 
-`--resume` recovers state from the most recent `history.jsonl` line per `references/loop-telemetry.md` § Resume Contract. Counters are restored; gate evaluations are recomputed; the lockfile is treated as stale per the PID-liveness rule; `tracked_prs[]` is reconciled by SHA equality (silent re-attach on match, resume-divergence gate on mismatch, skip on terminal state) — no external probing substituted.
+`--resume` recovers state from the most recent `history.jsonl` line per `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md` § Resume Contract. Counters are restored; gate evaluations are recomputed; the lockfile is treated as stale per the PID-liveness rule; `tracked_prs[]` is reconciled by SHA equality (silent re-attach on match, resume-divergence gate on mismatch, skip on terminal state) — no external probing substituted.
 
 ### Telemetry
 
-Every iteration appends a line to `.sdd/loop/review.history.jsonl` and emits the stdout status block. Skipped ticks (lockfile contention) MUST also append a line with `outcome: "skipped_lock"` and MUST NOT increment `iterations_used`. Schema details in `references/loop-telemetry.md`.
+Every iteration appends a line to `.sdd/loop/review.history.jsonl` and emits the stdout status block. Skipped ticks (lockfile contention) MUST also append a line with `outcome: "skipped_lock"` and MUST NOT increment `iterations_used`. Schema details in `${CLAUDE_PLUGIN_ROOT}/references/loop-telemetry.md`.
 
 ### Loop Mode Rules
 
 - MUST NOT modify the runtime `/loop` skill — re-invocation cadence is `/loop`'s concern; the wrapped skill enforces only intra-iteration semantics
-- MUST acquire the lockfile on entry, before any other work, per `references/loop-primitives.md` § Acquisition flow
+- MUST acquire the lockfile on entry, before any other work, per `${CLAUDE_PLUGIN_ROOT}/references/loop-primitives.md` § Acquisition flow
 - MUST evaluate PID liveness as the **sole** staleness signal
 - MUST persist the budget atomically (write-temp + rename) on every tick
 - MUST record active ceilings on first write so `--resume` cannot silently widen them

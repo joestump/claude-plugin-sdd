@@ -29,7 +29,7 @@ use `/sdd:respond` to address the review someone left on your PR.
 ## Process
 
 0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern in
-   the plugin's `references/shared-patterns.md` to determine the spec directory.
+   the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the spec directory.
    If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that
    module. The resolved spec directory is `{spec-dir}`.
 
@@ -64,7 +64,7 @@ use `/sdd:respond` to address the review someone left on your PR.
    report the conflict and ask the user which they meant via `AskUserQuestion`.
 
 2. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's
-   `references/shared-patterns.md`. Only **GitHub**, **GitLab**, and **Gitea** are
+   `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Only **GitHub**, **GitLab**, and **Gitea** are
    supported (PR/MR review capability is required). If the saved tracker is Beads,
    Jira, or Linear, inform the user that `/sdd:respond` requires a tracker with PR
    review support and stop.
@@ -98,7 +98,7 @@ use `/sdd:respond` to address the review someone left on your PR.
 4. **Load architecture context**: If the PR body or branch name references a spec
    (e.g., `SPEC-0009`) or governing ADRs, read `spec.md`, `design.md`, and the
    referenced ADRs from `{spec-dir}`. Validate spec pairing per
-   `references/shared-patterns.md` § "Spec Pairing Validation". This lets you
+   `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation". This lets you
    judge feedback against the governing requirements — and reject (with a polite,
    sourced reply) any requested change that would violate a spec or ADR, rather
    than silently complying. If no governing spec can be inferred, proceed with
@@ -145,7 +145,7 @@ use `/sdd:respond` to address the review someone left on your PR.
    2. Address each **fix** item. Keep changes scoped to the feedback — do not
       opportunistically refactor unrelated code.
    3. Where changes touch code governed by an ADR or spec, add or update the
-      file-level **governing comment** block per `references/shared-patterns.md`
+      file-level **governing comment** block per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`
       § "Governing Comment Format".
    4. Run the project's tests and linters. If a fix can't be made to pass, do not
       push a broken state silently — reclassify the item as **reply** and explain
@@ -191,7 +191,7 @@ use `/sdd:respond` to address the review someone left on your PR.
    The issue body MUST link back to the source: the PR number, the review thread
    URL, and the governing spec/ADR if one applies. Apply a tracker label such as
    `follow-up` when the **Try-Then-Create Label Pattern** in
-   `references/shared-patterns.md` confirms it exists or can be created. In an
+   `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` confirms it exists or can be created. In an
    interactive session, confirm via `AskUserQuestion` before creating issues
    (filing trackable work is outward-facing); in non-interactive/CI runs, file
    them and list every created issue in the summary. With `--no-defer-issues`,

@@ -17,7 +17,7 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
    In Story 2 the helper accepts a single root and a single ADR/spec dir per invocation. Workspace-mode aggregation (multiple modules, `[module]/ID` prefixes) lands in Story 5.
 
@@ -299,9 +299,9 @@ The helper is stdlib-only — no PyYAML dependency. The frontmatter parser is in
 
 ## Cross-references
 
-- **Schema**: `references/shared-patterns.md` § "Graph Edge Resolution"
+- **Schema**: `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Graph Edge Resolution"
 - **Author surfaces**: `skills/adr/SKILL.md` § "Graph Edge Frontmatter", `skills/spec/SKILL.md` § "Graph Edge Frontmatter"
-- **Code-edge format**: `references/shared-patterns.md` § "Governing Comment Format"
+- **Code-edge format**: `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Governing Comment Format"
 - **Canonical spec**: `docs/openspec/specs/artifact-graph/spec.md` (SPEC-0018)
 - **Canonical decision**: `docs/adrs/ADR-0023-frontmatter-dag-and-graph-skill.md`
 

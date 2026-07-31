@@ -14,7 +14,7 @@ Update the status of an ADR or spec, **preserving the file's existing status for
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
 1. **Parse arguments**: Extract the identifier and new status from `$ARGUMENTS`.
    - Identifier: `ADR-XXXX` or `SPEC-XXXX` (or a capability name for specs)
@@ -65,7 +65,7 @@ Update the status of an ADR or spec, **preserving the file's existing status for
 
    <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 1 Mutation-Aware Updates" -->
 
-   After updating the status field, trigger a narrow re-sync of the qmd collection containing the artifact whose status changed — `{repo}-adrs` for ADRs, `{repo}-specs` for specs (or per-module variant in workspace mode per `references/qmd-helpers.md` § "This-Repo Collection Identification"). Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns" → "Narrow update". Synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{collection}` — run `/sdd:index update` manually") but report the status change itself as successful.
+   After updating the status field, trigger a narrow re-sync of the qmd collection containing the artifact whose status changed — `{repo}-adrs` for ADRs, `{repo}-specs` for specs (or per-module variant in workspace mode per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "This-Repo Collection Identification"). Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns" → "Narrow update". Synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{collection}` — run `/sdd:index update` manually") but report the status change itself as successful.
 
 ## Rules
 

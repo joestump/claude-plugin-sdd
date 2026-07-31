@@ -16,11 +16,11 @@ You are breaking down an existing specification into trackable work items (epics
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
 1. **Identify the target spec and parse flags**: Parse `$ARGUMENTS`.
 
-   **Spec resolution:** Follow the standard flow in the plugin's `references/shared-patterns.md` § "Spec Resolution" (which uses `{spec-dir}` from the Artifact Path Resolution pattern).
+   **Spec resolution:** Follow the standard flow in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Resolution" (which uses `{spec-dir}` from the Artifact Path Resolution pattern).
 
    **Flag parsing:**
    - `--scrum`: Enable scrum ceremony mode (see Scrum Mode section below). Default: off. Mutually exclusive with: `--review`.
@@ -37,7 +37,7 @@ You are breaking down an existing specification into trackable work items (epics
 
    **If `--scrum` is set, skip to the Scrum Mode section after completing step 1. Do not proceed through steps 2–8 in sequence — scrum mode orchestrates them internally.**
 
-2. **Read the spec**: Read both `{spec-dir}/{capability-name}/spec.md` and `{spec-dir}/{capability-name}/design.md` to understand the full scope of requirements, scenarios, and architecture. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation". If either spec.md or design.md is missing, error and suggest `/sdd:spec`.
+2. **Read the spec**: Read both `{spec-dir}/{capability-name}/spec.md` and `{spec-dir}/{capability-name}/design.md` to understand the full scope of requirements, scenarios, and architecture. Validate spec pairing per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation". If either spec.md or design.md is missing, error and suggest `/sdd:spec`.
 
 3. **Choose drafting mode**: Check if `$ARGUMENTS` contains `--review`.
 
@@ -97,7 +97,7 @@ Spawn the five specialist agents and distribute all stories for parallel review.
 > High-bar reviewer. Find problems: vague requirements, hidden scope, incorrect spec/ADR references. APPROVE only with explicit one-sentence justification. Do not soften feedback.
 
 **Architect**
-> Verify governing comments (per `references/shared-patterns.md` § "Governing Comment Format"), ADR references in acceptance criteria, design.md existence, and WHEN/THEN alignment with design.md. Verdict: APPROVED, REVISE, or DEFER.
+> Verify governing comments (per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Governing Comment Format"), ADR references in acceptance criteria, design.md existence, and WHEN/THEN alignment with design.md. Verdict: APPROVED, REVISE, or DEFER.
 
 **Collecting feedback:**
 
@@ -159,21 +159,21 @@ Ordered for implementation (dependencies respected):
 
 ---
 
-4. **Detect the issue tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Read the `### SDD Configuration` section from CLAUDE.md for tracker type, tracker-specific config (GitHub/Gitea/GitLab: Owner/Repo, Jira: Project Key, Linear: Team ID, Beads: no extra config), plus Branch Conventions, PR Conventions, and Projects settings used in steps 5–7. When the user selects a tracker for the first time, offer to save the configuration to the `### SDD Configuration` section in CLAUDE.md.
+4. **Detect the issue tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Read the `### SDD Configuration` section from CLAUDE.md for tracker type, tracker-specific config (GitHub/Gitea/GitLab: Owner/Repo, Jira: Project Key, Linear: Team ID, Beads: no extra config), plus Branch Conventions, PR Conventions, and Projects settings used in steps 5–7. When the user selects a tracker for the first time, offer to save the configuration to the `### SDD Configuration` section in CLAUDE.md.
 
 4a. **Tier 4 issues sync** (v5.0.0+):
 
    <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills" -->
 
-   Before grouping requirements into stories (Step 5.2), sync the `{repo}-issues` qmd collection from the tracker so the planner sees current issue state. Subject to the 5-minute deduplication window in `.sdd/issues/_meta.json` (per `references/tracker-sync.md` § "Cursor Management").
+   Before grouping requirements into stories (Step 5.2), sync the `{repo}-issues` qmd collection from the tracker so the planner sees current issue state. Subject to the 5-minute deduplication window in `.sdd/issues/_meta.json` (per `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md` § "Cursor Management").
 
    1. Read `.sdd/issues/_meta.json`. If `last_sync` is within the last 5 minutes, skip the sync silently.
-   2. Otherwise, invoke per-tracker fetch+normalize per `references/tracker-sync.md`. Print: "Syncing N issues from {tracker}…".
+   2. Otherwise, invoke per-tracker fetch+normalize per `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md`. Print: "Syncing N issues from {tracker}…".
    3. On sync failure, surface a one-line warning per `tracker-sync.md` § "Failure Modes and Degradation" and proceed with live tracker queries (the pre-v5 path) for this run. Do NOT block; planning is the user's primary intent.
 
 5. **Create issues in the detected tracker**:
 
-   **5.1: Create an epic.** Create an epic (or equivalent) for the specification itself, titled "Implement {Capability Title}" with a body referencing the spec number and linking to the spec/design files. Apply the `epic` label using the try-then-create pattern (see `references/shared-patterns.md`). (Governing: SPEC-0011 REQ "Auto-Create Labels")
+   **5.1: Create an epic.** Create an epic (or equivalent) for the specification itself, titled "Implement {Capability Title}" with a body referencing the spec number and linking to the spec/design files. Apply the `epic` label using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`). (Governing: SPEC-0011 REQ "Auto-Create Labels")
 
    **5.1a: qmd-aware issue duplicate check** (v5.0.0+):
 
@@ -181,7 +181,7 @@ Ordered for implementation (dependencies respected):
 
    Before creating story issues, qmd-search `{repo}-issues` for existing issues that overlap with the spec's scope. This catches the case where a sprint is being re-planned or where ad-hoc issues already cover part of the spec.
 
-   1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval":
+   1. Construct a hybrid query per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval":
       - `lex`: spec capability name + key requirement names from the spec
       - `vec`: a one-sentence framing of what the spec covers
       - `intent: "/sdd:plan — find existing open issues that already cover part of this spec"`
@@ -200,7 +200,7 @@ Ordered for implementation (dependencies respected):
 
    For each functional area identified during grouping, qmd-search `{repo}-code` to find existing files that already implement related capability. Stories that touch existing code MUST be framed as "extend X in path/to/file" rather than "implement from scratch", and sized accordingly (smaller than greenfield).
 
-   1. Construct a hybrid query per `references/qmd-helpers.md`:
+   1. Construct a hybrid query per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md`:
       - `lex`: keywords from the requirement names + functional area name
       - `vec`: a one-sentence framing of what the requirement does
       - `intent: "/sdd:plan — find existing code that implements related capability"`
@@ -219,9 +219,9 @@ Ordered for implementation (dependencies respected):
    5. Target 3-4 stories for a spec with 10-15 requirements (3-5 requirements per story). For specs with 4 or fewer requirements, create 1-2 stories. For a single-requirement spec, create 1 story.
    6. Each story SHOULD target a PR in the 200-500 line range. This is a heuristic — functional cohesion takes priority over line-count targets. Do NOT split functionally cohesive requirements across stories solely to meet the line-count target.
 
-   **5.2a: Foundation Story Detection.** After grouping requirements into stories, analyze the grouped stories to identify shared types, packages, and helper functions needed by two or more stories. Follow the "Foundation Story Detection" pattern in `references/shared-patterns.md`. (Governing: ADR-0017 Layer 1, SPEC-0015 REQ "Foundation Story Detection")
+   **5.2a: Foundation Story Detection.** After grouping requirements into stories, analyze the grouped stories to identify shared types, packages, and helper functions needed by two or more stories. Follow the "Foundation Story Detection" pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. (Governing: ADR-0017 Layer 1, SPEC-0015 REQ "Foundation Story Detection")
 
-   **5.2b: Hotspot Analysis.** Before making parallelization decisions, analyze recent git history to identify files that are frequent sources of merge conflicts. Follow the "Hotspot Analysis" pattern in `references/shared-patterns.md`. Stories that modify hotspot files MUST be serialized rather than parallelized. (Governing: ADR-0017 Layer 1, SPEC-0015 REQ "Hotspot Analysis")
+   **5.2b: Hotspot Analysis.** Before making parallelization decisions, analyze recent git history to identify files that are frequent sources of merge conflicts. Follow the "Hotspot Analysis" pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Stories that modify hotspot files MUST be serialized rather than parallelized. (Governing: ADR-0017 Layer 1, SPEC-0015 REQ "Hotspot Analysis")
 
    **Creating story issues:**
    - Title: a descriptive name reflecting the story's functional area (e.g., "Setup & Configuration", "Core Auth Flow", "Validation & Error Handling")
@@ -248,7 +248,7 @@ Ordered for implementation (dependencies respected):
 
    A story does NOT involve HTTP endpoints if it exclusively involves: database migrations, background jobs, CLI commands, library refactoring, configuration setup, CI/CD pipelines, or documentation.
 
-   For each story that involves HTTP endpoints, you MUST append a **## Security Checklist** section to the issue body, placed after the `## Acceptance Criteria` section and before any `### Branch` or `### PR Convention` sections. Use the canonical Security Checklist template from `references/issue-authoring.md` § "Security Checklist Template" — five required checkboxes covering auth middleware, input validation, output encoding, rate limiting, and body size limits. Do NOT add the security checklist to stories that do not involve HTTP endpoints.
+   For each story that involves HTTP endpoints, you MUST append a **## Security Checklist** section to the issue body, placed after the `## Acceptance Criteria` section and before any `### Branch` or `### PR Convention` sections. Use the canonical Security Checklist template from `${CLAUDE_PLUGIN_ROOT}/references/issue-authoring.md` § "Security Checklist Template" — five required checkboxes covering auth middleware, input validation, output encoding, rate limiting, and body size limits. Do NOT add the security checklist to stories that do not involve HTTP endpoints.
 
    **5.2.2: Detect UI stories and create companion test stories.**
 
@@ -278,7 +278,7 @@ Ordered for implementation (dependencies respected):
        - `- [ ] JS unit tests: {what to verify}` (only if the feature story involves JavaScript)
        - `- [ ] HTMX integration tests: {what to verify}` (only if the feature story involves HTMX)
      - Acceptance criteria for test coverage
-   - Apply the `test` label using the try-then-create pattern (see `references/shared-patterns.md`)
+   - Apply the `test` label using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`)
    - The companion test story SHOULD be estimated at no more than half the effort of the feature story
    - The companion test story MUST depend on (be blocked by) its corresponding feature story
 
@@ -322,9 +322,9 @@ Ordered for implementation (dependencies respected):
 
    When planning stories, MUST NOT create standalone issues or PRs whose sole purpose is to add governing comments to existing code retroactively. Governing comments (per ADR-0020) are added as part of feature implementation — they go in the PR that implements or modifies the governed code, not in a separate cleanup PR.
 
-   **5.3: Write task checklists.** Each story issue body MUST follow the **Story Issue** template from `references/issue-authoring.md` § Body Templates. The template defines the canonical `## Requirements` (RFC 2119 task checklist) and `## Acceptance Criteria` sections; this skill MUST NOT inline its own variant. The template's rules — exact requirement-name match against the spec, SPEC number references, WHEN/THEN pairs derived from scenarios (not invented), every requirement in exactly one story — apply.
+   **5.3: Write task checklists.** Each story issue body MUST follow the **Story Issue** template from `${CLAUDE_PLUGIN_ROOT}/references/issue-authoring.md` § Body Templates. The template defines the canonical `## Requirements` (RFC 2119 task checklist) and `## Acceptance Criteria` sections; this skill MUST NOT inline its own variant. The template's rules — exact requirement-name match against the spec, SPEC number references, WHEN/THEN pairs derived from scenarios (not invented), every requirement in exactly one story — apply.
 
-   **Tracker-specific deviation**: For Beads, replace the markdown `## Requirements` checklist with native subtasks (`bd subtask add` per requirement, each subtask titled with the requirement name and bodied with the normative statement + WHEN/THEN scenarios + spec reference). All other trackers (GitHub, Gitea, GitLab, Jira, Linear) use the markdown form per the template. See `references/issue-authoring.md` § Cross-Tracker Considerations for the full deviation table.
+   **Tracker-specific deviation**: For Beads, replace the markdown `## Requirements` checklist with native subtasks (`bd subtask add` per requirement, each subtask titled with the requirement name and bodied with the normative statement + WHEN/THEN scenarios + spec reference). All other trackers (GitHub, Gitea, GitLab, Jira, Linear) use the markdown form per the template. See `${CLAUDE_PLUGIN_ROOT}/references/issue-authoring.md` § Cross-Tracker Considerations for the full deviation table.
 
    After the requirements and acceptance criteria sections, unless `--no-branches` is set, append a `### PR Convention` section:
    - Include the tracker-specific close keyword referencing the story issue number
@@ -386,7 +386,7 @@ Ordered for implementation (dependencies respected):
 
    **For other trackers**: Skip tracker-specific enrichment. Log skipped steps in the report.
 
-   **Auto-label creation** (cross-cutting, all trackers): When applying labels in any step (epic label, story label, spec label), use the try-then-create pattern (see `references/shared-patterns.md`). (Governing: SPEC-0011 REQ "Auto-Create Labels")
+   **Auto-label creation** (cross-cutting, all trackers): When applying labels in any step (epic label, story label, spec label), use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`). (Governing: SPEC-0011 REQ "Auto-Create Labels")
 
 6. **Fallback: Generate `tasks.md`** (when no tracker is available). Governing: SPEC-0006, ADR-0007.
 
@@ -453,7 +453,7 @@ Ordered for implementation (dependencies respected):
 
 ## Team Handoff Protocol (only for `--review` mode)
 
-Follow the standard protocol from the plugin's `references/shared-patterns.md` § "Team Handoff Protocol". The drafter is the planner; the reviewer checks that every spec requirement appears in exactly one story, groupings are functionally cohesive, task checklists correctly reference specs, and dependency ordering is logical.
+Follow the standard protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Team Handoff Protocol". The drafter is the planner; the reviewer checks that every spec requirement appears in exactly one story, groupings are functionally cohesive, task checklists correctly reference specs, and dependency ordering is logical.
 
 ## Rules
 
@@ -466,7 +466,7 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - Story groupings SHOULD target 200-500 line PRs — functional cohesion takes priority over line-count targets (Governing: SPEC-0010 REQ "PR Size Target")
 - Coupled requirements (same files, shared data structures) MUST be placed in the same story (Governing: SPEC-0010 REQ "Grouping Heuristics")
 - MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
-- MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
+- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to read configuration from CLAUDE.md
 - MUST offer to save tracker preference to the `### SDD Configuration` section in CLAUDE.md when a tracker is selected for the first time
 - When writing config to CLAUDE.md, preserve existing keys — only update changed sections
 - Dependency ordering between stories SHOULD reflect logical implementation order, not spec document order
@@ -477,7 +477,7 @@ Follow the standard protocol from the plugin's `references/shared-patterns.md` �
 - MUST use `ToolSearch` for project tools at runtime
 - `--project` and `--no-projects` are mutually exclusive; if both provided, warn and use `--no-projects`
 - `--no-branches` disables both `### Branch` AND `### PR Convention` sections
-- MUST use the try-then-create pattern (see `references/shared-patterns.md`) for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
+- MUST use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`) for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - MUST enrich projects after creation with descriptions, READMEs, views, iterations (GitHub) or milestones, columns, dependencies (Gitea) (Governing: SPEC-0011, ADR-0012)
 - Enrichment failures MUST be skipped and reported, never fail the entire operation (Governing: SPEC-0011 REQ "Graceful Degradation")
 - CLAUDE.md `Projects > Views`, `Projects > Columns`, `Projects > Iteration Weeks` are all optional with sensible defaults — do NOT overwrite existing keys when they are absent

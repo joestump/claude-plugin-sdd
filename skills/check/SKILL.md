@@ -1,7 +1,7 @@
 ---
 name: check
 description: Quick-check code against ADRs and specs for drift. Use when the user says "check for drift", "does this match the spec", or wants a fast alignment check on a specific file or directory.
-allowed-tools: Read, Glob, Grep
+allowed-tools: Bash, Read, Glob, Grep
 argument-hint: "[target] [--module <name>]"
 ---
 
@@ -13,7 +13,7 @@ You are performing a fast, focused drift check on a specific target. This skill 
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
    <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
 
@@ -41,11 +41,11 @@ You are performing a fast, focused drift check on a specific target. This skill 
 
    <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 3 Staleness Threshold for Consumer Skills" -->
 
-   On entry, check the qmd index's last-modified timestamp for this repo's collections (use the exact-prefix match algorithm from `references/qmd-helpers.md` § "This-Repo Collection Identification" to identify them, then take the maximum `lastUpdated` across them). If that timestamp is older than the configured staleness threshold, run a silent `qmd update` first.
+   On entry, check the qmd index's last-modified timestamp for this repo's collections (use the exact-prefix match algorithm from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "This-Repo Collection Identification" to identify them, then take the maximum `lastUpdated` across them). If that timestamp is older than the configured staleness threshold, run a silent `qmd update` first.
 
-   The threshold default is **120 minutes** and is configurable in CLAUDE.md `### SDD Configuration` `#### Index Freshness` `**Staleness Threshold**` (e.g., `30m`, `4h`). Read it via the **Config Resolution** pattern in `references/shared-patterns.md`.
+   The threshold default is **120 minutes** and is configurable in CLAUDE.md `### SDD Configuration` `#### Index Freshness` `**Staleness Threshold**` (e.g., `30m`, `4h`). Read it via the **Config Resolution** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`.
 
-   On stale → update path, emit a one-line note in the report header: `Index was {age} stale — refreshed before running.` On fresh, proceed silently. On qmd update failure, surface the error per `references/qmd-helpers.md` § "Error Handling" and continue (best-effort; the check still runs against the existing index).
+   On stale → update path, emit a one-line note in the report header: `Index was {age} stale — refreshed before running.` On fresh, proceed silently. On qmd update failure, surface the error per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Error Handling" and continue (best-effort; the check still runs against the existing index).
 
 4. **Determine relevant artifacts**:
 
@@ -53,7 +53,7 @@ You are performing a fast, focused drift check on a specific target. This skill 
 
    Use qmd hybrid retrieval to identify the top-K candidate ADRs and specs governing the target before reading any artifact in full. The pre-v5 "read all ADRs and specs to find which ones govern the target" path is removed in v5.0.0 — qmd retrieval is the canonical mechanism.
 
-   - **If the target is a file or directory**: construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval" derived from the target's content. The query SHOULD include:
+   - **If the target is a file or directory**: construct a hybrid query per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval" derived from the target's content. The query SHOULD include:
      - `lex`: the file path basename, exported symbol names from a quick scan, and any `Governing:` comment block content (if present)
      - `vec`: a one-sentence summary of what the target file/dir does (e.g., for `src/auth/login.go` → "user authentication via JWT-based session login flow")
      - `intent: "/sdd:check {target} — find ADRs and specs governing this code"`
@@ -239,5 +239,5 @@ You are performing a fast, focused drift check on a specific target. This skill 
 - In workspace aggregate mode, MUST include a per-module summary table
 - When `--module` is provided, check only that module — do not scan other modules
 - **v5.0.0+**: MUST run Tier 3 staleness check on entry per Step 3a — if the index is older than the configured threshold (default 120m, set in CLAUDE.md `### SDD Configuration` `#### Index Freshness` `**Staleness Threshold**`), trigger silent `qmd update` and emit a one-line note. On fresh, proceed silently (Governing: ADR-0026, SPEC-0019 REQ "Tier 3 Staleness Threshold for Consumer Skills")
-- **v5.0.0+**: MUST use qmd hybrid retrieval per `references/qmd-helpers.md` to identify top-K candidate ADRs/specs; deep-read only those candidates. The pre-v5 read-everything-then-filter path is removed — qmd retrieval is the canonical mechanism (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Drift Skills")
+- **v5.0.0+**: MUST use qmd hybrid retrieval per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` to identify top-K candidate ADRs/specs; deep-read only those candidates. The pre-v5 read-everything-then-filter path is removed — qmd retrieval is the canonical mechanism (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Drift Skills")
 - **v5.0.0+**: On qmd unreachable / timeout, MUST surface the error and stop. NEVER fall back to corpus scan (per ADR-0024 / SPEC-0019 REQ "qmd Assumption in Consumer Skills" — fallback paths were eliminated in v5)
