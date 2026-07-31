@@ -15,7 +15,7 @@
   "dependencies": {
     "@docusaurus/core": "3.9.2",
     "@docusaurus/preset-classic": "3.9.2",
-    "@docusaurus/theme-mermaid": "^3.9.2",
+    "@docusaurus/theme-mermaid": "3.9.2",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
     "lib-artifact-transforms": "github:joestump/lib-artifact-transforms#main",
@@ -32,6 +32,9 @@
     "@docusaurus/tsconfig": "3.9.2",
     "@docusaurus/types": "3.9.2",
     "typescript": "~5.6.2"
+  },
+  "overrides": {
+    "webpackbar": "^7.0.0"
   },
   "browserslist": {
     "production": [">0.5%", "not dead", "not op_mini all"],
