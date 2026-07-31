@@ -30,8 +30,8 @@ The new skills should follow these patterns:
 |-------|------|-----------------|
 | `init` | Creative (writes CLAUDE.md) | `Read, Write, Edit, Glob, Grep, AskUserQuestion` |
 | `prime` | Read-only (loads context) | `Read, Glob, Grep` |
-| `check` | Read-only (reports findings) | `Read, Glob, Grep` |
-| `audit` | Creative (team mode) | `Read, Glob, Grep, Task, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion` |
+| `check` | Read-only (reports findings; `Bash` for qmd retrieval) | `Bash, Read, Glob, Grep` |
+| `audit` | Creative (team mode; `Bash` for qmd retrieval) | `Bash, Read, Glob, Grep, Task, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion` |
 | `work` | Creative (team + worktrees) | `Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion, ToolSearch, EnterWorktree` |
 
 ### `--review` Flag Convention

@@ -17,7 +17,7 @@ This skill is for **significant** friction with the SDD plugin specifically — 
 
 ### Examples that QUALIFY (file an issue)
 
-- A `/sdd:plan` invocation said "use the canonical Branch Naming pattern from references/shared-patterns.md", but that section described a slug algorithm that produced branch names rejected by the tracker. You had to manually fix every branch name.
+- A `/sdd:plan` invocation said "use the canonical Branch Naming pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`", but that section described a slug algorithm that produced branch names rejected by the tracker. You had to manually fix every branch name.
 - `/sdd:work` instructed you to broadcast `FILE_CLAIM` via `SendMessage`, but the agent harness rejected the call because no Team was active. The SKILL.md did not mention that Team initialization was a prerequisite. You spent ~8k tokens debugging.
 - `/sdd:check` told you to scan for "the first `# ` heading" to extract titles, but four files in the corpus had a leading H1 in a comment block, causing wrong titles in every report. SKILL.md should specify "first H1 outside frontmatter and outside HTML/comment blocks."
 - The same skill failed three times in a row with the same error message. The error came from the skill's own logic, not from the user's environment.
@@ -48,7 +48,7 @@ A useful self-check: "If the maintainer reads this and asks 'why did the agent f
 
 ### Step 3: Draft the issue body using the canonical template
 
-Use the **Friction Report** template from `references/issue-authoring.md` § Body Templates. The template defines seven sections: Friction summary, Affected, What the SKILL.md said vs. what happened, Reproduction context, Workaround used, Estimated cost, Suggested fix (optional).
+Use the **Friction Report** template from `${CLAUDE_PLUGIN_ROOT}/references/issue-authoring.md` § Body Templates. The template defines seven sections: Friction summary, Affected, What the SKILL.md said vs. what happened, Reproduction context, Workaround used, Estimated cost, Suggested fix (optional).
 
 The "Said vs. Happened" section is the load-bearing one — it gives the maintainer the diff between intent and observed reality. Without it, a friction report is just a complaint. Be honest with severity: "low / I lost ~2k tokens but worked around it" is useful signal; inflating to "high" because you were frustrated is not. Omit "Suggested fix" if you don't have a concrete one — half-baked suggestions are worse than none.
 
@@ -71,7 +71,7 @@ If `$ARGUMENTS` contains `--label <name>`, use that as the second label and skip
 
 Before showing the draft to the user, scan the body for sensitive content, **replace each match with a clear placeholder**, and keep a record of every redaction. The user sees the sanitized body (which is what will be submitted) plus an explicit "what was redacted" list — so they know both what's leaving the machine and what was changed.
 
-The patterns to detect and the placeholder formats are defined canonically in `references/issue-authoring.md` § Sanitization. Brief recap (see the reference for the full table and rationale):
+The patterns to detect and the placeholder formats are defined canonically in `${CLAUDE_PLUGIN_ROOT}/references/issue-authoring.md` § Sanitization. Brief recap (see the reference for the full table and rationale):
 
 - Absolute paths under `/Users/`, `/home/`, `/var/`, `/opt/`, `C:\Users\` → `[REDACTED-PATH]/{basename}` (preserve trailing filename)
 - URLs containing `internal`, `corp`, `staging`, `dev.`, `.local`, or non-public TLDs → `[REDACTED-URL]`

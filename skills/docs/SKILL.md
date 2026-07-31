@@ -8,7 +8,7 @@ context: fork  # Runs in a forked context to avoid polluting the main session wi
 
 # Generate Docusaurus Documentation Site
 
-Transform ADRs and OpenSpec specs (located via the **Artifact Path Resolution** pattern from `references/shared-patterns.md`) into a polished documentation website with:
+Transform ADRs and OpenSpec specs (located via the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`) into a polished documentation website with:
 
 - RFC 2119 keyword highlighting (MUST, SHALL, MAY, etc.)
 - ADR cross-reference linking (ADR-0001 becomes a clickable link)
@@ -29,7 +29,7 @@ Supports two modes:
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
 
@@ -57,7 +57,7 @@ Each module's artifacts are transformed independently and placed under a module-
 
 - Check if Node.js is installed. If not, tell the user: "Node.js is required to run the docs site. Please install it from https://nodejs.org/ and re-run this command." and stop.
 - Check if `{adr-dir}` has any ADR `.md` files
-- Check if `{spec-dir}` has any spec directories (containing `spec.md`). Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
+- Check if `{spec-dir}` has any spec directories (containing `spec.md`). Validate spec pairing per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation".
 - If NEITHER has content, tell the user: "No ADRs or specs found. Create some first with `/sdd:adr` or `/sdd:spec`, then re-run `/sdd:docs`." and stop.
 - If only one has content, proceed but note which is empty (e.g., "No specs found yet -- the docs site will only include ADRs for now.")
 

@@ -38,7 +38,7 @@ Search ADRs, specs, and code simultaneously using qmd hybrid retrieval, then enr
 
    <!-- Governing: ADR-0024 (qmd as hard dependency), SPEC-0019 REQ "qmd-helpers Reference" -->
 
-   Compute the slug per `references/qmd-helpers.md` § "This-Repo Collection Identification":
+   Compute the slug per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "This-Repo Collection Identification":
 
    ```bash
    SLUG=$(git rev-parse --show-toplevel | xargs basename | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
@@ -49,7 +49,7 @@ Search ADRs, specs, and code simultaneously using qmd hybrid retrieval, then enr
 
 3. **Validate qmd collections exist**:
 
-   Use `mcp__plugin_qmd_qmd__status` (or `qmd status --json` as CLI fallback per `references/qmd-helpers.md` § "MCP-vs-CLI Selection") to list available collections. Apply exact-prefix match from `references/qmd-helpers.md` § "This-Repo Collection Identification".
+   Use `mcp__plugin_qmd_qmd__status` (or `qmd status --json` as CLI fallback per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "MCP-vs-CLI Selection") to list available collections. Apply exact-prefix match from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "This-Repo Collection Identification".
 
    If none of the three target collections exist, stop with: "No qmd collections found for {repo}. Run `/sdd:index` first."
 
@@ -109,13 +109,13 @@ Search ADRs, specs, and code simultaneously using qmd hybrid retrieval, then enr
 
    <!-- Governing: ADR-0033 (cgg call graph integration), SPEC-0034 REQ "Call Graph Generation Uses cgg With Filtering" -->
 
-   From the code query results, extract filter tokens per `references/cgg-integration.md` § "Filter Derivation Strategy — From qmd code matches":
+   From the code query results, extract filter tokens per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Filter Derivation Strategy — From qmd code matches":
 
    1. Take each matched file path stem (e.g., `auth/jwt.go` → `jwt`, `auth`)
    2. Take each qmd-matched symbol or heading keyword surfaced in the result snippets
    3. Compose a regex alternation: `token1|token2|token3`
 
-   If the code query returned no results (collection absent or zero matches), fall back to keyword-based derivation per `references/cgg-integration.md` § "Filter Derivation Strategy — From requirement keywords":
+   If the code query returned no results (collection absent or zero matches), fall back to keyword-based derivation per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Filter Derivation Strategy — From requirement keywords":
    - Lowercase and split the query on spaces/punctuation
    - Strip common stop words (`the`, `a`, `an`, `for`, `with`, `of`, `in`, `and`, `or`, `to`)
    - Compose alternation from remaining terms
@@ -129,7 +129,7 @@ Search ADRs, specs, and code simultaneously using qmd hybrid retrieval, then enr
 
    <!-- Governing: ADR-0033 (cgg call graph integration), SPEC-0034 REQ "Call Graph Generation Uses cgg With Filtering", SPEC-0034 REQ "Error Messages and Logs Must Be Clear" -->
 
-   Follow `references/cgg-integration.md` § "Availability Check" first:
+   Follow `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Availability Check" first:
 
    ```bash
    which cgg >/dev/null 2>&1
@@ -139,9 +139,9 @@ Search ADRs, specs, and code simultaneously using qmd hybrid retrieval, then enr
 
    Determine the target path:
    - Standard mode: repo root (`git rev-parse --show-toplevel`)
-   - Workspace mode (`--module <name>`): resolve module source dir per `references/shared-patterns.md` § "Artifact Path Resolution"
+   - Workspace mode (`--module <name>`): resolve module source dir per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution"
 
-   Invoke cgg per `references/cgg-integration.md` § "cgg Invocation Pattern":
+   Invoke cgg per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "cgg Invocation Pattern":
 
    ```bash
    # With filter:
@@ -153,22 +153,22 @@ Search ADRs, specs, and code simultaneously using qmd hybrid retrieval, then enr
    rm -f /tmp/cgg-stderr-$$.txt
    ```
 
-   Handle exit codes per `references/cgg-integration.md` § "Exit code handling":
-   - Exit 0: normalize the Mermaid output per `references/cgg-integration.md` § "Mermaid Output Normalization"
+   Handle exit codes per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Exit code handling":
+   - Exit 0: normalize the Mermaid output per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Mermaid Output Normalization"
    - Exit 1: record "Call graph generation failed: {stderr}" and skip to step 7
-   - Exit 124: record timeout message per `references/cgg-integration.md` § "Timeout Handling" and skip to step 7
+   - Exit 124: record timeout message per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Timeout Handling" and skip to step 7
    - Other exit: treat as exit 1
 
-   Apply node cap: if the Mermaid output has more than 20 nodes (lines matching `^\s+\w+\[`), trim to top 20 by connectivity and add the trimming comment per `references/cgg-integration.md` § "Node cap".
+   Apply node cap: if the Mermaid output has more than 20 nodes (lines matching `^\s+\w+\[`), trim to top 20 by connectivity and add the trimming comment per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Node cap".
 
-   Normalize output per `references/cgg-integration.md` § "Mermaid Output Normalization":
+   Normalize output per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Mermaid Output Normalization":
    - Sort nodes alphabetically
    - Rewrite `graph LR` or `graph RL` to `graph TD`
    - Strip memory-address node ID prefixes
    - Append legend footer `%% Showing entry points + main flow; internal helpers omitted`
    - Validate all `-->` edges reference declared nodes; remove dangling edges
 
-   Handle unsupported-language warnings per `references/cgg-integration.md` § "Unsupported Language Handling".
+   Handle unsupported-language warnings per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Unsupported Language Handling".
 
 7. **Produce output**:
 
@@ -302,7 +302,7 @@ Search ADRs, specs, and code simultaneously using qmd hybrid retrieval, then enr
 - MUST issue three separate qmd queries (ADRs, specs, code) so result sets are cleanly partitioned by collection type
 - MUST use `limit: 8` and `minScore: 0.3` for all qmd queries per SPEC-0034
 - MUST gracefully degrade when cgg is unavailable or fails — return qmd sections 1–3 with a one-line notice in section 4, never fail the skill (Governing: ADR-0033, SPEC-0034 REQ "Graceful Degradation")
-- When cgg succeeds, MUST normalize Mermaid output per `references/cgg-integration.md` § "Mermaid Output Normalization" before embedding
+- When cgg succeeds, MUST normalize Mermaid output per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Mermaid Output Normalization" before embedding
 - MUST cap call graph at 20 nodes; add trimming comment when nodes are omitted
 - When `--unfiltered` is set, MUST skip filter derivation AND emit the large-graph warning before invoking cgg
 - When `--module <name>` is set, MUST scope all qmd collections to `{slug}-{module}-{kind}` AND scope cgg to the module source directory
@@ -312,5 +312,5 @@ Search ADRs, specs, and code simultaneously using qmd hybrid retrieval, then enr
 - The help/no-args output MUST include a usage line, at least two examples, and a brief explanation
 - Use `##` for the top-level heading and `###` for sections within the report
 - Do NOT invoke cgg if the no-matches path is taken
-- MUST prefer MCP tool `mcp__plugin_qmd_qmd__query` over the qmd CLI; fall back to CLI only when the MCP is not loaded (per `references/qmd-helpers.md` § "MCP-vs-CLI Selection")
-- All cgg invocation patterns, error messages, filter derivation, timeout handling, and graceful degradation MUST follow `references/cgg-integration.md` verbatim — do not inline custom variants
+- MUST prefer MCP tool `mcp__plugin_qmd_qmd__query` over the qmd CLI; fall back to CLI only when the MCP is not loaded (per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "MCP-vs-CLI Selection")
+- All cgg invocation patterns, error messages, filter derivation, timeout handling, and graceful degradation MUST follow `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` verbatim — do not inline custom variants

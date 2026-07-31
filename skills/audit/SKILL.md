@@ -1,7 +1,7 @@
 ---
 name: audit
 description: Comprehensive audit of design artifact alignment across the project. Use when the user says "audit the architecture", "full drift report", or wants a thorough review of spec compliance and ADR adherence.
-allowed-tools: Read, Glob, Grep, Task, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion
+allowed-tools: Bash, Read, Glob, Grep, Task, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion
 argument-hint: "[scope] [--review] [--scrum] [--module <name>]"
 ---
 
@@ -13,7 +13,7 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
    <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
 
@@ -52,13 +52,13 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
 
    <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 3 Staleness Threshold for Consumer Skills" -->
 
-   On entry, check the qmd index's last-modified timestamp for this repo's collections (use the exact-prefix match algorithm from `references/qmd-helpers.md` § "This-Repo Collection Identification"). If older than the configured staleness threshold (default 120m, configurable in CLAUDE.md `### SDD Configuration` `#### Index Freshness` `**Staleness Threshold**` per the **Config Resolution** pattern), trigger a silent `qmd update` first. Emit a one-line note in the report header: `Index was {age} stale — refreshed before running.` On fresh, proceed silently. On qmd update failure, surface the error per `qmd-helpers.md` § "Error Handling" and continue best-effort.
+   On entry, check the qmd index's last-modified timestamp for this repo's collections (use the exact-prefix match algorithm from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "This-Repo Collection Identification"). If older than the configured staleness threshold (default 120m, configurable in CLAUDE.md `### SDD Configuration` `#### Index Freshness` `**Staleness Threshold**` per the **Config Resolution** pattern), trigger a silent `qmd update` first. Emit a one-line note in the report header: `Index was {age} stale — refreshed before running.` On fresh, proceed silently. On qmd update failure, surface the error per `qmd-helpers.md` § "Error Handling" and continue best-effort.
 
 3b. **qmd-aware artifact retrieval per target file** (v5.0.0+):
 
    <!-- Governing: ADR-0024 (qmd as hard dependency), SPEC-0019 REQ "qmd-Smart Drift Skills" -->
 
-   Audit operates at scale across many target files. For each target file in scope, use qmd hybrid retrieval (per `references/qmd-helpers.md` § "Hybrid Retrieval") to identify the top-K candidate ADRs and specs governing that specific file, then deep-read only those candidates. The pre-v5 "read all ADRs and specs once, then semantically match against every target" path is removed in v5 — per-target qmd retrieval is the canonical mechanism.
+   Audit operates at scale across many target files. For each target file in scope, use qmd hybrid retrieval (per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval") to identify the top-K candidate ADRs and specs governing that specific file, then deep-read only those candidates. The pre-v5 "read all ADRs and specs once, then semantically match against every target" path is removed in v5 — per-target qmd retrieval is the canonical mechanism.
 
    Per-file query construction follows the same pattern as `/sdd:check`:
    - `lex`: file path basename + exported symbols + governing comment block content
@@ -240,7 +240,7 @@ When `--scrum` is set, run the standard audit analysis (steps 4-8 above) first, 
 
 ## Severity Assignment Rules
 
-See the plugin's `references/shared-patterns.md` § "Severity Assignment Rules" for the full mapping. Key: MUST/SHALL violations → CRITICAL, SHOULD violations → WARNING, coverage gaps → INFO.
+See the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Severity Assignment Rules" for the full mapping. Key: MUST/SHALL violations → CRITICAL, SHOULD violations → WARNING, coverage gaps → INFO.
 
 ## Rules
 

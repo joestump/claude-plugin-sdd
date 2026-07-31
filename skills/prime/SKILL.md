@@ -13,7 +13,7 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
    <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
 
@@ -50,7 +50,7 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
    - The `--limit 10000` and `--minScore 0` retrieve all matches without filtering
    
    **For topic-filtered priming** (`/sdd:prime {topic}`):
-   - Construct a hybrid query with both `lex` (keyword match) and `vec` (semantic match) sub-queries per `references/qmd-helpers.md` § "Hybrid Retrieval"
+   - Construct a hybrid query with both `lex` (keyword match) and `vec` (semantic match) sub-queries per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval"
    - Run: `qmd query --json -c {repo}-adrs -c {repo}-specs --limit 8 --minScore 0.3 '<queries>'`
    - If zero candidates above `minScore: 0.3`, output: `No ADRs or specs matched the topic "{topic}". Try a broader term, or run `/sdd:prime` without a topic to see all artifacts.`
    

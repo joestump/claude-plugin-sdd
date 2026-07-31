@@ -13,7 +13,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the ADR directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved ADR directory is referred to as `{adr-dir}` below.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved ADR directory is referred to as `{adr-dir}` below.
 
 1. **Determine the next ADR number**: Scan `{adr-dir}` for existing `ADR-XXXX-*.md` files and increment to the next number. Start at ADR-0001 if none exist. Create `{adr-dir}` if it does not exist. If `$ARGUMENTS` is empty (ignoring flags like `--review` and `--module`), use `AskUserQuestion` to ask the user what decision they want to document.
 
@@ -23,7 +23,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
    Before drafting, qmd-search the existing ADR corpus to find related prior decisions whose IDs SHOULD appear in the new ADR's frontmatter as `supersedes`, `extends`, or `related` edges (per ADR-0023 / SPEC-0018 frontmatter DAG).
 
-   1. Construct a hybrid query per `references/qmd-helpers.md` § "Hybrid Retrieval":
+   1. Construct a hybrid query per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval":
       - `lex`: the user's description from `$ARGUMENTS` (key technologies, named systems, decision verbs)
       - `vec`: a one-sentence framing of the decision the new ADR will make
       - `intent: "/sdd:adr — find related prior ADRs to suggest as frontmatter edges"`
@@ -70,11 +70,11 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
    **If the user answers "yes"**:
 
-   1. **Availability check**: Run `which cgg >/dev/null 2>&1`. If cgg is not found, surface the exact unavailability notice from `references/cgg-integration.md` § "Availability Check" and proceed to Step 3 without a call graph.
+   1. **Availability check**: Run `which cgg >/dev/null 2>&1`. If cgg is not found, surface the exact unavailability notice from `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Availability Check" and proceed to Step 3 without a call graph.
 
-   2. **Derive the filter**: Extract keywords from the ADR's `## Decision Outcome` section (the chosen option name, key technology names, system names, and any verbs describing the decision). Apply the **From requirement keywords** strategy from `references/cgg-integration.md` § "Filter Derivation Strategy" — lowercase, split on spaces/punctuation, strip stop words, compose a regex alternation. In workspace mode, use the module source directory as `<target-path>` per `references/cgg-integration.md` § "Workspace-Mode Scoping".
+   2. **Derive the filter**: Extract keywords from the ADR's `## Decision Outcome` section (the chosen option name, key technology names, system names, and any verbs describing the decision). Apply the **From requirement keywords** strategy from `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Filter Derivation Strategy" — lowercase, split on spaces/punctuation, strip stop words, compose a regex alternation. In workspace mode, use the module source directory as `<target-path>` per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Workspace-Mode Scoping".
 
-   3. **Invoke cgg** using the canonical invocation pattern from `references/cgg-integration.md` § "cgg Invocation Pattern":
+   3. **Invoke cgg** using the canonical invocation pattern from `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "cgg Invocation Pattern":
       ```bash
       timeout 30 cgg <target-path> --filter "<filter-regex>" --format mermaid 2>/tmp/cgg-stderr-$$.txt
       CGG_EXIT=$?
@@ -82,14 +82,14 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
       rm -f /tmp/cgg-stderr-$$.txt
       ```
 
-   4. **Handle exit codes** per `references/cgg-integration.md` § "Exit code handling":
+   4. **Handle exit codes** per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Exit code handling":
       - Exit 0: normalize the Mermaid output per § "Mermaid Output Normalization" (sort nodes, rewrite to `graph TD`, strip hash prefixes, apply 20-node cap, append legend footer).
       - Exit 1 or other non-zero: surface `"Call graph generation failed: "` + stderr; proceed to Step 3 without a call graph.
       - Exit 124 (timeout): surface the exact timeout message from § "Timeout Handling"; proceed to Step 3 without a call graph.
 
-   5. **Handle unsupported-language warnings** per `references/cgg-integration.md` § "Unsupported Language Handling" — emit per-file skip notices; if all files were skipped, fall back to no call graph.
+   5. **Handle unsupported-language warnings** per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Unsupported Language Handling" — emit per-file skip notices; if all files were skipped, fall back to no call graph.
 
-   6. **Embed in the ADR**: On success, replace the `## Architecture Diagram` section with the normalized Mermaid block wrapped per `references/cgg-integration.md` § "Embedding in markdown":
+   6. **Embed in the ADR**: On success, replace the `## Architecture Diagram` section with the normalized Mermaid block wrapped per `${CLAUDE_PLUGIN_ROOT}/references/cgg-integration.md` § "Embedding in markdown":
       ```markdown
       <!-- Call graph: <filter used>, generated <YYYY-MM-DD> -->
       ```mermaid
@@ -101,13 +101,13 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
    In every degradation case (cgg missing, timeout, non-zero exit, all files skipped), the skill MUST complete and write the ADR without a call graph. Never surface a hard failure to the user when cgg is the only failing component.
 
-3. **Write the ADR** to `{adr-dir}/ADR-XXXX-short-title.md`. Include the user-confirmed frontmatter edges from Step 1a in the YAML frontmatter (per the canonical edge schema in `references/shared-patterns.md` § "Graph Edge Resolution").
+3. **Write the ADR** to `{adr-dir}/ADR-XXXX-short-title.md`. Include the user-confirmed frontmatter edges from Step 1a in the YAML frontmatter (per the canonical edge schema in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Graph Edge Resolution").
 
 3a. **Tier 1 mutation update** (v5.0.0+):
 
    <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 1 Mutation-Aware Updates" -->
 
-   After writing the new ADR file, trigger a narrow re-sync of `{repo}-adrs` so the qmd index reflects the new artifact. Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns" → "Narrow update". The update is synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{repo}-adrs` — run `/sdd:index update` manually") but report the ADR creation itself as successful.
+   After writing the new ADR file, trigger a narrow re-sync of `{repo}-adrs` so the qmd index reflects the new artifact. Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns" → "Narrow update". The update is synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{repo}-adrs` — run `/sdd:index update` manually") but report the ADR creation itself as successful.
 
 4. **Clean up** the team when done (if `--review` was used).
 
@@ -126,7 +126,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
 ### Team Handoff Protocol (only for `--review` mode)
 
-Follow the standard team handoff protocol from the plugin's `references/shared-patterns.md`. The drafter writes the ADR; the architect reviews against the Rules checklist below.
+Follow the standard team handoff protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. The drafter writes the ADR; the architect reviews against the Rules checklist below.
 
 ## MADR Template
 
@@ -239,7 +239,7 @@ ADRs MAY declare relationships to other artifacts via optional frontmatter field
 | `governs` | Names specs this decision governs | `governs: [SPEC-0007, SPEC-0010]` |
 | `related` | Weak association, no semantic claim | `related: [ADR-0010]` |
 
-**Forward-only convention.** Only forward edges are authored. Reverse edges (`superseded-by`, `governed-by`, `enabled-by`, `extended-by`) are derived by `/sdd:graph` at build time and MUST NOT appear in frontmatter — the graph builder will reject them with a warning. See `references/shared-patterns.md` § "Graph Edge Resolution" for the full forward→inverse derivation table.
+**Forward-only convention.** Only forward edges are authored. Reverse edges (`superseded-by`, `governed-by`, `enabled-by`, `extended-by`) are derived by `/sdd:graph` at build time and MUST NOT appear in frontmatter — the graph builder will reject them with a warning. See `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Graph Edge Resolution" for the full forward→inverse derivation table.
 
 **Cross-module edges (workspace mode).** When referencing artifacts in another module, use the quoted `[module]/ID` syntax: `governs: ["[api]/SPEC-0001"]`. The unquoted form `[[api]/SPEC-0001]` parses as YAML nested lists and will be rejected.
 

@@ -15,7 +15,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
 
 1. **Parse arguments**: Extract from `$ARGUMENTS`:
    - Spec identifier: a SPEC number (e.g., `SPEC-0007`) or capability directory name
@@ -25,11 +25,11 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
    If no spec identifier is provided, list available specs by globbing `{spec-dir}/*/spec.md`, read the title from each, and use `AskUserQuestion` to ask which spec to organize.
 
-2. **Resolve spec**: Follow the plugin's `references/shared-patterns.md` § "Spec Resolution" (which uses `{spec-dir}` from the Artifact Path Resolution pattern).
+2. **Resolve spec**: Follow the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Resolution" (which uses `{spec-dir}` from the Artifact Path Resolution pattern).
 
-3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` and `design.md` to understand the spec number, requirement names, and architecture. Validate spec pairing per `references/shared-patterns.md` § "Spec Pairing Validation".
+3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` and `design.md` to understand the spec number, requirement names, and architecture. Validate spec pairing per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation".
 
-4. **Detect tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `references/shared-patterns.md`. Also read `Projects` settings from the `### SDD Configuration` section in CLAUDE.md for cached project IDs and enrichment config (Views, Columns, Iteration Weeks). If no tracker is found, error — projects require a tracker.
+4. **Detect tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Also read `Projects` settings from the `### SDD Configuration` section in CLAUDE.md for cached project IDs and enrichment config (Views, Columns, Iteration Weeks). If no tracker is found, error — projects require a tracker.
 
 5. **Find existing issues**: Search the tracker for issues whose body references the spec number.
    - **GitHub**: `gh issue list --search "SPEC-XXXX" --json number,title,body,labels --limit 100`
@@ -71,7 +71,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
    **(c) Complete refactor**: All tier (b) changes PLUS:
    - Re-group issues across epics (move misplaced stories)
-   - Fix/add labels using the try-then-create pattern (see `references/shared-patterns.md`)
+   - Fix/add labels using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`)
    - Create native dependency links (Gitea)
    - Update issue bodies with `### Branch` and `### PR Convention` sections (if missing)
 
@@ -88,7 +88,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    - Configure board columns from CLAUDE.md `Projects > Columns` (default: Todo, In Progress, In Review, Done)
 
    **Tier (c) additional steps:**
-   - Re-label issues using the try-then-create pattern (see `references/shared-patterns.md`)
+   - Re-label issues using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`)
    - Create Gitea native dependency links
    - Add `### Branch` / `### PR Convention` to issue bodies that lack them (same logic as `/sdd:enrich`)
 
@@ -108,15 +108,15 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
 Before discovering existing issues (Step 5), sync the `{repo}-issues` qmd collection from the tracker so the local cache reflects current issue state. This is Tier 4 of the freshness model: always sync at consumer entry, subject to a 5-minute deduplication window.
 
-1. Read `.sdd/issues/_meta.json` (per `references/tracker-sync.md` § "Cursor Management"). If `last_sync` is within the last 5 minutes, skip the sync and proceed silently.
-2. Otherwise, invoke the per-tracker fetch+normalize per `references/tracker-sync.md` with the cursor for incremental fetch. Print: "Syncing N issues from {tracker}…".
-3. On sync failure, surface a one-line warning per `references/tracker-sync.md` § "Failure Modes and Degradation" and proceed with live tracker queries (the pre-v5 path) for this run. Do NOT block; organize is the user's primary intent.
+1. Read `.sdd/issues/_meta.json` (per `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md` § "Cursor Management"). If `last_sync` is within the last 5 minutes, skip the sync and proceed silently.
+2. Otherwise, invoke the per-tracker fetch+normalize per `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md` with the cursor for incremental fetch. Print: "Syncing N issues from {tracker}…".
+3. On sync failure, surface a one-line warning per `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md` § "Failure Modes and Degradation" and proceed with live tracker queries (the pre-v5 path) for this run. Do NOT block; organize is the user's primary intent.
 
 ### Step 12: Tier 1 mutation update (v5.0.0+)
 
 <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 1 Mutation-Aware Updates" -->
 
-After tier (c) interventions modify issue bodies (labels, project links surfaced in body, etc.), trigger a narrow re-sync of `{repo}-issues` so the qmd index reflects the changes. Use the canonical update pattern from `references/qmd-helpers.md` § "Update Patterns".
+After tier (c) interventions modify issue bodies (labels, project links surfaced in body, etc.), trigger a narrow re-sync of `{repo}-issues` so the qmd index reflects the changes. Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns".
 
 1. Re-fetch the modified issues via per-tracker fetch+normalize (only those touched in tier (c)).
 2. Run `qmd update`.
@@ -126,7 +126,7 @@ If tier (a) (report-only) or tier (b) (project-level only, no issue-content chan
 
 ## Config Reference
 
-This skill reads and writes the `Projects` subsection of the `### SDD Configuration` section in CLAUDE.md. See the plugin's `references/shared-patterns.md` § "Config Resolution" for the canonical format and defaults. All keys are optional with sensible defaults. When writing, merge — do not overwrite.
+This skill reads and writes the `Projects` subsection of the `### SDD Configuration` section in CLAUDE.md. See the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" for the canonical format and defaults. All keys are optional with sensible defaults. When writing, merge — do not overwrite.
 
 ## Rules
 
@@ -137,11 +137,11 @@ This skill reads and writes the `Projects` subsection of the `### SDD Configurat
 - MUST skip projects that already exist (idempotent)
 - MUST use `ToolSearch` for project tools at runtime
 - Failures MUST be reported but MUST NOT stop processing remaining issues
-- MUST follow the Config Resolution pattern from `references/shared-patterns.md` to read configuration from CLAUDE.md
+- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to read configuration from CLAUDE.md
 - MUST check CLAUDE.md `Projects` for cached project IDs before creating
 - When writing config to CLAUDE.md, preserve existing keys
 - MUST link created projects to the repository for trackers that support project-repository associations (e.g., GitHub Projects V2 via `gh project link`, Gitea)
-- MUST use the try-then-create pattern (see `references/shared-patterns.md`) for all label applications in tier (c) (Governing: SPEC-0011 REQ "Auto-Create Labels")
+- MUST use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`) for all label applications in tier (c) (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - MUST degrade gracefully when tracker features are unavailable — skip and report, never fail (Governing: SPEC-0011 REQ "Graceful Degradation")
 - No `--review` support (utility skill)
 - **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 0a — sync from tracker before discovering issues, subject to 5-min dedup. On failure, fall back to live queries with a warning (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")
