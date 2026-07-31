@@ -2,6 +2,20 @@
 
 All notable changes to the SDD plugin (`claude-plugin-sdd`) are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/) and the project follows [Semantic Versioning](https://semver.org/).
 
+## [5.2.1] — 2026-07-31
+
+Bug-fix release addressing five issues reported from real-world adoption ([#190](https://github.com/joestump/claude-plugin-sdd/issues/190)–[#194](https://github.com/joestump/claude-plugin-sdd/issues/194)). No new features, no breaking changes.
+
+### Fixed
+
+- **`/sdd:check` and `/sdd:audit` can now invoke qmd from restricted contexts** ([#194](https://github.com/joestump/claude-plugin-sdd/issues/194)): both skills mandate qmd hybrid retrieval with an explicit never-fall-back rule, but were the only qmd-mandating skills whose `allowed-tools` lacked `Bash`. Wherever `allowed-tools` is enforced (e.g. subagents), they were required to do something they were not permitted to do. `Bash` added to both, matching the other six qmd-aware skills.
+- **`/sdd:index` embed-prompt contradiction resolved** ([#194](https://github.com/joestump/claude-plugin-sdd/issues/194)): a leftover pre-v5 Rules bullet still mandated the three-way `AskUserQuestion` embed prompt on CPU machines, contradicting the Process section and ADR-0026's no-prompt policy. The bullet now describes the actual policy: background by default on CPU, `--foreground`/`--skip` override.
+- **Reference paths fully qualified** ([#194](https://github.com/joestump/claude-plugin-sdd/issues/194)): all 190 bare `references/...` mentions of plugin-root reference docs across every `SKILL.md` now use `${CLAUDE_PLUGIN_ROOT}/references/...` — the bare form resolved against the invoking skill's own directory and 404'd (e.g. `/sdd:init`'s `claude-md-template.md` pointer). Skill-local references are unchanged.
+- **Conflict-marker gate no longer false-positives on Markdown setext headings** ([#191](https://github.com/joestump/claude-plugin-sdd/issues/191)): `/sdd:review` treated any standalone `=======` line as a merge-conflict marker, rejecting PRs that merely added a seven-character setext-underlined heading (`Summary`, `Roadmap`, …). `=======` now counts only between a `<<<<<<<`/`>>>>>>>` pair in the same file; the bracketing markers still flag on their own. Spec, skill, README, and eval assertion updated together, with a new spec scenario covering the setext case.
+- **Scaffolded docs-site first build no longer fails** ([#193](https://github.com/joestump/claude-plugin-sdd/issues/193)): three independent cold-start defects fixed — the `sdd-content` plugin now creates `docs-generated/` eagerly at construction (Docusaurus validates the directory before `loadContent()` runs); `@docusaurus/theme-mermaid` is pinned exactly to match core (a caret range resolved to 3.10.x and tripped the version-mismatch guard); and a `webpackbar` `^7` override guards against the 6.x/webpack ≥5.101 ProgressPlugin breakage.
+- **Loop budget's built-in rate table flagged as a point-in-time snapshot** ([#192](https://github.com/joestump/claude-plugin-sdd/issues/192)): the compiled-in fallback rate table silently attributed $0 to models it didn't list, under-counting `dollars_estimate` exactly when a cost ceiling mattered. The table now carries an explicit freshness note, and implementations surface a once-per-run staleness notice whenever cost accounting runs on the built-in default with an active dollar ceiling — including the matched-but-drifted-prices case the unknown-model warning cannot detect.
+- **`eval-tier3` CI job reads the real prompt corpus** ([#190](https://github.com/joestump/claude-plugin-sdd/issues/190)): the job pointed at a nonexistent `evals/tier3.json`; it now reads `evals/evals.json` filtered to the Tier 3 skill set, matching the other eval jobs.
+
 ## [5.2.0] — 2026-06-30
 
 ### Added
