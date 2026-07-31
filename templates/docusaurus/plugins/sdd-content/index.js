@@ -1052,6 +1052,12 @@ module.exports = function(context, options) {
   const specsSource = path.resolve(siteDir, specsDir);
   const docsDest = path.resolve(siteDir, outputDir);
 
+  // Docusaurus's docs plugin validates that its content directory exists at
+  // config-load time — before any plugin's loadContent() runs. Create the
+  // output directory eagerly at plugin construction so the first-ever build
+  // doesn't abort on a missing docs-generated/ (content lands in loadContent).
+  fs.mkdirSync(docsDest, { recursive: true });
+
   let baseUrl = '';
   const configPath = path.resolve(siteDir, 'docusaurus.config.ts');
   if (fs.existsSync(configPath)) {
