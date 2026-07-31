@@ -219,7 +219,7 @@ Picks up tracker issues and implements them in parallel using git worktrees:
 Reviews and merges PRs produced by `/sdd:work` using reviewer-responder agent pairs:
 - Discovers open PRs by spec number or explicit PR numbers
 - Organizes agents into reviewer-responder pairs (default 2 pairs, configurable with `--pairs`)
-- **Conflict-marker CI gate**: Before any review logic, scans all PR files for unresolved merge conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`). PRs with conflict markers are rejected immediately with file paths and line numbers — zero tolerance across all file types.
+- **Conflict-marker CI gate**: Before any review logic, scans all PR files for unresolved merge conflict markers (`<<<<<<<` and `>>>>>>>` anywhere; `=======` only between such a pair, so Markdown setext underlines don't false-positive). PRs with conflict markers are rejected immediately with file paths and line numbers — zero tolerance across all file types.
 - Verifies all CI/CD status checks (GitHub Actions, Gitea Actions, GitLab CI) are green before reviewing — PRs with failing checks are skipped
 - Reviewers check diffs against spec acceptance criteria and ADR compliance (not just style)
 - Responders address feedback by pushing fix commits and replying to review comments

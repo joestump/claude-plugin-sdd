@@ -55,7 +55,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
       - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to fetch the PR diff.
       - **GitLab**: Use MCP tools or `glab mr diff`.
 
-   2. Scan every line of the diff for conflict markers: `<<<<<<<`, `=======`, `>>>>>>>`.
+   2. Scan every line of the diff for conflict markers. The bracketing markers `<<<<<<<` (conflict start) and `>>>>>>>` (conflict end) are distinctive — flag any diff line beginning with either. Treat a `=======` separator line as a conflict marker **only when it appears between a `<<<<<<<` line and a `>>>>>>>` line in the same file** — a standalone run of seven equals signs is legitimate content (a Markdown setext H1 underline beneath a 7-character title like `Summary`, or an ASCII divider) and MUST NOT trigger the gate on its own.
 
    3. **If ANY conflict markers are found:**
       - Collect all offending file paths and line numbers.
@@ -307,7 +307,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 - MUST re-verify CI status after responder pushes fixes — never merge with failing checks
 - MUST NOT merge a PR unless ALL status checks are passing
 - This skill reads CLAUDE.md configuration but MUST NOT write to it (consumer, not producer) (Governing: SPEC-0009 REQ "Configuration Persistence")
-- MUST scan ALL files in every PR diff for conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) before any review logic runs (Governing: SPEC-0015 REQ "Conflict-Marker CI Gate")
+- MUST scan ALL files in every PR diff for conflict markers before any review logic runs; `<<<<<<<` and `>>>>>>>` flag on their own, while `=======` counts only between a `<<<<<<<`/`>>>>>>>` pair in the same file — a standalone `=======` (e.g. a Markdown setext heading underline) is not a conflict marker (Governing: SPEC-0015 REQ "Conflict-Marker CI Gate")
 - MUST reject PRs with conflict markers using REQUEST_CHANGES with file paths and line numbers — zero tolerance, any file type
 - MUST skip all further review (architecture context loading, spec compliance, code quality) for PRs rejected by the conflict-marker gate
 - Conflict-marker gate runs before CI checks — a PR with conflict markers is rejected even if CI is green

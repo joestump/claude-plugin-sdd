@@ -167,7 +167,7 @@ Agents MUST NOT modify spec files (`docs/openspec/specs/`), ADR files (`docs/adr
 
 ### Requirement: Conflict-Marker CI Gate
 
-`/sdd:review` MUST check all files in a PR diff for conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) before approving the PR. If any conflict markers are found, `/sdd:review` MUST reject the PR with a clear error message identifying the file(s) and line numbers containing conflict markers. This check MUST run before any other review logic. `/sdd:review` MUST NOT approve or merge a PR that contains conflict markers under any circumstances.
+`/sdd:review` MUST check all files in a PR diff for conflict markers before approving the PR. The bracketing markers `<<<<<<<` and `>>>>>>>` are each sufficient on their own; a `=======` separator line MUST be treated as a conflict marker only when it appears between a `<<<<<<<` line and a `>>>>>>>` line in the same file, because a standalone `=======` is legitimate content (e.g. a Markdown setext H1 underline beneath a seven-character title, or an ASCII divider). If any conflict markers are found, `/sdd:review` MUST reject the PR with a clear error message identifying the file(s) and line numbers containing conflict markers. This check MUST run before any other review logic. `/sdd:review` MUST NOT approve or merge a PR that contains conflict markers under any circumstances.
 
 #### Scenario: Conflict markers detected in PR
 
@@ -183,3 +183,8 @@ Agents MUST NOT modify spec files (`docs/openspec/specs/`), ADR files (`docs/adr
 
 - **WHEN** `/sdd:review` examines a PR that contains conflict markers in a markdown documentation file (`README.md`)
 - **THEN** the conflict-marker gate still triggers and rejects the PR, because conflict markers in any file type indicate an unresolved merge conflict
+
+#### Scenario: Setext heading underline is not a conflict marker
+
+- **WHEN** `/sdd:review` examines a PR whose diff adds a Markdown setext heading (a seven-character title such as `Summary` underlined by `=======`) with no `<<<<<<<` or `>>>>>>>` lines in the same file
+- **THEN** the conflict-marker gate passes, because a standalone `=======` line is legitimate Markdown and only counts as a conflict marker between a `<<<<<<<`/`>>>>>>>` pair
