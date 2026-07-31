@@ -388,7 +388,7 @@
           "type": "structural"
         },
         {
-          "text": "PR diffs scanned for <<<<<<<, =======, >>>>>>> markers",
+          "text": "PR diffs scanned for conflict markers: <<<<<<< and >>>>>>> anywhere, ======= only between a <<<<<<</>>>>>>> pair in the same file",
           "type": "structural"
         },
         {
