@@ -344,7 +344,17 @@ The plugin compiles in this default rate table as the fallback:
 | `claude-sonnet-4-7` | 3.00 | 15.00 |
 | `claude-haiku-4-7` | 0.25 | 1.25 |
 
+> **Freshness**: this table is a point-in-time snapshot (models and prices as of the `claude-*-4-7` generation). It is only revised when this file is edited — models released after it fall into the unknown-model $0 path below, and listed prices may lag the current rate card. The CLAUDE.md block above is the authoritative path; this table exists so a loop without one still gets order-of-magnitude cost accounting.
+
 When the CLAUDE.md block is missing or unparseable, set `rate_table_source = "built-in default"`.
+
+**Built-in-table staleness notice.** Because the fallback pins model IDs and prices at authoring time, implementations MUST surface a one-line notice on the first budget tick of a run whenever BOTH hold: `rate_table_source` is `"built-in default"` AND the dollar ceiling is active (`max_dollars` non-zero):
+
+```
+Cost accounting is using the plugin's built-in rate table (a point-in-time snapshot — newer models count $0.00, listed prices may be stale). Add a "#### Loop Cost Rates" block to CLAUDE.md's "### SDD Configuration" for authoritative rates.
+```
+
+The notice fires once per run and is independent of the per-model unknown-model warning below: it also covers the case where every model in the run *does* match the built-in table but the pinned prices have drifted, which the unknown-model path cannot detect.
 
 #### Unknown models
 
