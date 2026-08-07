@@ -10,6 +10,8 @@ argument-hint: "[SPEC-XXXX | issue numbers | (empty = propose from backlog)] [--
 
 # Work on Issues
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 You are picking up tracker issues and implementing them in parallel using git worktrees. Each issue gets its own worktree and worker agent.
 
 <!-- Governing: ADR-0028 (/loop Autonomous Mode), SPEC-0020 REQ "Lockfile Schema and Acquisition", SPEC-0020 REQ "Budget Schema and Persistence", SPEC-0020 REQ "Telemetry Schema", SPEC-0020 REQ "Resume Contract", SPEC-0020 REQ "Resume Contract Reconciliation" -->
@@ -200,7 +202,9 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
 8. **Create team**: Use `TeamCreate` to create a coordination team following the "Worker Coordination" protocol from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Multi-Agent Team Protocols". The lead (you) manages the task queue and monitors progress. Spawn up to the resolved parallelism limit (from step 7a) worker agents using `Task` with `subagent_type: "general-purpose"`.
 
-   If `TeamCreate` fails, fall back to single-agent sequential mode: work through each issue one at a time in the main session using `git worktree add` for each.
+   If `TeamCreate` fails — or is not a registered tool on this harness — fall back to single-agent sequential mode: work through each issue one at a time in the main session using `git worktree add` for each.
+
+   **Context hygiene in sequential mode** (per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § "Single-Agent Sequential Fallback"): everything read in the lead session is resent on every later turn, and a multi-issue epic worked in one continuous session compounds fast. If subagents are available, dispatch each issue's implementation (and any post-PR diff verification) to a subagent that reports back a compact outcome — PR URL, verdict, few-line summary — never raw diffs or full file dumps. Without subagents, read diffs via `--name-only` + targeted excerpts, and after each issue carry forward only its outcome summary.
 
 8a. **Build sibling PR manifest** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"):
 
@@ -504,7 +508,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 |-----------|----------|
 | Worker can't complete implementation | Reports failure to lead, worktree preserved for manual pickup |
 | Tests fail after 2 retries | Worker reports blocked with error details, moves to next issue |
-| `TeamCreate` fails | Falls back to single-agent sequential mode |
+| `TeamCreate` fails or is not a registered tool | Falls back to single-agent sequential mode with the context-hygiene rules from step 8 (subagent dispatch or `--name-only` + targeted excerpts; never full diffs inline) |
 | No workable issues found | Suggest `/sdd:plan` (no issues at all) or `/sdd:enrich` (issues exist but lack `### Branch`) |
 | Uncommitted changes in main tree | Ask user whether to continue or commit first |
 | `git worktree add` fails (branch exists) | Check if the branch already exists remotely. If so, use `git worktree add .claude/worktrees/{branch-name} {branch-name}` (without `-b`) to check out the existing branch |
@@ -550,7 +554,8 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - The lead MUST stay in the main working tree — only workers operate in worktrees
 - `--dry-run` MUST NOT create any worktrees, branches, or PRs
 - Maximum 2 test-fix attempts per worker before reporting blocked
-- When `TeamCreate` fails, MUST fall back to single-agent sequential mode — never error out
+- When `TeamCreate` fails or is absent, MUST fall back to single-agent sequential mode — never error out
+- In single-agent sequential mode, MUST NOT pull full diffs or large file dumps into the lead session by default — dispatch read-heavy verification to subagents (compact outcome back only) when subagents exist, otherwise use `--name-only` + targeted excerpts (per harness-compat § "Single-Agent Sequential Fallback"; friction report #201)
 - For Gitea trackers, MUST query native dependencies via API to determine unblocked stories (Governing: SPEC-0011 REQ "Gitea Native Dependencies")
 - MUST NOT spawn more than `max-parallel-agents` concurrent agents (default: 4); resolve from CLI flag → CLAUDE.md → default (Governing: SPEC-0015 REQ "Parallelism Limits", ADR-0017 Layer 1)
 - MUST read `## SDD Configuration` from CLAUDE.md for `max-parallel-agents` setting before falling back to default
@@ -732,8 +737,9 @@ For each PR a worker opens in an iteration:
    | `"needs-human"` | Apply the `needs-human-follow-up` label to PR #{N}; proceed to step 5 (the maintenance loop may still resolve CI flakes / conflicts independently of the architectural concern) |
    | `"errored"` | Apply the `chain-failed-pre-autofix` label to PR #{N}; **skip** step 5; record `autofix_pr_invoked: false`; **omit** `autofix_pr_invocation_status` (per SPEC-0020 REQ "Post-PR Chain Invocation"); proceed to next PR. The user can rerun `/sdd:review` after fixing the infrastructure issue (e.g., qmd unreachable per ADR-0024). |
 
-5. **Check `/autofix-pr` availability**. The command is a Claude Code built-in (not a plugin-provided skill). Probe by attempting to introspect the runtime's available commands.
-   - **Unavailable** (the build does not ship the command, or introspection returns "not found"): log a one-line warning ("`/autofix-pr` is not available in this Claude Code build — install or upgrade Claude Code to enable post-PR autofix chain"); open a tracker issue tagged `claude-code-version-required` (deduped per `/sdd:work` invocation — open at most one such issue per session); record `autofix_pr_invoked: false` and `autofix_pr_invocation_status: "unavailable"`; proceed to next PR. PR creation is NOT blocked.
+5. **Check `/autofix-pr` availability**. The command is a Claude Code built-in (not a plugin-provided skill), so it only exists at all when running under Claude Code. Probe by attempting to introspect the runtime's available commands.
+   - **Running on another harness** (Codex, OpenCode, Crush — the built-in cannot exist): log a one-line note ("`/autofix-pr` is a Claude Code built-in and is not available on this harness — skipping the autofix stage"); record `autofix_pr_invoked: false` and `autofix_pr_invocation_status: "unavailable"`; proceed to next PR. Do NOT open a tracker issue — the absence is expected, not a version problem.
+   - **Unavailable on Claude Code** (the build does not ship the command, or introspection returns "not found"): log a one-line warning ("`/autofix-pr` is not available in this Claude Code build — install or upgrade Claude Code to enable post-PR autofix chain"); open a tracker issue tagged `claude-code-version-required` (deduped per `/sdd:work` invocation — open at most one such issue per session); record `autofix_pr_invoked: false` and `autofix_pr_invocation_status: "unavailable"`; proceed to next PR. PR creation is NOT blocked.
    - **Available**: continue to step 6.
 
 6. **Invoke `/autofix-pr`** on PR #{N} **fire-and-forget**: `/sdd:work` does NOT wait for `/autofix-pr` to terminate; the built-in runs in its own background lifecycle managed by Claude Code, watching CI failures, review comments, and merge conflicts, and pushing corrective commits until the PR merges or is closed. `/sdd:work` returns once the invocation is **accepted** (the command was parsed and the lifecycle started).
@@ -762,6 +768,7 @@ For each PR a worker opens in an iteration:
 | `/sdd:review` returns `"approve"`, `"changes-requested"` (resolved in round), or `"needs-human"` | Proceed to `/autofix-pr` |
 | `/sdd:review` returns `"errored"` (qmd unreachable per ADR-0024 sub-decision 2, or other infrastructure failure) | Apply `chain-failed-pre-autofix` label; skip `/autofix-pr`; record `autofix_pr_invoked: false`; omit `autofix_pr_invocation_status` |
 | `/autofix-pr` unavailable in current Claude Code build | Log warning; open one tracker issue with `claude-code-version-required` label per `/sdd:work` session (deduped); exit cleanly. PR is NOT blocked. |
+| `/autofix-pr` absent because the harness is not Claude Code | Log a one-line note and skip the stage; NO tracker issue (expected absence, not a version problem). PR is NOT blocked. |
 | `/autofix-pr` invocation parse error | Record `autofix_pr_invocation_status: "errored"`; one-line warning; PR NOT blocked. |
 
 #### Concurrency under `--loop`
@@ -811,6 +818,6 @@ Every iteration appends a line to `.sdd/loop/work.history.jsonl` and emits the s
 - The chain MUST invoke `/sdd:review` exactly once per PR per chain invocation (preserves ADR-0010's bounded one-round invariant)
 - WHEN `/sdd:review` exits with `review_outcome: "errored"` THEN MUST apply the `chain-failed-pre-autofix` label, MUST NOT invoke `/autofix-pr`, and MUST omit `autofix_pr_invocation_status` from the per-iteration telemetry
 - WHEN `/sdd:review` exits with `"needs-human"` THEN MUST apply the `needs-human-follow-up` label AND proceed to `/autofix-pr` (the maintenance loop may resolve CI / conflicts independently)
-- WHEN `/autofix-pr` is unavailable THEN MUST log a warning AND open a tracker issue with the `claude-code-version-required` label (deduped at one issue per session) AND exit cleanly (PR creation MUST NOT be blocked)
+- WHEN `/autofix-pr` is unavailable on Claude Code THEN MUST log a warning AND open a tracker issue with the `claude-code-version-required` label (deduped at one issue per session) AND exit cleanly (PR creation MUST NOT be blocked); WHEN the harness is not Claude Code THEN MUST skip the stage with a one-line note and MUST NOT open a tracker issue
 - The `/autofix-pr` invocation MUST be fire-and-forget — `/sdd:work` MUST NOT wait for `/autofix-pr` to terminate
 - The chain MUST NOT be double-counted in `/sdd:work`'s budget — costs of `/sdd:review` and `/autofix-pr` accrue under their own tool accounting; `/sdd:work` records only the invocation events in `history.jsonl`

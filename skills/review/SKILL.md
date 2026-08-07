@@ -10,6 +10,8 @@ argument-hint: "[SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run] [
 
 # Review and Merge PRs
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pairs. Each pair processes PRs through exactly one review-response round: the reviewer checks the diff against spec acceptance criteria, the responder addresses feedback, and the reviewer re-evaluates. Approved PRs are merged; unresolved PRs are left with comments for human follow-up. See ADR-0010 and SPEC-0009.
 
 <!-- Governing: ADR-0028 (/loop Autonomous Mode), SPEC-0020 REQ "Lockfile Schema and Acquisition", SPEC-0020 REQ "Budget Schema and Persistence", SPEC-0020 REQ "Telemetry Schema", SPEC-0020 REQ "Resume Contract", SPEC-0020 REQ "Resume Contract Reconciliation" -->
@@ -143,7 +145,9 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
    - N **reviewer** agents (`general-purpose`) — one per pair
    - N **responder** agents (`general-purpose`) — one per pair
 
-   If `TeamCreate` fails, fall back to single-agent sequential mode: for each PR, review the diff against acceptance criteria, then address any issues directly (acting as both reviewer and responder). This mode skips the response round — if issues are found, leave review comments for human follow-up instead of auto-fixing.
+   If `TeamCreate` fails — or is not a registered tool on this harness — fall back to single-agent sequential mode: for each PR, review the diff against acceptance criteria, then address any issues directly (acting as both reviewer and responder). This mode skips the response round — if issues are found, leave review comments for human follow-up instead of auto-fixing.
+
+   **Context hygiene in sequential mode** (per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § "Single-Agent Sequential Fallback"): everything read in the lead session is resent on every later turn, so inline diff-reading is the dominant token cost of a multi-PR session. If subagents are available, fork each PR's diff-read-and-verify step to a subagent that returns only a verdict + compact summary — never the diff. Without subagents, default to `gh pr diff {N} --name-only` plus targeted per-file excerpts, escalating to a full inline diff only when the targeted read is genuinely insufficient. After each PR, carry forward only the verdict and a few-line summary.
 
 8. **Distribute PRs** (Governing: SPEC-0009 REQ "PR Distribution"):
 
@@ -271,7 +275,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 |-----------|----------|
 | Single PR review fails (API error) | Log failure, skip that PR, continue with remaining PRs |
 | Merge conflict on merge | Report conflict, leave PR unmerged for human resolution |
-| `TeamCreate` fails | Fall back to single-agent sequential mode |
+| `TeamCreate` fails or is not a registered tool | Fall back to single-agent sequential mode with the context-hygiene rules from step 7 (fork diff reads to subagents, or `--name-only` + targeted excerpts) |
 | No open PRs found | Suggest `/sdd:work` to create PRs |
 | No tracker detected | Error: tracker with PR/MR support is required |
 | Responder cannot resolve feedback | Reply explaining why, report to lead, leave for human |
@@ -302,7 +306,8 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 - MUST report all failures with actionable details — never silently skip (Governing: SPEC-0009 REQ "Error Handling")
 - `--dry-run` MUST NOT submit reviews, push commits, or merge PRs
 - Adaptive pair count: reduce pairs to min(PR count, configured pairs) for small batches
-- When `TeamCreate` fails, MUST fall back to single-agent sequential mode — never error out
+- When `TeamCreate` fails or is absent, MUST fall back to single-agent sequential mode — never error out
+- In single-agent sequential mode, MUST NOT pull full PR diffs into the lead session by default — fork the diff-read-and-verify step to a subagent (verdict + summary back only) when subagents exist, otherwise use `--name-only` + targeted excerpts (per harness-compat § "Single-Agent Sequential Fallback"; friction report #201)
 - MUST verify all CI/CD status checks (GitHub Actions, Gitea Actions, GitLab CI) are green before reviewing a PR — never review a PR with failing checks
 - MUST re-verify CI status after responder pushes fixes — never merge with failing checks
 - MUST NOT merge a PR unless ALL status checks are passing
