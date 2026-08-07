@@ -16,7 +16,7 @@ const priorityEmojis: Record<string, string> = {
   'P4': '\u26aa',
 };
 
-export default function PriorityBadge({priority, className}: PriorityBadgeProps): JSX.Element {
+export default function PriorityBadge({priority, className}: PriorityBadgeProps): React.JSX.Element {
   const normalizedPriority = priority.toUpperCase() as PriorityType;
   const emoji = priorityEmojis[normalizedPriority] || priorityEmojis['P4'];
 

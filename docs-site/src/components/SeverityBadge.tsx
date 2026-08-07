@@ -17,7 +17,7 @@ const severityEmojis: Record<string, string> = {
   'unknown': '\u26aa',
 };
 
-export default function SeverityBadge({severity, className}: SeverityBadgeProps): JSX.Element {
+export default function SeverityBadge({severity, className}: SeverityBadgeProps): React.JSX.Element {
   const normalizedSeverity = severity.toLowerCase() as SeverityType;
   const emoji = severityEmojis[normalizedSeverity] || severityEmojis['unknown'];
 

@@ -42,7 +42,7 @@
       "managed": true
     },
     "docs-site/src/components/PriorityBadge.tsx": {
-      "checksum": "sha256:01ea2e91579584edf3a25d486f689250e983bc511a6f9aff4fbf7d7f85796731",
+      "checksum": "sha256:1b26f4b73dee2dc0b4cbed90da64f77e7faf879a82ca8c80af7077d7f231a6e0",
       "managed": true
     },
     "docs-site/src/components/RFCLevelBadge.tsx": {
@@ -54,19 +54,19 @@
       "managed": true
     },
     "docs-site/src/components/SeverityBadge.tsx": {
-      "checksum": "sha256:264cba317e3f41737ca5c69dfd193b19b8b2cba57e9ad9b9d663411fca3651a3",
+      "checksum": "sha256:48562fc3176b8d201efb30671f4cc0e77adddd2a70dece0b0bcb017c8984dd7e",
       "managed": true
     },
     "docs-site/src/components/StatusBadge.tsx": {
-      "checksum": "sha256:8cbcf33b10d969c9f069f62b75f0b7622c0dc7d9fe4c7e982f5927251a360543",
+      "checksum": "sha256:2ca9ca387863f58e74cf9decf5fcba852245b3264f2781fd6d123e74b48b8f41",
       "managed": true
     },
     "docs-site/src/components/DateBadge.tsx": {
-      "checksum": "sha256:95479dae4e1c7d23336939d0cc8a1f1063817c54761acf2862b439f1d7958089",
+      "checksum": "sha256:05fdc8bffd1983498f3ea2ce114417efbabda95fa0044a66fd43ffadb0d19069",
       "managed": true
     },
     "docs-site/src/components/DomainBadge.tsx": {
-      "checksum": "sha256:008581e6c6fc1949949bc2798d3a2f135ee4b3bbd05355acfb1725ca8c94ef93",
+      "checksum": "sha256:5f35a17c4d5dfa12c0bd87fe7b83424283e053f7092c28f6e06f5a90ff461e0d",
       "managed": true
     },
     "docs-site/src/css/custom.css": {
