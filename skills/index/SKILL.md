@@ -9,6 +9,8 @@ argument-hint: "[add|update|embed|status|remove] [--module <name>] [--foreground
 
 # Index Repository into QMD
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 Create per-repository [qmd](https://github.com/tobi/qmd) collections so agents and humans can run hybrid search across a repo's ADRs, OpenSpec specs, source code, and tracker issues from a single query plane. Each repository owns four collections (`{repo}-adrs`, `{repo}-specs`, `{repo}-code`, `{repo}-issues`) so searches can be filtered cleanly with `qmd query "..." -c {repo}-adrs`. The issues collection is populated by syncing the configured tracker into `.sdd/issues/{id}.md` files (per ADR-0025 and `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md`). Workspace projects (ADR-0016) get one set of collections per module: `{repo}-{module}-{kind}`.
 
 ## Process
@@ -400,7 +402,7 @@ Auto-routed: collections did not exist → ran `add` then started `embed` ({fore
 {If embed is in-progress: include "Background embed running — log: /tmp/qmd-embed-{repo}.log. Re-run `/sdd:index status` to check progress."}
 {If skipped: include "Run `/sdd:index embed` — semantic and hybrid search are disabled until vectors exist."}
 - After adding new ADRs/specs/code, re-run `/sdd:index update`
-- The qmd MCP server (`mcp__plugin_qmd_qmd__*` tools, if you have the qmd plugin loaded) sees new collections immediately — no Claude Code restart required. Verified empirically against running sessions.
+- The qmd MCP server (`mcp__plugin_qmd_qmd__*` tools, if you have the qmd plugin loaded) sees new collections immediately — no harness restart required. Verified empirically against running sessions.
 - Consider recording this with `/sdd:adr "Adopt qmd for cross-repo semantic search"` — there is no ADR for this yet
 ```
 

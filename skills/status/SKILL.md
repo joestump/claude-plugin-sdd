@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 # Change ADR or Spec Status
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 Update the status of an ADR or spec, **preserving the file's existing status format**. Two formats exist in the wild: YAML frontmatter (canonical SDD template) and inline `- **Status:** {value}` bullets (used by legacy / hand-authored repos that predate the template). This skill detects which format is in use and edits in place — it MUST NOT silently introduce a new format that creates two sources of truth in the same file.
 
 ## Process

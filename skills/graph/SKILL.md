@@ -9,6 +9,8 @@ argument-hint: "<verb> [<artifact-id>] [--scope <subtree>] [--module <name>] [--
 
 # /sdd:graph — Artifact Graph Skill
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 You are running `/sdd:graph`. This skill builds an in-memory directed graph of the project's ADRs, specs, and governed source files, then answers queries against it.
 
 This skill differs from other SDD skills: instead of orchestrating Claude through markdown instructions, it delegates the deterministic build/validate/traverse work to a Python helper at `lib/graph.py` in this skill's directory. The output of the helper is the contract — JSON output (Story 6) is the stable shape any future MCP would consume. Markdown is reserved for orchestration and review UX (e.g., the `backfill` mode's accept/edit/reject in Story 7).

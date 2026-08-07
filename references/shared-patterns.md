@@ -4,6 +4,8 @@
 
 Patterns used across multiple SDD plugin skills. Skills reference specific sections by heading instead of duplicating the content.
 
+> **Harness portability.** Throughout this reference, "CLAUDE.md" means the **project memory file** — `CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`, resolved per `harness-compat.md` § "Project Memory File" (same directory as this file). Likewise, named tools (`AskUserQuestion`, `TeamCreate`, `SendMessage`, `ToolSearch`, …) denote capabilities with per-harness mappings and fallbacks defined in `harness-compat.md` § "Capability Map".
+
 ## Artifact Path Resolution
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
@@ -160,7 +162,7 @@ Canonical algorithm for reading plugin configuration from CLAUDE.md. All skills 
 
 ### Step 1: Read Root CLAUDE.md
 
-Read the project-root `CLAUDE.md` and look for a `### SDD Configuration` section. If found, parse the subsections (`#### Tracker`, `#### Branch Conventions`, `#### PR Conventions`, `#### Review`, `#### Worktrees`, `#### Projects`) to extract configuration values.
+Resolve the project memory file at the project root (`CLAUDE.md`, then `AGENTS.md`, then `CRUSH.md` — first file containing the SDD sections wins, per `harness-compat.md` § "Project Memory File"; called `CLAUDE.md` below). Read it and look for a `### SDD Configuration` section. If found, parse the subsections (`#### Tracker`, `#### Branch Conventions`, `#### PR Conventions`, `#### Review`, `#### Worktrees`, `#### Projects`) to extract configuration values.
 
 ### Step 2: Merge Module Config (if applicable)
 
@@ -378,6 +380,8 @@ Skills use different team structures depending on the task:
 ### TeamCreate Required
 
 Any skill or session that spawns 2+ parallel agents MUST use `TeamCreate`, not ad-hoc `Agent` calls. `SendMessage` (required for the Worker Communication Protocol) only works within a Team. Ad-hoc background agents are isolated and cannot coordinate — they cannot see sibling agents' file claims, type creations, or conflict alerts. This applies both to skills and to sessions orchestrating multiple skills.
+
+On harnesses without team primitives (Codex, OpenCode, Crush — or a Claude Code session where `TeamCreate` is not registered), do NOT approximate a team with isolated parallel agents: the coordination protocols above cannot run, and uncoordinated parallel workers produce exactly the duplicate-type and file-conflict failures the protocols exist to prevent. Use the skill's single-agent sequential fallback instead, following `harness-compat.md` § "Single-Agent Sequential Fallback" for context hygiene.
 
 ## Try-Then-Create Label Pattern
 

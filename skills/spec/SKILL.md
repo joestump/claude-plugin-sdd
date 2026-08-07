@@ -7,6 +7,8 @@ argument-hint: "[capability name or ADR reference] [--review] [--module <name>]"
 
 # Create an OpenSpec Specification
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 You are creating or updating an OpenSpec specification. Every spec is a **paired artifact**: `spec.md` (requirements — what the system does) and `design.md` (architecture and rationale — how and why it does it).
 
 **You MUST ALWAYS create or update BOTH files together. They are a single unit of truth. Never create, edit, or deliver one without the other.**
@@ -63,7 +65,7 @@ When creating a new spec from scratch, both files are created together — align
      - Spawn an **architect** agent (`general-purpose`) to review both documents for completeness, accuracy, RFC 2119 keyword compliance, and proper scenario format. **The architect MUST verify the spec uses `SPEC-XXXX` numbering, not `RFC-XXXX`.**
      - The architect MUST review and approve BOTH documents before they are finalized
      - If converting from an ADR, the spec-writer should read the ADR and use it as the basis
-     - If `TeamCreate` fails, fall back to single-agent mode: draft both files directly, then self-review against the architect's checklist in the Rules section before writing.
+     - If `TeamCreate` fails — or is not a registered tool on this harness — fall back to single-agent mode: draft both files directly, then self-review against the architect's checklist in the Rules section before writing.
 
 4b. **Optional call graph generation** (v5.1.0+):
 

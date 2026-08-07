@@ -7,6 +7,8 @@ argument-hint: "[short description of the decision] [--review] [--module <name>]
 
 # Create an Architecture Decision Record (ADR)
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 You are creating a new ADR using the MADR (Markdown Architectural Decision Records) format.
 
 ## Process
@@ -52,7 +54,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
      - Spawn an **architect** agent (`general-purpose`) to review the drafter's output for completeness, accuracy, and adherence to MADR format
      - The architect MUST review and approve the ADR before it is finalized
      - The drafter should research the codebase (read relevant files, understand the current architecture) before writing
-     - If `TeamCreate` fails, fall back to single-agent mode: draft the ADR directly, then self-review against the architect's checklist in the Rules section before writing.
+     - If `TeamCreate` fails — or is not a registered tool on this harness — fall back to single-agent mode: draft the ADR directly, then self-review against the architect's checklist in the Rules section before writing.
 
 2b. **Optional call graph embedding** (opt-in, SPEC-0034):
 

@@ -7,6 +7,8 @@ argument-hint: "[scope] [--review] [--scrum] [--module <name>]"
 
 # Comprehensive Design Audit
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 You are performing a deep, comprehensive audit of design artifact alignment across the project or a specified scope. This skill covers all six drift categories and produces a structured report with prioritized findings.
 
 ## Process
@@ -44,7 +46,7 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
    - Create a Claude Team with `TeamCreate`:
      - Spawn an **auditor** agent (`general-purpose`) to perform the full analysis and write the audit report
      - Spawn a **reviewer** agent (`general-purpose`) to validate the auditor's findings for accuracy, completeness, and correct severity assignments
-   - If `TeamCreate` fails, fall back to single-agent mode and tell the user: "Team creation failed. Proceeding with single-agent audit and self-review."
+   - If `TeamCreate` fails — or is not a registered tool on this harness — fall back to single-agent mode and tell the user: "Team creation failed. Proceeding with single-agent audit and self-review."
 
    **With `--scrum`**: Scrum triage mode — see the **Scrum Triage Ceremony** section below. When `--scrum` is set, complete the standard audit analysis (steps 4–6) first, then enter the ceremony. Do NOT run `--review` mode when `--scrum` is set.
 
