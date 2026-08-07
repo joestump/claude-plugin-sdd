@@ -9,6 +9,8 @@ argument-hint: "[--module <name>]"
 
 # Initialize SDD Plugin
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 Set up the project's `CLAUDE.md` with architecture context so Claude sessions are design-aware. This skill uses **componentized convergence** — each component independently checks its own state and converges. No single gate blocks other components. Running init N times produces the same result as running it once.
 
 Starting v5.0.0, init also enforces a hardware/install precondition: the `qmd` CLI MUST be available on PATH (per ADR-0024). If qmd is missing, init refuses to operate so users discover the dependency at setup, not three skills deep into a workflow.
@@ -18,6 +20,8 @@ Starting v5.0.0, init also enforces a hardware/install precondition: the `qmd` C
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
 **Module support**: If `$ARGUMENTS` contains `--module <name>`, resolve the module root using the Workspace Detection pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. All CLAUDE.md reads and writes in the steps below target the module's `CLAUDE.md` at the module root instead of the project root. If workspace detection finds no modules and `--module` is provided, error: "No modules detected. Run `/sdd:init` without `--module` first to set up workspace."
+
+**Memory file selection**: As the config *producer*, init decides which project memory file carries the SDD sections. Resolve per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § "Project Memory File": if a memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) already contains the SDD sections, converge into that file; on a fresh init, create your harness's native memory file (Claude Code → `CLAUDE.md`; Codex/OpenCode → `AGENTS.md`; Crush → `CRUSH.md`; unknown → `CLAUDE.md`). Never duplicate the SDD sections across memory files — if the harness auto-loads a different file than the one carrying the sections, add a one-line pointer there instead. All references to "CLAUDE.md" in the steps below mean the memory file selected here.
 
 ### Step -1: qmd Preflight (v5.0.0+)
 
@@ -186,7 +190,9 @@ f. **qmd Assumption Note** (v5.0.0+, per SPEC-0019 REQ "qmd Assumption in Consum
 
 ### Step 3: Permission Auto-Configuration
 
-**Precondition**: Permissions status is `needs-update`.
+**Precondition**: Permissions status is `needs-update`, AND the harness is Claude Code.
+
+`.claude/settings.local.json` is Claude Code's permission store. On other harnesses (Codex, OpenCode, Crush), skip this step entirely — do NOT write `.claude/settings.local.json` (it would be dead config) and do NOT guess another harness's config schema. Instead, include one line in the Step 5 report naming the commands the SDD skills will invoke (`git`, plus the detected tracker CLI: `gh`/`glab`/`tea`, and `qmd`) so the user can pre-approve them in their harness's own mechanism — see `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md` § "Permissions and Approvals" for where each harness keeps approvals.
 
 If `.claude/settings.local.json` already contains broad wildcard patterns for git and the detected tracker, skip this step.
 
@@ -344,7 +350,7 @@ Each component is independently idempotent:
 - MUST preserve all configuration values exactly during migration — no lossy translation
 - MUST delete `.claude-plugin-design.json` after successful migration — no AskUserQuestion needed
 - When merging migrated config into an existing `### SDD Configuration` section, CLAUDE.md values take precedence on conflicts
-- MUST auto-configure `.claude/settings.local.json` with tracker-appropriate permission allowlists — no AskUserQuestion needed
+- MUST auto-configure `.claude/settings.local.json` with tracker-appropriate permission allowlists — no AskUserQuestion needed. Claude Code only: on other harnesses MUST skip the write and instead report the commands to pre-approve (per harness-compat § "Permissions and Approvals")
 - MUST detect `.gitmodules` and offer workspace setup when submodules are found (Governing: ADR-0016, SPEC-0014 REQ "Init Workspace Setup")
 - MUST NOT create submodule CLAUDE.md files without user consent via `AskUserQuestion`
 - MUST write `### Workspace Modules` table in root CLAUDE.md when workspace is detected

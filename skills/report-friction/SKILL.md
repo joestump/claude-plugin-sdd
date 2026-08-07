@@ -9,6 +9,8 @@ argument-hint: "[skill-name] [--label bug|documentation|enhancement|usability] [
 
 # Report Friction with the SDD Plugin
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 This is a meta-skill: when an SDD plugin skill burns time, breaks, or guides you wrong, you can use this to file a feedback issue against the plugin's own repository (`joestump/claude-plugin-sdd`). The user always sees and approves the entire submission first.
 
 ## When to use this skill

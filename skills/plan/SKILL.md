@@ -10,6 +10,8 @@ argument-hint: "[spec-name or SPEC-XXXX] [--review] [--scrum] [--project <name>]
 
 # Plan Sprint from Specification
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 You are breaking down an existing specification into trackable work items (epics and story-sized issues) in the user's issue tracker. Instead of creating one issue per requirement, you group related requirements into 3-4 story-sized issues by functional area, with task checklists in the issue body for requirement traceability. See ADR-0011 and SPEC-0010.
 
 ## Process
@@ -49,7 +51,7 @@ You are breaking down an existing specification into trackable work items (epics
      - Spawn a **planner** agent (`general-purpose`) to analyze the spec and create the issue breakdown
      - Spawn a **reviewer** agent (`general-purpose`) to review the breakdown for completeness, proper acceptance criteria, and correct dependency ordering
      - The reviewer MUST verify that every spec requirement has at least one corresponding issue
-     - If `TeamCreate` fails, fall back to single-agent mode
+     - If `TeamCreate` fails — or is not a registered tool on this harness — fall back to single-agent mode
    - Maximum 2 revision rounds. After that, the reviewer approves with noted concerns.
 
 ---

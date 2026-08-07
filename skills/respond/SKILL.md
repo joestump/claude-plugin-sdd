@@ -13,6 +13,8 @@ argument-hint: "[PR number(s) or URL | (empty = infer from current branch)] [--r
 
 # Respond to PR Review Feedback
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 You are the **author-side responder** for a pull request. A reviewer — human or
 automated — has left feedback, requested changes, or the PR has failing CI.
 Your job is to work through that feedback like the PR author would: make the
@@ -175,8 +177,10 @@ use `/sdd:respond` to address the review someone left on your PR.
    - **reply** → answer the question directly.
 
    Where the tracker supports it and the item is fully addressed, resolve the
-   review thread (GitHub: `mcp__github__resolve_review_thread`). Be frugal — one
-   substantive reply per thread, not a running commentary.
+   review thread (GitHub: `mcp__github__resolve_review_thread`, or without the
+   MCP, `gh api graphql` with the `resolveReviewThread` mutation on the thread's
+   node ID). Be frugal — one substantive reply per thread, not a running
+   commentary.
 
    **Capturing deferred feedback.** A `defer` item is a single follow-up, so file
    a single issue **directly via the tracker's issue API** — do NOT invoke

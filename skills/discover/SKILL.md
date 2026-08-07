@@ -7,6 +7,8 @@ argument-hint: "[scope] [--module <name>] [--with-graphs]"
 
 # Discover Implicit Architecture
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 Explore an existing codebase to discover implicit architectural decisions and specification-worthy subsystems. Produces a suggestion report -- does NOT create any files.
 
 ## Process
@@ -35,7 +37,7 @@ Explore an existing codebase to discover implicit architectural decisions and sp
    - Build an exclusion list of already-documented decisions and subsystems
    - If neither directory exists, note that no existing artifacts were found (this is expected for first-time discovery)
 
-4. **Analyze the codebase** across four categories. Use the Task tool to spawn parallel Explore agents for each category. Each agent should return a list of findings with evidence.
+4. **Analyze the codebase** across four categories. Use the Task tool to spawn parallel Explore agents for each category; each agent should return a list of findings with evidence. On harnesses without subagents, run the four category analyses sequentially inline — same checklists, same findings format — and keep only each category's findings list in context (not the raw file reads) before starting the next category.
 
    **Agent 1 -- Dependency & Framework Analysis**:
    - Scan for project manifests (e.g., `package.json`, `requirements.txt`, `pyproject.toml`, `Cargo.toml`, `Gemfile`, `pom.xml`, `build.gradle`, `composer.json`, and other ecosystem-specific files).
@@ -214,7 +216,7 @@ This may indicate:
 ## Rules
 
 - This skill is READ-ONLY -- it MUST NOT create, modify, or delete any files
-- This skill is always single-agent at the top level, but MUST use Task tool to spawn parallel Explore agents for the four analysis categories
+- This skill is always single-agent at the top level, but MUST use the Task tool to spawn parallel Explore agents for the four analysis categories when subagents are available; without subagents, MUST run the four analyses sequentially inline, discarding raw file reads between categories
 - Every suggestion MUST cite specific evidence from the codebase -- file paths, dependency declarations, configuration entries, or code patterns
 - Suggestions MUST NOT be based on speculation or assumptions about code that was not read
 - MUST read existing ADRs and specs before producing suggestions to avoid duplicating already-documented decisions

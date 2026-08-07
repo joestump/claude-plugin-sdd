@@ -2,6 +2,17 @@
 
 All notable changes to the SDD plugin (`claude-plugin-sdd`) are documented here. The format is based on [Keep a Changelog](https://keepachangelog.com/) and the project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Harness portability across Codex CLI, OpenCode, and Crush**: new `references/harness-compat.md` maps every Claude Code-specific tool surface the skills name (`AskUserQuestion`, `Task`, `TeamCreate`/`SendMessage`, `Task*`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) to per-harness equivalents and documented fallbacks, defines the project memory file resolution (`CLAUDE.md` / `AGENTS.md` / `CRUSH.md`), plugin-root resolution, permissions equivalents, and worktree placement rules. All 20 skills carry a standard portability note, `shared-patterns.md` generalizes Config Resolution to the memory file, `/sdd:init` selects the harness-native memory file and gates the `.claude/settings.local.json` permissions step to Claude Code, and `/sdd:work`'s `/autofix-pr` stage skips cleanly (without filing version issues) on harnesses that can never ship the built-in.
+
+### Fixed
+
+- **`/sdd:prime` untargeted-priming qmd commands now work against the real CLI** ([#200](https://github.com/joestump/claude-plugin-sdd/issues/200)): the documented `qmd query --json -c {c} --limit 10000 --minScore 0` pattern failed three ways — `--minScore` is the MCP parameter name (CLI is `--min-score`), the result cap flag is `-n`, and an empty query is not a wildcard (qmd's query expansion garbles it). Untargeted mode now enumerates via `qmd ls` per a new `qmd-helpers.md` § "Exhaustive Retrieval (list-all)" section; topic mode puts the positional query first with kebab-case flags. The `qmd-helpers.md` CLI example is corrected to match.
+- **Single-agent fallback in `/sdd:work` and `/sdd:review` no longer burns tokens on inline diff-reading** ([#201](https://github.com/joestump/claude-plugin-sdd/issues/201)): the TeamCreate-unavailable fallback paths now carry explicit context-hygiene rules — fork per-PR diff-read-and-verify to a subagent returning only a verdict + compact summary when subagents exist, otherwise default to `--name-only` plus targeted excerpts, and carry only outcome summaries between items. Canonical guidance lives in `harness-compat.md` § "Single-Agent Sequential Fallback".
+
 ## [5.2.1] — 2026-07-31
 
 Bug-fix release addressing five issues reported from real-world adoption ([#190](https://github.com/joestump/claude-plugin-sdd/issues/190)–[#194](https://github.com/joestump/claude-plugin-sdd/issues/194)). No new features, no breaking changes.

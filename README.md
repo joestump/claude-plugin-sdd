@@ -2,6 +2,8 @@
 
 A Claude Code plugin for architecture governance: ADRs, specifications, sprint planning, parallel implementation, code review, and documentation generation.
 
+The skills are written in the open Agent Skills format and are harness-portable: they also run under Codex CLI, OpenCode, and Crush. Claude Code-specific tool names in the skill bodies denote capabilities with per-harness mappings and fallbacks — see [references/harness-compat.md](references/harness-compat.md).
+
 ## Skills
 
 | Skill | Invoke | Description |

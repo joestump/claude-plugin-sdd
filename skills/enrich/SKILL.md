@@ -9,6 +9,8 @@ argument-hint: "[SPEC-XXXX or spec-name] [--branch-prefix <prefix>] [--dry-run] 
 
 # Enrich Issues with Developer Workflow Conventions
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 You are retroactively adding `### Branch` and `### PR Convention` sections to existing tracker issues that were created by `/sdd:plan` (or manually) for a given spec. The canonical templates for these sections live in `${CLAUDE_PLUGIN_ROOT}/references/issue-authoring.md` § Enrichment Sections (which references `shared-patterns.md` for the underlying Branch Naming Conventions and PR Close Keywords). This skill is purely additive — it never replaces existing content.
 
 ## Process
