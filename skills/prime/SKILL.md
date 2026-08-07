@@ -7,6 +7,8 @@ argument-hint: "[topic] [--module <name>]"
 
 # Prime Architecture Context
 
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+
 Load existing ADRs and specs into the session so Claude can give architecture-aware responses.
 
 ## Process
@@ -42,20 +44,20 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
    
    <!-- Governing: ADR-0024 (qmd as hard dependency), SPEC-0019 REQ "qmd-Smart Context Loading" -->
    
-   All artifact retrieval now uses qmd hybrid search for consistency, flexibility, and efficiency. Both untargeted and topic-filtered modes use the same code path with different parameters, executed via the `qmd query` CLI.
+   Artifact retrieval routes through qmd, but the two modes use different primitives: untargeted mode is an *exhaustive enumeration* (no ranking involved), topic-filtered mode is a *ranked hybrid search*. Do not use `qmd query` for the exhaustive case — it requires a real query string, and an empty query is not a wildcard (see `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Exhaustive Retrieval (list-all)").
    
    **For untargeted priming** (`/sdd:prime` with no topic):
-   - Query for all ADRs with `qmd query --json -c {repo}-adrs --limit 10000 --minScore 0` plus a second query for all specs with `qmd query --json -c {repo}-specs --limit 10000 --minScore 0`
+   - Enumerate all ADRs with `qmd ls {repo}-adrs` and all specs with `qmd ls {repo}-specs`, then read each document (via `qmd get`/`qmd multi-get` or directly from disk) per qmd-helpers § "Exhaustive Retrieval (list-all)"
    - In workspace mode, repeat for each module's per-module collections (`{repo}-{module}-adrs`, etc.)
-   - The `--limit 10000` and `--minScore 0` retrieve all matches without filtering
+   - If `qmd ls` is unavailable or errors, fall back to direct file enumeration over `{adr-dir}/*.md` and `{spec-dir}/*/spec.md` (acceptable for exhaustive listing only — no ranking is involved)
    
    **For topic-filtered priming** (`/sdd:prime {topic}`):
    - Construct a hybrid query with both `lex` (keyword match) and `vec` (semantic match) sub-queries per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval"
-   - Run: `qmd query --json -c {repo}-adrs -c {repo}-specs --limit 8 --minScore 0.3 '<queries>'`
-   - If zero candidates above `minScore: 0.3`, output: `No ADRs or specs matched the topic "{topic}". Try a broader term, or run `/sdd:prime` without a topic to see all artifacts.`
+   - Run: `qmd query '<queries>' --json -c {repo}-adrs -c {repo}-specs -n 8 --min-score 0.3` — positional query first, kebab-case flags, `-n` for the result cap, per qmd-helpers § "Calling via CLI" (the MCP parameter names `limit`/`minScore` are not CLI flags)
+   - If zero candidates above the 0.3 score floor, output: `No ADRs or specs matched the topic "{topic}". Try a broader term, or run `/sdd:prime` without a topic to see all artifacts.`
    
-   For each retrieved artifact:
-   - Parse the JSON response to extract: ID, title (from first `#` heading), status, superseded-by (from frontmatter)
+   For each retrieved artifact (from the query JSON in topic mode, or the document contents in untargeted mode):
+   - Extract: ID, title (from first `#` heading), status, superseded-by (from frontmatter)
    - For ADRs: extract summary from first 2-3 sentences of `## Decision Outcome`
    - For specs: extract summary from first sentence of `## Overview`; count requirements and scenarios
    - Sort by artifact ID number (natural sort: ADR-0001, ADR-0002, ..., SPEC-0001, ...)
@@ -237,6 +239,6 @@ Primed session with {N} ADRs and {M} specs matching "{topic}".
 - In topic-filtered mode, MUST surface non-authoritative artifacts that match the topic with a `⚠ {status}` badge in the table and a "superseded by" note in the summary — do NOT silently exclude them, since topic filtering is for historical/investigative use
 - In workspace aggregate mode, MUST prefix non-authoritative footer entries with the module bracket (e.g., `[api] ADR-XXXX: ...`) consistent with main-table prefixing
 - **v5.0.0+**: MUST run Tier 2 session-start update per Step 1a — `qmd update` on entry unless the index was touched within 60s. Surface refresh diff as one-line note when non-zero; otherwise silent. Surface unembedded chunk count as one-line informational note (no AskUserQuestion) (Governing: ADR-0026, SPEC-0019 REQ "Tier 2 Session-Start Update via /sdd:prime")
-- **v5.1.0+**: MUST use unified qmd retrieval for both untargeted and topic-filtered modes (removes the pre-v5.1 dual-path design). Both paths use `qmd query` with different limit/minScore parameters: untargeted uses `limit: 10000, minScore: 0` to retrieve all artifacts; topic-filtered uses `limit: 8, minScore: 0.3` for top-K relevance (Governing: ADR-0024, proposed refinement)
+- **v5.1.0+**: MUST route all artifact retrieval through qmd, using the primitive that matches the mode: untargeted mode enumerates exhaustively via `qmd ls` per qmd-helpers § "Exhaustive Retrieval (list-all)" (`qmd query` with an empty query is NOT a wildcard and MUST NOT be used); topic-filtered mode uses `qmd query '<queries>' -n 8 --min-score 0.3` for top-K relevance (Governing: ADR-0024, proposed refinement; friction report #200)
 - **v5.1.0+**: MUST include an "Artifact Summaries" section in untargeted output — 2-3 sentence summaries for each ADR (from decision outcome) and spec (from overview). This provides context without opening files and is especially valuable for large artifact sets (Governing: proposed enhancement to SPEC-0019)
 - **v5.1.0+**: Summaries are extracted via qmd query responses (no additional file reads needed) — use the JSON response's body/content fields and parse to extract summary sentences using simple heuristics (first 2-3 sentences ending with a period)

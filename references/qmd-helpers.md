@@ -20,6 +20,8 @@ ToolSearch with query "select:mcp__plugin_qmd_qmd__status"
 
 If the tool resolves, the qmd MCP is loaded. If not, fall back to the `qmd` CLI.
 
+On harnesses without `ToolSearch` (Codex, OpenCode, Crush — per `harness-compat.md` § "Capability Map"), check your configured MCP servers for a qmd server if the harness exposes that list; otherwise skip the probe and use the CLI directly. The CLI path is always sufficient — MCP is an optimization, not a requirement.
+
 ### Operation routing
 
 | Operation | MCP tool (preferred when loaded) | CLI fallback |
@@ -61,10 +63,17 @@ mcp__plugin_qmd_qmd__query({
 ### Calling via CLI
 
 ```bash
-qmd query --json --limit 8 --min-score 0.3 \
-  -c "{repo}-adrs" -c "{repo}-specs" \
-  $'lex: <terms>\nvec: <question>\nintent: <context>'
+qmd query $'lex: <terms>\nvec: <question>\nintent: <context>' \
+  --json -n 8 --min-score 0.3 \
+  -c "{repo}-adrs" -c "{repo}-specs"
 ```
+
+CLI surface rules (verified against qmd 2.x; the CLI and MCP parameter names differ):
+
+- **The positional query MUST come immediately after `query`, before any flags.** Some qmd versions fail to parse the query when flags precede it.
+- **Flags are kebab-case on the CLI**: `--min-score`, not `--minScore`. `minScore`/`limit` are the MCP tool's parameter names only — never pass them as CLI flags.
+- **The result cap is `-n {K}`** (`--limit` is accepted by some versions but not all; `-n` is the documented flag). `--all` returns every match and pairs with `--min-score`.
+- On any usage error, check `qmd query --help` for the installed version's flag surface rather than retrying permutations.
 
 ### Strategy: choosing sub-query types
 
@@ -83,6 +92,21 @@ Put your strongest signal first — qmd weights the first sub-query 2× in its R
 Every result has `score` (0.0–1.0), `path`, `snippet`, and `context` (the human-written summary attached via `qmd context add`). Filter by `score >= minScore` and treat scores below ~0.3 as non-matches.
 
 For top-K retrieval used to "decide which artifacts to deep-read", typical K is 6–10. Going wider dilutes the signal; going narrower risks missing relevant artifacts.
+
+## Exhaustive Retrieval (list-all)
+
+Some skills need *every* document in a collection rather than a relevance-ranked top-K — e.g. `/sdd:prime`'s untargeted mode listing all ADRs and specs. **Do NOT use `qmd query` for this.** `qmd query` requires a real query string: an empty query is not a wildcard — qmd's query-expansion step garbles it (it has been observed expanding the empty query plus stray flag values into nonsense sub-queries) and the pipeline fails downstream.
+
+The correct primitive is `qmd ls`, which enumerates a collection deterministically with no search pipeline involved:
+
+```bash
+qmd ls {repo}-adrs
+qmd ls {repo}-specs
+```
+
+Output is one line per indexed file (`size  date  qmd://{collection}/{path}`). Parse the `qmd://` paths to get the document list, then read documents either via `qmd get qmd://{collection}/{path}` / `qmd multi-get`, or — since collections index local files — directly from disk at the corresponding repo path, whichever the consuming skill prefers.
+
+If `qmd ls` is unavailable or errors, fall back to direct file enumeration over the resolved artifact directories (`{adr-dir}/*.md`, `{spec-dir}/*/spec.md`) — for exhaustive listing the filesystem is an acceptable substitute because no ranking is involved. This fallback does NOT license skipping qmd for *ranked* retrieval (per ADR-0024).
 
 ## This-Repo Collection Identification
 
