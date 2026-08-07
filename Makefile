@@ -1,0 +1,76 @@
+# Task entry points for the SDD plugin.
+#
+# The plugin itself is markdown — skills/, references/, docs/ — so there is no
+# unit-test suite to run. The two things that can actually break are the
+# Docusaurus site (which CI deploys on every push to main) and the plugin's
+# own structure (manifest, skill frontmatter, skills/_index.json). `make test`
+# covers the first, `make lint` the second.
+#
+# The behavioural test suite is evals/, which drives real Claude sessions and
+# needs CLAUDE_CODE_OAUTH_TOKEN. It runs in CI only — see
+# .github/workflows/skill-evals.yml.
+
+DOCS_SITE := docs-site
+NODE_MODULES := $(DOCS_SITE)/node_modules
+
+.DEFAULT_GOAL := help
+
+.PHONY: help
+help: ## Show this help
+	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) \
+		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
+
+# --- The three every repo exposes ------------------------------------------
+
+.PHONY: check
+check: test lint ## Run tests and linters
+
+.PHONY: test
+test: build ## Build the docs site — the closest thing to a test suite here
+
+.PHONY: lint
+lint: lint-structure lint-types ## Validate plugin structure and docs-site types
+
+# --- Lint components -------------------------------------------------------
+
+.PHONY: lint-structure
+lint-structure: ## Check the plugin manifest, skill frontmatter, and JSON syntax
+	./scripts/check-structure.sh
+
+.PHONY: lint-types
+lint-types: $(NODE_MODULES) ## Typecheck the docs site
+	cd $(DOCS_SITE) && npm run typecheck
+
+# --- Build and serve -------------------------------------------------------
+
+.PHONY: build
+build: $(NODE_MODULES) ## Build the docs site (content transforms + Docusaurus)
+	cd $(DOCS_SITE) && npm run build
+
+.PHONY: dev
+dev: $(NODE_MODULES) ## Run the docs site with live content reload
+	cd $(DOCS_SITE) && npm run dev
+
+.PHONY: serve
+serve: $(NODE_MODULES) ## Serve the built docs site locally
+	cd $(DOCS_SITE) && npm run serve
+
+# --- Dependencies and cleanup ----------------------------------------------
+
+.PHONY: install
+install: $(NODE_MODULES) ## Install docs-site dependencies
+
+# Reinstall whenever the lockfile moves. The touch keeps make from reinstalling
+# on every invocation, since npm ci does not necessarily bump the directory's
+# mtime past the lockfile's.
+$(NODE_MODULES): $(DOCS_SITE)/package-lock.json
+	cd $(DOCS_SITE) && npm ci
+	@touch $@
+
+.PHONY: clean
+clean: ## Remove generated docs and build output
+	rm -rf docs-generated $(DOCS_SITE)/build $(DOCS_SITE)/.docusaurus
+
+.PHONY: distclean
+distclean: clean ## Also remove installed dependencies
+	rm -rf $(NODE_MODULES)
