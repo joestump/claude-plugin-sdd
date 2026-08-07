@@ -66,6 +66,12 @@ When orchestrating multiple SDD plugin skills in a single session (e.g., running
 - Epic Prefix: `epic`
 - Slug Max Length: 50
 
+### Tests and Linting
+
+Run `make check` (`make lint` + `make test`) before pushing. `make lint` runs `scripts/check-structure.sh` — plugin manifests, SKILL.md frontmatter, `skills/_index.json` consistency, and eval definition shape — plus a docs-site typecheck. `make test` runs the docs-site build-script unit tests. The LLM-graded skill evals under `evals/` run only in CI; `make test` does not invoke them.
+
+`.github/workflows/ci.yml` runs the same targets on every PR, so keep new checks in the Makefile rather than inlining them into the workflow.
+
 ### Release Process
 
 When releasing a new version:
