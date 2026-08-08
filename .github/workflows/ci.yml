@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+# Supersede in-flight runs on the same ref — each job does an npm ci (and lint
+# an apt-get install), and only the newest push's result matters.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-24.04

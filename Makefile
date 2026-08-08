@@ -1,10 +1,11 @@
 # Task entry points for the SDD plugin.
 #
-# The plugin itself is markdown — skills/, references/, docs/ — so there is no
-# unit-test suite to run. The two things that can actually break are the
-# Docusaurus site (which CI deploys on every push to main) and the plugin's
-# own structure (manifest, skill frontmatter, skills/_index.json). `make test`
-# covers the first, `make lint` the second.
+# The plugin itself is mostly markdown — skills/, references/, docs/ — but three
+# things can break without anything else noticing: the docs-site build scripts
+# (which have real unit tests), the Docusaurus site itself (CI deploys it on
+# every push to main), and the plugin's own structure (manifest, skill
+# frontmatter, skills/_index.json, evals/). `make test` covers the first two,
+# `make lint` the third.
 #
 # The behavioural test suite is evals/, which drives real Claude sessions and
 # needs CLAUDE_CODE_OAUTH_TOKEN. It runs in CI only — see
@@ -26,10 +27,22 @@ help: ## Show this help
 check: test lint ## Run tests and linters
 
 .PHONY: test
-test: build ## Build the docs site — the closest thing to a test suite here
+test: test-unit build ## Run the build-script unit tests, then build the docs site
 
 .PHONY: lint
 lint: lint-structure lint-types ## Validate plugin structure and docs-site types
+
+# --- Test components -------------------------------------------------------
+
+# node --test over the docs-site build scripts. Fails loudly when no test files
+# are found, so a rename that orphans the suite cannot pass as a green run.
+.PHONY: test-unit
+test-unit: $(NODE_MODULES) ## Run the docs-site build-script unit tests
+	@files=$$(find $(DOCS_SITE)/scripts -name '*.test.js' -not -path '*/node_modules/*'); \
+		if [ -z "$$files" ]; then \
+			echo "no *.test.js files found under $(DOCS_SITE)/scripts" >&2; exit 1; \
+		fi; \
+		node --test $$files
 
 # --- Lint components -------------------------------------------------------
 
