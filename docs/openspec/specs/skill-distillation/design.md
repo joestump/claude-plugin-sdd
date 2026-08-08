@@ -2,7 +2,7 @@
 
 ## Context
 
-The SDD plugin already is, in effect, a skill factory: it authors `SKILL.md` files, measures them with an eval harness (SPEC-0017 / ADR-0021), and plans work from specs (SPEC-0007). Tomasz Tunguz's "skill distillation" technique uses a frontier model as a teacher that refines markdown skills until a cheap local model can run them well, keeping most work on a laptop and escalating only the hard cases to the cloud (the "minimill"). ADR-0034 adopts this technique by recombining the plugin's existing primitives rather than building a new subsystem.
+The SDD plugin already is, in effect, a skill factory: it authors `SKILL.md` files, measures them with an eval harness (SPEC-0017 / ADR-0021), and plans work from specs (SPEC-0007). Tomasz Tunguz's "skill distillation" technique uses a frontier model as a teacher that refines markdown skills until a cheap local model can run them well, keeping most work on a laptop and escalating only the hard cases to the cloud (the "minimill"). ADR-0035 adopts this technique by recombining the plugin's existing primitives rather than building a new subsystem.
 
 This design covers the distillation sprint loop (`/sdd:distill`), the routing recommender (`/sdd:route`), the harness-adapter abstraction, the markdown-native manifest, and the `/sdd:plan --distill` integration. It deliberately scopes out weight-level fine-tuning.
 

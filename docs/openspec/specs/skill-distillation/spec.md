@@ -1,15 +1,15 @@
 ---
 status: draft
 date: 2026-06-10
-implements: [ADR-0034]
+implements: [ADR-0035]
 requires: [SPEC-0017, SPEC-0007]
 ---
 
-# SPEC-0035: Skill Distillation
+# SPEC-0036: Skill Distillation
 
 ## Overview
 
-This capability lets Claude (the frontier **teacher**) iteratively author and refine small, discrete markdown skills that a cheaper, locally-hosted **student** model can execute inside an open agent harness at measured, Claude-relative parity. It adds two skills — `/sdd:distill` (the distillation sprint loop) and `/sdd:route` (model/harness/skill recommendation), an integration point in `/sdd:plan` that annotates issues with suggested local execution, configuration carried in `CLAUDE.md` per ADR-0015, and runtime artifacts under a gitignored `.sdd/distillation/` directory. See ADR-0034. The student runs by shelling out to the harness's own CLI; endpoints and tokens come from conventional environment variables. Parity is measured by reusing the evaluation harness from SPEC-0017; routing annotations extend the planning flow from SPEC-0007.
+This capability lets Claude (the frontier **teacher**) iteratively author and refine small, discrete markdown skills that a cheaper, locally-hosted **student** model can execute inside an open agent harness at measured, Claude-relative parity. It adds two skills — `/sdd:distill` (the distillation sprint loop) and `/sdd:route` (model/harness/skill recommendation), an integration point in `/sdd:plan` that annotates issues with suggested local execution, configuration carried in `CLAUDE.md` per ADR-0015, and runtime artifacts under a gitignored `.sdd/distillation/` directory. See ADR-0035. The student runs by shelling out to the harness's own CLI; endpoints and tokens come from conventional environment variables. Parity is measured by reusing the evaluation harness from SPEC-0017; routing annotations extend the planning flow from SPEC-0007.
 
 ## Requirements
 

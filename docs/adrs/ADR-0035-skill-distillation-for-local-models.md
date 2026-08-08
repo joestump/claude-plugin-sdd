@@ -2,11 +2,11 @@
 status: proposed
 date: 2026-06-10
 decision-makers: Joe Stump
-governs: [SPEC-0035]
+governs: [SPEC-0036]
 related: [ADR-0021, ADR-0028, ADR-0015]
 ---
 
-# ADR-0034: Skill Distillation for Local Models
+# ADR-0035: Skill Distillation for Local Models
 
 ## Context and Problem Statement
 
@@ -33,7 +33,7 @@ How should the SDD plugin let Claude "train" cheaper, locally-hosted models to r
 
 Chosen option: **Option A — Skill distillation loop**, because it reuses the plugin's existing skill, evaluation, and planning primitives; produces durable, inspectable, version-controlled markdown artifacts (not opaque weights); and keeps the iteration loop fully inside the SDD lifecycle the plugin already practices. It is the most direct mechanical translation of Tunguz's method onto what this plugin already is.
 
-The decision has five structural commitments, formalized in SPEC-0035:
+The decision has five structural commitments, formalized in SPEC-0036:
 
 1. **A new `/sdd:distill` skill** runs a *distillation sprint* for a `{skill, model, harness}` triple: Claude performs the task to produce a gold **reference run**; the same task is dispatched to the local model by **shelling out to the harness's own CLI** (the **pair run**); the **existing `evals/` harness** scores the pair run against the reference to produce a **parity score**; Claude then closes the gap primarily by **decomposing the skill into smaller, single-purpose discrete skills** (and tightening their trigger keywords) so each unit fits a local model's limited context window; the loop repeats until parity converges past a threshold.
 2. **Execution substrate is subprocess dispatch, not Claude subagents.** The student runs in an external harness *process* (e.g. `crush`/`opencode` invoked headless) pointed at the local model — it does **not** use Claude Code's Task/subagent mechanism (those run Claude models), and it does **not** require a bespoke backend. An MCP-backed adapter is an optional future variant for harnesses exposed that way; the baseline contract is shelling out to the harness binary.
@@ -130,4 +130,4 @@ flowchart TD
 * Tomasz Tunguz, *The Minimill of AI* — https://tomtunguz.com/using-local-ai-to-work-faster/
 * ADR-0021 (Skill Evaluation and CI Testing Framework) — the parity-measurement substrate this decision reuses.
 * ADR-0028 (Loop Autonomous Mode) and ADR-0015 (Markdown-Native Configuration) — the autonomous-loop and config-format patterns this decision builds on.
-* Realized by SPEC-0035 (Skill Distillation).
+* Realized by SPEC-0036 (Skill Distillation).
