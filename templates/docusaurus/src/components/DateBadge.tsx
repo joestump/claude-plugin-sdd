@@ -7,7 +7,7 @@ interface DateBadgeProps {
 
 const CALENDAR_EMOJI = '\uD83D\uDCC5';
 
-export default function DateBadge({date, className}: DateBadgeProps): JSX.Element {
+export default function DateBadge({date, className}: DateBadgeProps): React.JSX.Element {
   return (
     <span className={`date-badge ${className || ''}`}>
       {CALENDAR_EMOJI} {date}

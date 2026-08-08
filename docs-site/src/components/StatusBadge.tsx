@@ -21,7 +21,7 @@ const statusEmojis: Record<string, string> = {
   'unknown': '\ud83e\udd37',
 };
 
-export default function StatusBadge({status, className}: StatusBadgeProps): JSX.Element {
+export default function StatusBadge({status, className}: StatusBadgeProps): React.JSX.Element {
   const normalizedStatus = status.toLowerCase() as StatusType;
   const emoji = statusEmojis[normalizedStatus] || statusEmojis['unknown'];
 

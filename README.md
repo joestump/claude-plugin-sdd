@@ -120,6 +120,26 @@ claude
 
 The `.claude/settings.json` in this repo registers the local directory as a marketplace and enables the plugin automatically. Any changes to skills or templates are picked up on the next Claude Code launch.
 
+### Tests and linting
+
+```bash
+make check
+```
+
+| Target | What it does |
+|--------|--------------|
+| `make check` | `test` + `lint` -- run this before pushing |
+| `make test` | Docs-site build-script unit tests (`node --test`), then a full docs-site build |
+| `make lint` | Structural validation (`scripts/check-structure.sh`) plus a docs-site TypeScript typecheck |
+| `make install` | `npm ci` in `docs-site/` (the other targets do this on demand) |
+| `make dev` | Run the docs site locally with live content reload |
+
+`scripts/check-structure.sh` validates what can be checked without an LLM: every tracked JSON file parses, `.claude-plugin/plugin.json` carries its required fields and a semver version, no duplicate plugin manifest has reappeared, every `skills/<name>/SKILL.md` has frontmatter whose `name` matches its directory and a non-empty `description`, `skills/_index.json` is bidirectionally consistent with `skills/`, the eval definitions under `evals/` are well-formed and reference skills that exist, and no component under `templates/` or `docs-site/src` uses a bare `JSX.Element` annotation. It also runs `shellcheck` when it is installed.
+
+The skill evals themselves are graded by an LLM and run only in CI ([`skill-evals.yml`](.github/workflows/skill-evals.yml)) -- `make test` does not invoke them. See [`evals/README.md`](evals/README.md) for running individual eval prompts locally with `claude -p`.
+
+[`ci.yml`](.github/workflows/ci.yml) runs `make lint` and `make test` on every pull request and on pushes to `main`, so local and CI cannot drift. Keep new checks in the `Makefile` rather than inlining them into the workflow.
+
 ## What It Does
 
 ### `/sdd:adr` -- Architecture Decision Records
