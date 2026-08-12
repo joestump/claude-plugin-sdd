@@ -443,10 +443,10 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
     **12.1: Shut down team.** Send `shutdown_request` to all workers via `SendMessage`.
 
-    **12.2: Offer worktree cleanup.** If CLAUDE.md `Worktrees > Auto Cleanup` is `true`, remove worktrees for successfully-PRed issues automatically. Otherwise, use `AskUserQuestion`:
+    **12.2: Offer worktree cleanup.** If CLAUDE.md `Worktrees > Auto Cleanup` is `true`, clean up worktrees for successfully-PRed issues automatically. Otherwise, use `AskUserQuestion`:
     - "Remove worktrees for completed issues? (Failed issue worktrees are always preserved.)"
     - Options: "Yes, clean up" / "No, keep them"
-    - If yes: `git worktree remove .claude/worktrees/{branch-name}` for each successful issue.
+    - If yes: for each successful issue, follow the **Worktree Cleanup** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` — `git worktree remove` alone leaves the branch ref behind permanently, so the branch delete step is not optional.
 
     **12.3: Batch deferred design doc updates** (Governing: SPEC-0015 REQ "Design Document Isolation"):
 
