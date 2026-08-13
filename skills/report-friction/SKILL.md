@@ -69,6 +69,16 @@ Two labels go on every issue this skill files:
 
 If `$ARGUMENTS` contains `--label <name>`, use that as the second label and skip the auto-classification.
 
+**Labels are best-effort — the report matters more than its labels.** You are almost always filing into a repo you cannot write to: you are reporting friction from *your* project against *this* plugin. Creating a missing label needs write access, so `gh label create` returns HTTP 404 for an external reporter, and the **Try-Then-Create Label Pattern** in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` does not apply here — that pattern assumes write access to the target repo.
+
+This matters because `gh issue create --label` is atomic: if any named label does not exist, the command fails and **no issue is created at all**. Applied naively, a missing label turns a complete, sanitized, user-approved friction report into nothing. So treat labelling as try-then-omit, never try-then-create:
+
+1. Attempt the create with both labels (Step 7).
+2. If it fails and the error names a label (`could not add label: 'x' not found`), retry the identical command with `--label` flags removed.
+3. On success via the fallback, tell the user which labels could not be applied and that the issue was filed without them. Do not retry a third time, and do not attempt `gh label create`.
+
+Never drop, truncate, or summarize the body to work around a label failure. An unlabelled issue with the full report is a good outcome; a missing issue is not.
+
 ### Step 5: Sanitization scan and redaction
 
 Before showing the draft to the user, scan the body for sensitive content, **replace each match with a clear placeholder**, and keep a record of every redaction. The user sees the sanitized body (which is what will be submitted) plus an explicit "what was redacted" list — so they know both what's leaving the machine and what was changed.
@@ -155,6 +165,17 @@ gh issue create \
   --label skill-friction \
   --label {second-label}
 ```
+
+If that fails with a label error (`could not add label: '{name}' not found`), **no issue was created** — the command is atomic. Retry once, identical but unlabelled, per Step 4's try-then-omit rule:
+
+```bash
+gh issue create \
+  --repo joestump/claude-plugin-sdd \
+  --title "{first line of the friction summary, capped at ~80 chars}" \
+  --body-file /tmp/sdd-friction-{timestamp}.md
+```
+
+Then tell the user the issue was filed without labels, and name the ones that could not be applied. Do not attempt `gh label create` — filing from your own project means you almost certainly lack write access here, and the 404 costs a round-trip without changing the outcome.
 
 Capture the URL of the created issue from gh's output. Report it to the user.
 

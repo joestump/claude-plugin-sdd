@@ -220,6 +220,34 @@ Not currently exposed. Use the CLI for now. When the MCP gains an `update` tool,
 
 The update is synchronous and silent on success unless it fails. On failure, the skill's report MUST include a one-line warning naming the affected collection: "Index refresh failed for `{repo}-adrs` — run `/sdd:index update` manually."
 
+### The update maintains the index, not the context
+
+A collection has **two** surfaces, and `qmd update` refreshes only one of them:
+
+| Surface | Written by | Refreshed by `qmd update` |
+|---------|-----------|---------------------------|
+| Index (chunks, embeddings) | the indexer, from files on disk | yes |
+| Context (the human-written blurb) | `qmd context add`, once, by `/sdd:index` | **no** |
+
+`/sdd:index` requires a context blurb on every collection, and those blurbs routinely enumerate the corpus — "MADR format, ADR-0001 through ADR-0012", "decision themes: …", or a split between accepted and proposed artifacts. qmd prepends that text to every retrieved chunk, so once the corpus moves past it, the collection asserts something false to every consumer, on every query, indefinitely.
+
+**This failure is invisible where you would look for it.** Retrieval keeps working perfectly — a newly created ADR comes back as a top hit — precisely because the index *was* refreshed. Only the prepended context is wrong, and nothing warns. The sharpest form is a status transition: after an ADR moves `proposed` → `accepted`, a context still grouping it under "proposed and not yet binding" contradicts the artifact's own frontmatter, and both are returned in the same result.
+
+**After a Tier 1 mutation, check the context for drift.** Cheap, and it catches every form of this seen in practice:
+
+```bash
+qmd context list -c {collection}
+```
+
+Compare the returned text against what just changed. Two patterns account for nearly all drift:
+
+- **An artifact-range claim** (`ADR-0001 through ADR-00NN`) whose upper bound is now below the highest id in the collection.
+- **A status grouping** naming an artifact whose status the mutation just changed.
+
+If either has drifted, emit a one-line warning in the same place the index-refresh failure warning goes: "Context for `{collection}` still says '{stale phrase}' — refresh it with `qmd context add \"qmd://{collection}/\" \"{corrected summary}\"`". `qmd context add` on an existing path replaces the stored text.
+
+The check is best-effort and degrades like the rest of Tier 1: silent when the context still holds, one line when it does not, never blocking the mutation that triggered it. Warn rather than rewrite — only the enumerable parts (ids, statuses) are mechanically derivable from frontmatter, and the surrounding prose is the author's to keep current.
+
 ### Tier 2/3 silent updates with timestamp checks
 
 `/sdd:prime` (Tier 2) and consumer skills (Tier 3) check the qmd index's last-modified timestamp before deciding whether to update. The check uses `qmd status` (or the MCP `status` tool) to read collection-level `lastUpdated` timestamps, takes the most recent across this-repo collections, and compares against the relevant threshold.

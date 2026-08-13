@@ -153,6 +153,8 @@ When creating a new spec from scratch, both files are created together — align
 
    After writing both files, trigger a narrow re-sync of `{repo}-specs` so the qmd index reflects the new artifacts. Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns" → "Narrow update". Synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{repo}-specs` — run `/sdd:index update` manually") but report the spec creation itself as successful.
 
+   Then check the collection's context blurb for drift per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns" → "The update maintains the index, not the context". `qmd update` refreshes the index only, so a context enumerating a spec range or theme list no longer covers what was just written. Warn in one line if it has drifted; do not rewrite it silently.
+
 6. **Clean up** the team when done (if `--review` was used).
 
 7. **Summarize** what happened (files created, spec documented, review outcome).
@@ -491,6 +493,7 @@ date: {YYYY-MM-DD}
 - MUST NOT inject the Accessibility Requirements section for non-UI specs (API-only, CLI, batch jobs, background workers, internal libraries)
 - **v5.0.0+**: MUST run qmd-aware edge pre-search per Step 3a — surface candidate `requires`/`extends`/`supersedes`/`implements` edges to the user via AskUserQuestion before drafting. The user's confirmed edges land in the new spec's frontmatter (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Authoring Skills")
 - **v5.0.0+**: MUST trigger Tier 1 `{repo}-specs` re-sync after writing both files per Step 5a — best-effort, silent on success (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
+- MUST check the `{repo}-specs` context blurb for drift after the Tier 1 re-sync per Step 5a — the re-sync maintains the index only, and a stale context is asserted to every consumer on every query
 - **v5.0.0+**: On qmd unreachable / timeout during the edge pre-search, MUST surface the error and stop — never fall back to "draft without edge suggestions" (per ADR-0024)
 - For backend specs with error handling: MUST inject error wrapping, sentinel errors, no silent swallowing, and structured logging requirements (Governing: SPEC-0016 REQ "Go Code Quality Guidelines")
 - For backend specs with concurrency: MUST inject context propagation, worker lifecycle, race safety, and race detection CI requirements (Governing: SPEC-0016 REQ "Go Code Quality Guidelines")
