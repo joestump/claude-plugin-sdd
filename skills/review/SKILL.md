@@ -231,7 +231,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
     **12.1: Shut down team.** Send `shutdown_request` to all agents via `SendMessage`.
 
-    **12.2: Offer worktree cleanup.** If CLAUDE.md `Review > Auto Cleanup` is `true`, clean up worktrees for successfully-processed PRs automatically, following the **Worktree Cleanup** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` (`git worktree remove` plus `git branch -d` — removing the worktree alone leaves the branch ref behind permanently). Otherwise, preserve them.
+    **12.2: Offer worktree cleanup.** If CLAUDE.md `Review > Auto Cleanup` is `true`, clean up worktrees for successfully-processed PRs automatically, following the **Worktree Cleanup** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` (remove the worktree, then delete the branch ref — removing the worktree alone leaves the branch behind permanently, and since the default squash merge strategy makes `git branch -d` refuse, the pattern's tracker check is what actually clears merged branches). Otherwise, preserve them.
 
     **12.3: Final report.**
 

@@ -402,11 +402,23 @@ Used by: `/sdd:work` step 12.2, `/sdd:review` step 12.2.
 
 `git worktree remove {worktree-path}` alone is not full cleanup — it only detaches the working directory. The branch ref itself (created via `git worktree add -b {branch-name}`) is untouched and, if not also deleted, accumulates as permanent local-repo clutter: every finished issue or PR leaves one behind, forever, with nothing to prune it later.
 
+**What `git branch -d` actually checks.** Get this wrong and the cleanup deletes the wrong things and keeps the wrong things. Git's rule is: *the branch must be fully merged into its upstream, or into HEAD if no upstream was set*. It is **not** a merged-into-`main` check. Two consequences drive the procedure below:
+
+- A branch pushed with `git push -u` is "merged into its upstream" the instant it is pushed, so `-d` deletes it even though its PR is still open and unmerged. That is safe (nothing is lost — the remote has every commit) but it is *not* the merge confirmation it looks like.
+- A branch that was **squash- or rebase-merged** — the default `Review > Merge Strategy` is squash — is refused by `-d`, because the squashed commit on `main` does not contain the branch's own commits. When the remote branch is deleted on merge, this is exactly the `[origin/{branch-name}: gone]` state that accumulates unboundedly.
+
+So `-d` succeeding means "no commits exist only here"; `-d` refusing means "git cannot tell on its own" — not "this branch is unmerged". The merge question is answered by the tracker, which both skills already have in hand.
+
 **Procedure**, per worktree/branch being cleaned up:
 
-1. `git worktree remove {worktree-path}`
-2. `git branch -d {branch-name}` — the safe (non-force) form. `-d` refuses to delete a branch git cannot itself verify is merged into the current HEAD, which is a useful independent check even if the caller's own "is this actually done" tracking (lifecycle label, PR state) is ever wrong. Never use `git branch -D` here — a forced delete defeats that safety net.
-3. If step 2 fails (git considers the branch unmerged), leave the branch in place and log a one-line note (e.g. "kept {branch-name} — git could not verify it as merged"). This is not an error that blocks the rest of cleanup; the worktree removal in step 1 still stands regardless.
+1. `git worktree remove {worktree-path}` — the path from CLAUDE.md `Worktrees > Base Dir` (default `.claude/worktrees/`) plus the branch name.
+   - If this fails (`contains modified or untracked files`), the worktree holds uncommitted work. Keep **both** the worktree and the branch, log a one-line note (e.g. "kept {branch-name} — worktree has uncommitted changes"), and skip steps 2–3 for it. Do not pass `--force`, and do not fall through to step 2: the branch is still checked out, so it would fail with `cannot delete branch ... used by worktree at ...` and the note logged in step 3 would misreport the cause.
+2. `git branch -d {branch-name}` — the safe (non-force) form. If it succeeds, cleanup is done for this branch.
+3. If step 2 is refused (`the branch is not fully merged`), ask the tracker whether the PR was merged rather than guessing — e.g. GitHub `gh pr list --head {branch-name} --state merged --json number`, or the equivalent tracker MCP query:
+   - **Merged** → the branch's work is on `main` in squashed or rebased form and nothing is lost by deleting it. `git branch -D {branch-name}`. This is the one case a forced delete is correct, and skipping it is what leaves the stale branches behind.
+   - **Not merged, or the tracker cannot be reached** → leave the branch in place and log a one-line note (e.g. "kept {branch-name} — not merged, or merge state unknown"). This is the real safety net: it fires only when there is genuine doubt. It is not an error that blocks the rest of cleanup; the worktree removal in step 1 still stands regardless.
+
+Never run `git branch -D` on a branch whose merged state has not been confirmed by the tracker — that is the one step that can destroy work not present anywhere else.
 
 **Scope**: only branches the skill itself created for issues/PRs it has confirmed are done — `/sdd:work`'s "successfully-PRed issues" and `/sdd:review`'s "successfully-processed PRs" gates already define that set; this pattern does not widen it. Never run this against a branch the skill did not create, or one whose issue/PR is not confirmed finished (e.g. a failed issue's worktree, which both skills already preserve rather than clean up).
 
