@@ -446,7 +446,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
     **12.2: Offer worktree cleanup.** If CLAUDE.md `Worktrees > Auto Cleanup` is `true`, clean up worktrees for successfully-PRed issues automatically. Otherwise, use `AskUserQuestion`:
     - "Remove worktrees for completed issues? (Failed issue worktrees are always preserved.)"
     - Options: "Yes, clean up" / "No, keep them"
-    - If yes: for each successful issue, follow the **Worktree Cleanup** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` — `git worktree remove` alone leaves the branch ref behind permanently, so the branch delete step is not optional.
+    - If yes: for each successful issue, follow the **Worktree Cleanup** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` — `git worktree remove` alone leaves the branch ref behind permanently, so the branch delete step is not optional. Note that at this point the issue's PR is open and unmerged; the branch is deletable only because `git push -u` in step 11 put every commit on the remote, and the pattern's step 3 is what keeps a branch with unpushed work from being lost.
 
     **12.3: Batch deferred design doc updates** (Governing: SPEC-0015 REQ "Design Document Isolation"):
 
