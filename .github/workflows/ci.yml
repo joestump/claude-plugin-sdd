@@ -43,3 +43,34 @@ jobs:
           cache-dependency-path: docs-site/package-lock.json
 
       - run: make test
+
+  gitleaks:
+    runs-on: ubuntu-24.04
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      # sha256 of gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz, taken from the
+      # release's own checksums file. Bump both together.
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      # Secrets are found by scanning history, and the default shallow clone
+      # has none — fetch-depth: 0 is what makes this more than a working-tree
+      # grep.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL --retry 3 -o "$tarball" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
+          echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum -c -
+          tar -xzf "$tarball" gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          rm -f "$tarball" gitleaks
+          gitleaks version
+
+      # The same target contributors run locally, so a clean local scan and a
+      # green CI scan cannot come to mean different things.
+      - run: make scan

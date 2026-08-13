@@ -128,9 +128,10 @@ make check
 
 | Target | What it does |
 |--------|--------------|
-| `make check` | `test` + `lint` -- run this before pushing |
+| `make check` | `test` + `lint` + `scan` -- run this before pushing |
 | `make test` | Docs-site build-script unit tests (`node --test`), then a full docs-site build |
 | `make lint` | Structural validation (`scripts/check-structure.sh`) plus a docs-site TypeScript typecheck |
+| `make scan` | Secret scanning (`scripts/gitleaks-scan.sh`) over git history and the working tree |
 | `make install` | `npm ci` in `docs-site/` (the other targets do this on demand) |
 | `make dev` | Run the docs site locally with live content reload |
 
@@ -138,7 +139,9 @@ make check
 
 The skill evals themselves are graded by an LLM and run only in CI ([`skill-evals.yml`](.github/workflows/skill-evals.yml)) -- `make test` does not invoke them. See [`evals/README.md`](evals/README.md) for running individual eval prompts locally with `claude -p`.
 
-[`ci.yml`](.github/workflows/ci.yml) runs `make lint` and `make test` on every pull request and on pushes to `main`, so local and CI cannot drift. Keep new checks in the `Makefile` rather than inlining them into the workflow.
+`scripts/gitleaks-scan.sh` runs [gitleaks](https://github.com/gitleaks/gitleaks) twice: over git history, where a hit means the credential is already published and must be rotated rather than merely deleted, and over the working tree, so an uncommitted secret is caught before it becomes the first case. Findings are always redacted -- the rule and file are enough to act on, and the value would otherwise land in CI logs. Install it with `brew install gitleaks`; the script fails loudly if it is missing rather than reporting a clean scan it never ran.
+
+[`ci.yml`](.github/workflows/ci.yml) runs `make lint`, `make test`, and `make scan` as separately-named jobs on every pull request and on pushes to `main`, so local and CI cannot drift. Keep new checks in the `Makefile` rather than inlining them into the workflow.
 
 ## What It Does
 

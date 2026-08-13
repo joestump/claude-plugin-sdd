@@ -5,7 +5,8 @@
 # (which have real unit tests), the Docusaurus site itself (CI deploys it on
 # every push to main), and the plugin's own structure (manifest, skill
 # frontmatter, skills/_index.json, evals/). `make test` covers the first two,
-# `make lint` the third.
+# `make lint` the third, and `make scan` checks that no credential has been
+# committed. `make check` runs all three.
 #
 # The behavioural test suite is evals/, which drives real Claude sessions and
 # needs CLAUDE_CODE_OAUTH_TOKEN. It runs in CI only — see
@@ -24,13 +25,21 @@ help: ## Show this help
 # --- The three every repo exposes ------------------------------------------
 
 .PHONY: check
-check: test lint ## Run tests and linters
+check: test lint scan ## Run tests, linters, and the secret scan
 
 .PHONY: test
 test: test-unit build ## Run the build-script unit tests, then build the docs site
 
 .PHONY: lint
 lint: lint-structure lint-types ## Validate plugin structure and docs-site types
+
+# Kept out of `lint` deliberately: lint is static analysis of the tree, while
+# this also reads git history and needs a separate tool installed. CI runs it
+# as its own job for the same reason — when it fails you want the run to say
+# "gitleaks", not "lint".
+.PHONY: scan
+scan: ## Scan git history and the working tree for committed secrets
+	./scripts/gitleaks-scan.sh
 
 # --- Test components -------------------------------------------------------
 
