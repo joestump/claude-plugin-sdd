@@ -396,6 +396,20 @@ Default colors: `epic`=#6E40C9, `story`=#1D76DB, `spec`=#0E8A16, other=#CCCCCC.
 - Slug: derived from title, kebab-case, max 50 chars (or CLAUDE.md `Branch Conventions > Slug Max Length`), trailing hyphens removed after truncation.
 - Requires two-pass: create the issue first to get the number, then update the body with the branch section.
 
+## Worktree Cleanup
+
+Used by: `/sdd:work` step 12.2, `/sdd:review` step 12.2.
+
+`git worktree remove {worktree-path}` alone is not full cleanup — it only detaches the working directory. The branch ref itself (created via `git worktree add -b {branch-name}`) is untouched and, if not also deleted, accumulates as permanent local-repo clutter: every finished issue or PR leaves one behind, forever, with nothing to prune it later.
+
+**Procedure**, per worktree/branch being cleaned up:
+
+1. `git worktree remove {worktree-path}`
+2. `git branch -d {branch-name}` — the safe (non-force) form. `-d` refuses to delete a branch git cannot itself verify is merged into the current HEAD, which is a useful independent check even if the caller's own "is this actually done" tracking (lifecycle label, PR state) is ever wrong. Never use `git branch -D` here — a forced delete defeats that safety net.
+3. If step 2 fails (git considers the branch unmerged), leave the branch in place and log a one-line note (e.g. "kept {branch-name} — git could not verify it as merged"). This is not an error that blocks the rest of cleanup; the worktree removal in step 1 still stands regardless.
+
+**Scope**: only branches the skill itself created for issues/PRs it has confirmed are done — `/sdd:work`'s "successfully-PRed issues" and `/sdd:review`'s "successfully-processed PRs" gates already define that set; this pattern does not widen it. Never run this against a branch the skill did not create, or one whose issue/PR is not confirmed finished (e.g. a failed issue's worktree, which both skills already preserve rather than clean up).
+
 ## PR Close Keywords
 
 Tracker-specific close keywords (or use CLAUDE.md `PR Conventions > Close Keyword`):
