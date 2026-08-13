@@ -69,6 +69,8 @@ Update the status of an ADR or spec, **preserving the file's existing status for
 
    After updating the status field, trigger a narrow re-sync of the qmd collection containing the artifact whose status changed — `{repo}-adrs` for ADRs, `{repo}-specs` for specs (or per-module variant in workspace mode per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "This-Repo Collection Identification"). Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns" → "Narrow update". Synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{collection}` — run `/sdd:index update` manually") but report the status change itself as successful.
 
+   Then check that collection's context blurb for drift per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns" → "The update maintains the index, not the context". This is the sharpest case: a context that groups the artifact under its *old* status now contradicts the artifact's own frontmatter, and qmd returns both in the same result. Warn in one line if it has drifted; do not rewrite it silently.
+
 ## Rules
 
 - Valid ADR statuses: `proposed`, `accepted`, `deprecated`, `superseded`
@@ -83,3 +85,4 @@ Update the status of an ADR or spec, **preserving the file's existing status for
 - Do not modify any content outside the status field — neither YAML keys nor body content nor adjacent bullets
 - Refinement note format is preserved in source files (per the prior `/sdd:prime` and `/sdd:list` updates that strip parentheticals from the table view) — this skill's job is to update the lifecycle word, not the refinement annotation, and only on explicit user direction
 - **v5.0.0+**: MUST trigger Tier 1 update of the affected collection (`{repo}-adrs` or `{repo}-specs`) per Step 7 — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
+- MUST check the affected collection's context blurb for drift after the Tier 1 update per Step 7 — a status grouping naming the artifact whose status just changed now contradicts its frontmatter

@@ -111,6 +111,8 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
    After writing the new ADR file, trigger a narrow re-sync of `{repo}-adrs` so the qmd index reflects the new artifact. Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns" → "Narrow update". The update is synchronous and silent on success. On failure, append a one-line warning to the report ("Index refresh failed for `{repo}-adrs` — run `/sdd:index update` manually") but report the ADR creation itself as successful.
 
+   Then check the collection's context blurb for drift per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns" → "The update maintains the index, not the context". `qmd update` refreshes the index only; a context that enumerates an ADR range (`ADR-0001 through ADR-00NN`) now excludes the ADR just written, and qmd prepends that text to every retrieved chunk. Warn in one line if it has drifted; do not rewrite it silently.
+
 4. **Clean up** the team when done (if `--review` was used).
 
 5. **Summarize** what happened (files created, decision documented, review outcome).
@@ -224,6 +226,7 @@ Use flowchart, sequence, or C4 diagrams as appropriate.}
 - Every ADR SHOULD include at least one Mermaid diagram illustrating the architecture or decision flow. Use flowchart, sequence, or C4 diagrams as appropriate.
 - **v5.0.0+**: MUST run qmd-aware edge pre-search per Step 1a — surface candidate `supersedes`/`extends`/`related` edges to the user via AskUserQuestion before drafting. The user's confirmed edges land in the new ADR's frontmatter (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Authoring Skills")
 - **v5.0.0+**: MUST trigger Tier 1 `{repo}-adrs` re-sync after writing the new file per Step 3a — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
+- MUST check the `{repo}-adrs` context blurb for drift after the Tier 1 re-sync per Step 3a — the re-sync maintains the index only, and a stale context is asserted to every consumer on every query
 - **v5.0.0+**: On qmd unreachable / timeout during the edge pre-search, MUST surface the error and stop — never fall back to "draft without edge suggestions" (per ADR-0024)
 - **v5.0.0+**: MUST offer the call graph opt-in via `AskUserQuestion` per Step 2b — default to "no" in non-interactive/batch/CI mode; MUST degrade gracefully on cgg absence or failure and never block ADR creation (Governing: ADR-0033, SPEC-0034 REQ "Enhanced /sdd:adr")
 
