@@ -76,12 +76,14 @@ Run `make check` (`make test` + `make lint` + `make scan`) before pushing.
 
 The LLM-graded skill evals under `evals/` run only in CI; `make test` does not invoke them.
 
-`.github/workflows/ci.yml` runs the same targets on every PR, so keep new checks in the `Makefile` rather than inlining them into the workflow.
+`.github/workflows/ci.yml` runs the same targets on every PR, so keep new checks in the `Makefile` rather than inlining them into the workflow. Its `lint`, `test`, and `gitleaks` jobs are required status checks on `main` — if you add a job that should gate merges, add it to the required list too, or it runs without gating anything.
 
 ### Release Process
 
+`main` is protected: direct pushes are rejected, and `lint`, `test`, and `gitleaks` must pass before anything merges. Enforcement includes admins, so the version bump goes through a PR like any other change.
+
 When releasing a new version:
 1. Bump the version in `.claude-plugin/plugin.json`
-2. Commit and push to `main`
+2. Open a PR with the bump and merge it once CI is green (squash — `main` requires linear history)
 3. Create a GitHub release with `gh release create vX.Y.Z --title "vX.Y.Z" --notes "..."` using a haiku as the release summary
 4. Always tag releases as `vX.Y.Z` (e.g., `v1.5.0`)
