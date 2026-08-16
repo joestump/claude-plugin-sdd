@@ -14,16 +14,26 @@ This spec formalizes requirements from ADR-0018 (Security-by-Default for Web Spe
 
 ### Requirement: Mandatory Security Section in Web Specs
 
-When `/sdd:spec` creates or updates a specification that involves HTTP endpoints, web server routes, API definitions, or browser-facing UI, the skill MUST inject a "Security Requirements" section into the spec. The section MUST cover all of the following topics:
+When `/sdd:spec` creates or updates a specification that involves HTTP endpoints, web server routes, API definitions, or browser-facing UI, the skill MUST inject a "Security Requirements" section into the spec. The section MUST cover all of the following topics — each topic either written inline or satisfied by an explicit reference to a governing artifact (an ADR or spec) that fixes that topic project-wide and governs the surfaces this spec touches; a topic with no governing artifact, and any deviation from the governed baseline, MUST be written inline:
 
 - **Authentication**: All endpoints MUST require authentication by default. Any endpoint declared as public (unauthenticated) MUST include an explicit justification for why authentication is not required.
 - **Rate limiting**: The spec MUST declare a rate limiting strategy or explicitly state that rate limiting is deferred with justification.
-- **Security headers**: The spec MUST require baseline security headers (Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy) or reference an existing security headers ADR.
+- **Security headers**: The spec MUST require baseline security headers (Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy) or reference an existing security headers ADR. This reference form is the model for the governing-artifact allowance above.
 - **Request body size limits**: The spec MUST require bounded request body reading (e.g., `http.MaxBytesReader` in Go) for all endpoints that accept request bodies.
 - **CSRF protection**: The spec MUST declare a CSRF protection strategy for state-changing endpoints.
 - **Redirect validation**: The spec MUST require validation of redirect targets for any endpoint that performs HTTP redirects with user-supplied URLs.
 
 The security section MUST NOT be injected for specs that do not involve web-facing characteristics (e.g., CLI tools, internal libraries, batch processing).
+
+#### Scenario: Governing-artifact reference satisfies a topic
+
+- **WHEN** a web-facing spec is created in a project that has a security-posture ADR fixing, e.g., security headers and CSRF strategy for all UI surfaces, and this spec changes nothing about those topics
+- **THEN** the Security Requirements section satisfies those topics by naming the ADR (with a section pointer where applicable) rather than restating its rules inline, while topics with no governing artifact remain inline
+
+#### Scenario: Reference form must not mask a deviation
+
+- **WHEN** a web-facing spec introduces an endpoint or behavior that deviates from the governing ADR's baseline (a new public endpoint, a relaxed body limit)
+- **THEN** the deviation is written inline in that spec's Security Requirements section even though the topic otherwise has a governing artifact
 
 #### Scenario: Web-facing spec creation
 
