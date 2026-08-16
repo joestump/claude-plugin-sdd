@@ -1,8 +1,8 @@
 ---
 name: status
-description: Change the status of an ADR or spec (e.g., proposed to accepted, draft to review). Use when the user says "accept ADR", "approve the spec", "mark as accepted", or wants to update decision status.
-allowed-tools: Read, Write, Edit, Glob, Grep, AskUserQuestion
-argument-hint: "[ADR-XXXX or SPEC-XXXX] [new status] [--module <name>] [--keep-refinement]"
+description: Change the status of an ADR or spec (e.g., proposed to accepted, draft to review), or backfill YAML frontmatter onto legacy artifacts that carry status as inline bullets. Use when the user says "accept ADR", "approve the spec", "mark as accepted", "backfill frontmatter", or "migrate legacy status lines".
+allowed-tools: Read, Write, Edit, Glob, Grep, AskUserQuestion, Bash
+argument-hint: "[ADR-XXXX or SPEC-XXXX] [new status] [--module <name>] [--keep-refinement] | backfill [--dry-run] [--module <name>]"
 disable-model-invocation: true
 ---
 
@@ -71,6 +71,23 @@ Update the status of an ADR or spec, **preserving the file's existing status for
 
    Then check that collection's context blurb for drift per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns" → "The update maintains the index, not the context". This is the sharpest case: a context that groups the artifact under its *old* status now contradicts the artifact's own frontmatter, and qmd returns both in the same result. Warn in one line if it has drifted; do not rewrite it silently.
 
+## Backfill mode (`backfill`)
+
+When `$ARGUMENTS` starts with `backfill`, the skill does NOT update any status value — it migrates legacy-format artifacts to the canonical YAML frontmatter, in bulk, with a preview. This is the explicit, user-initiated inverse of the format-preservation rule: that rule keeps a repo's existing format stable during one-off status changes; backfill is how a repo deliberately moves to the canonical format once.
+
+1. **Scan and classify**: walk every `*.md` in `{adr-dir}` and every `spec.md` in `{spec-dir}/*/`, running the Step 4a Format Detection algorithm on each: `yaml-frontmatter`, `inline-bullet`, or `none`. Files already in `yaml-frontmatter` format are skipped and counted. Files with BOTH formats are skipped and reported as corrupt (the Step 4a dual-source-of-truth error) — backfill must not extend existing corruption.
+
+2. **Derive the frontmatter values** for each `inline-bullet` / `none` file:
+   - **status**: from the inline `- **Status:** {value}` bullet when present, normalized to the artifact type's enum (e.g., `Accepted` → `accepted`; a parenthetical refinement note is preserved as a YAML comment line above `status:`). For `none`-format files, ask per file — there is nothing to derive from.
+   - **date**: from an inline `- **Date:** {value}` bullet when present; otherwise from the file's first commit (`git log --diff-filter=A --format=%as -- <path>`); otherwise ask per file.
+   - Existing frontmatter keys other than `status`/`date` (e.g., already-authored edge fields on a file that lacks `status:`) MUST be preserved verbatim — backfill adds the two lifecycle keys, it does not rewrite the block.
+
+3. **Apply the migration per file**: prepend (or extend) the frontmatter block, then REMOVE the now-duplicated inline `Status` and `Date` bullets. Removing the bullets is what makes the migration safe — leaving them creates exactly the dual-source-of-truth corruption Step 4a refuses to touch. Nothing else in the file is modified.
+
+4. **Preview before writing**: present the per-file plan (path, detected format, derived status/date, bullet lines to be removed). With `--dry-run`, print the plan and stop — no file is modified. Otherwise ask via `AskUserQuestion`: apply all, review file-by-file, or abort. In review mode each file gets its own accept/skip question showing the exact frontmatter that would be written.
+
+5. **Report**: how many files migrated, skipped (already frontmatter), skipped (corrupt — needs manual repair), and asked-over; then run the Step 7 Tier 1 mutation update for each affected collection.
+
 ## Rules
 
 - Valid ADR statuses: `proposed`, `accepted`, `deprecated`, `superseded`
@@ -84,5 +101,6 @@ Update the status of an ADR or spec, **preserving the file's existing status for
 - MUST report which format was preserved or added in the success message — silent mutations are how the previous bug went undetected
 - Do not modify any content outside the status field — neither YAML keys nor body content nor adjacent bullets
 - Refinement note format is preserved in source files (per the prior `/sdd:prime` and `/sdd:list` updates that strip parentheticals from the table view) — this skill's job is to update the lifecycle word, not the refinement annotation, and only on explicit user direction
+- In `backfill` mode: MUST classify every artifact with the Format Detection algorithm first and MUST skip dual-format files as corrupt; MUST remove the inline Status/Date bullets when migrating (leaving them creates the dual-source-of-truth corruption); MUST preserve any existing frontmatter keys verbatim; MUST show the per-file plan before writing (or with `--dry-run`, instead of writing); MUST NOT change any status VALUE during backfill — a value change is a separate explicit `/sdd:status` run
 - **v5.0.0+**: MUST trigger Tier 1 update of the affected collection (`{repo}-adrs` or `{repo}-specs`) per Step 7 — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
 - MUST check the affected collection's context blurb for drift after the Tier 1 update per Step 7 — a status grouping naming the artifact whose status just changed now contradicts its frontmatter
