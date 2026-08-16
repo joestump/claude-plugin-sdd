@@ -136,7 +136,7 @@ Follow the standard team handoff protocol from the plugin's `${CLAUDE_PLUGIN_ROO
 
 ```markdown
 ---
-status: proposed
+status: proposed  # one of: proposed | accepted | deprecated | superseded (values enforced by /sdd:status)
 date: {YYYY-MM-DD}
 decision-makers: {list}
 # Optional graph edges (per ADR-0023 / SPEC-0018). All fields are lists of artifact IDs.
@@ -215,6 +215,7 @@ Use flowchart, sequence, or C4 diagrams as appropriate.}
 - ADR numbers MUST be sequential and zero-padded to 4 digits: ADR-0001, ADR-0002, etc.
 - MUST include at least 2 considered options with substantive pros and cons for each
 - Status starts as `proposed` -- the user decides when to mark `accepted`
+- The `status` frontmatter value MUST be exactly one of `proposed`, `accepted`, `deprecated`, `superseded` -- the same enum `/sdd:status` enforces. Free-form or differently-capitalized values (e.g. `Accepted`, `done`) break status filtering and `/sdd:list` rendering
 - Self-review (default) or architect review (`--review`) MUST check for:
   - Completeness of all required sections (Context, Options, Outcome, Pros/Cons)
   - Realistic and balanced pros/cons (not just cheerleading the chosen option)
@@ -223,7 +224,7 @@ Use flowchart, sequence, or C4 diagrams as appropriate.}
 - Keep the title short and descriptive
 - Focus on the "why" -- what problem does this solve and why this solution?
 - Reference existing ADRs if this supersedes or relates to them
-- Every ADR SHOULD include at least one Mermaid diagram illustrating the architecture or decision flow. Use flowchart, sequence, or C4 diagrams as appropriate.
+- Every ADR MUST include at least one Mermaid diagram in its Architecture Diagram section, matching the mandatory section in SPEC-0003 -- use flowchart, sequence, or C4 diagrams as appropriate. When the cgg call-graph opt-in (Step 2b) is declined or unavailable, write a small hand-authored diagram instead of leaving the section empty
 - **v5.0.0+**: MUST run qmd-aware edge pre-search per Step 1a — surface candidate `supersedes`/`extends`/`related` edges to the user via AskUserQuestion before drafting. The user's confirmed edges land in the new ADR's frontmatter (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Authoring Skills")
 - **v5.0.0+**: MUST trigger Tier 1 `{repo}-adrs` re-sync after writing the new file per Step 3a — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
 - MUST check the `{repo}-adrs` context blurb for drift after the Tier 1 re-sync per Step 3a — the re-sync maintains the index only, and a stale context is asserted to every consumer on every query
