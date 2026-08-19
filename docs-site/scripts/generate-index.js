@@ -8,7 +8,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getGraph, renderFullMermaid } = require('./graph-data');
+const { citeGraphArtifacts, getGraph, renderFullMermaid } = require('./graph-data');
 const { getSpecLayout } = require('./spec-layout');
 
 const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
@@ -48,7 +48,7 @@ function renderHierarchySection({ kind, kindPlural }) {
     '',
     '## Hierarchy',
     '',
-    `Authored relationships among ${kindPlural} in this project (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Cross-kind links (e.g., which ADR a spec implements) appear in each artifact's per-page "Related Artifacts" mini-DAG.`,
+    `Authored relationships among ${kindPlural} in this project (per ${citeGraphArtifacts(graph)}). Cross-kind links (e.g., which ADR a spec implements) appear in each artifact's per-page "Related Artifacts" mini-DAG.`,
     '',
     '```mermaid',
     mermaid,
