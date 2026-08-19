@@ -27,6 +27,7 @@ const {
   transformAdrReferences,
   fixMarkdownLinks,
 } = require('./transform-utils');
+const { getSpecLayout } = require('./spec-layout');
 
 const ADR_EMOJI = '\ud83d\udcdd';
 
@@ -233,12 +234,13 @@ function transformOpenspecs(config) {
     const domainPath = path.join(specsSource, domain);
     if (!fs.statSync(domainPath).isDirectory()) continue;
 
-    const hasSpec = fs.existsSync(path.join(domainPath, 'spec.md'));
-    const hasDesign = fs.existsSync(path.join(domainPath, 'design.md'));
+    // Nested vs flat is decided in spec-layout.js, which build-spec-mapping.js
+    // and generate-index.js read too -- they link at the pages written below.
+    const { hasSpec, hasDesign, nested } = getSpecLayout(specsSource, domain);
 
     if (!hasSpec && !hasDesign) continue;
 
-    if (hasSpec && hasDesign) {
+    if (nested) {
       // Both docs: create subdirectory with _category_.json
       const destDomainPath = path.join(specsDest, domain);
       fs.mkdirSync(destDomainPath, { recursive: true });

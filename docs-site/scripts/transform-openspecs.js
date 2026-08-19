@@ -19,6 +19,7 @@ const {
   fixMarkdownLinks,
 } = require('./transform-utils');
 const { getGraph, buildMiniDagSection } = require('./graph-data');
+const { getSpecLayout } = require('./spec-layout');
 
 const SPECS_SOURCE = path.join(__dirname, '../../docs/openspec/specs');
 const SPECS_DEST = path.join(__dirname, '../../docs-generated/specs');
@@ -263,12 +264,13 @@ function main() {
     const domainPath = path.join(SPECS_SOURCE, domain);
     if (!fs.statSync(domainPath).isDirectory()) continue;
 
-    const hasSpec = fs.existsSync(path.join(domainPath, 'spec.md'));
-    const hasDesign = fs.existsSync(path.join(domainPath, 'design.md'));
+    // Nested vs flat is decided in spec-layout.js, which build-spec-mapping.js
+    // and generate-index.js read too -- they link at the pages written below.
+    const { hasSpec, hasDesign, nested } = getSpecLayout(SPECS_SOURCE, domain);
 
     if (!hasSpec && !hasDesign) continue;
 
-    if (hasSpec && hasDesign) {
+    if (nested) {
       // Both docs: create subdirectory with _category_.json
       const destDomainPath = path.join(SPECS_DEST, domain);
       fs.mkdirSync(destDomainPath, { recursive: true });

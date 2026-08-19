@@ -112,11 +112,13 @@ function writeFixture() {
   const spec = (id, title, body) =>
     `---\nstatus: active\ndate: 2026-01-01\n---\n\n# ${id}: ${title}\n\n## Overview\n\n${body}\n`;
 
-  const domain = (name, id, title, body) => {
+  // `design: false` leaves the domain with a spec.md only, which the transform
+  // emits as a flat page rather than a category directory.
+  const domain = (name, id, title, body, { design = true } = {}) => {
     const dir = path.join(root, 'docs/openspec/specs', name);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'spec.md'), spec(id, title, body));
-    fs.writeFileSync(path.join(dir, 'design.md'), spec(id, `${title} Design`, body));
+    if (design) fs.writeFileSync(path.join(dir, 'design.md'), spec(id, `${title} Design`, body));
   };
 
   domain('alpha', 'SPEC-0001', 'Alpha', 'Alpha stands alone.');
@@ -131,8 +133,12 @@ function writeFixture() {
     'gamma',
     'SPEC-0003',
     'Gamma',
-    'Gamma needs SPEC-0001 and SPEC-0002.\n\nOne issue per ### Requirement: section, per ADR-0001.'
+    'Gamma needs SPEC-0001, SPEC-0002 and SPEC-0004.\n\nOne issue per ### Requirement: section, per ADR-0001.'
   );
+  // Only a spec.md, no design.md — this domain renders as the flat page
+  // /specs/delta, so references to SPEC-0004 must not be sent to
+  // /specs/delta/spec, which nothing writes.
+  domain('delta', 'SPEC-0004', 'Delta', 'Delta stands alone.', { design: false });
 
   return { root, site };
 }
@@ -220,6 +226,34 @@ test('plugin template: a spec citing an ADR does not claim the ADR prefix', asyn
   // and wrapped the ADR link in a second anchor pointing at a spec page.
   assert.doesNotMatch(gamma, /href="[^"]*#adr-0001"/);
   assert.doesNotMatch(gamma, /<a [^>]*><a /);
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('plugin template: a design-less domain is referenced at its flat page', async () => {
+  const { root, site } = writeFixture();
+  const plugin = withArtifactTransformsStub(() =>
+    require(path.join(REPO_ROOT, 'templates/docusaurus/plugins/sdd-content'))
+  );
+
+  await plugin({ siteDir: site }, {}).loadContent();
+
+  const generated = path.join(root, 'docs-generated');
+
+  // What the transform actually emits for a spec.md-only domain.
+  assert.ok(fs.existsSync(path.join(generated, 'specs/delta.mdx')));
+  assert.ok(!fs.existsSync(path.join(generated, 'specs/delta/spec.mdx')));
+
+  // The regression: the mapping assumed every domain was nested, so this
+  // cross-reference pointed at /specs/delta/spec — a route with no page.
+  const gamma = fs.readFileSync(path.join(generated, 'specs/gamma/spec.mdx'), 'utf-8');
+  assert.match(gamma, /href="\/specs\/delta"[^>]*>SPEC-0004</);
+  assert.doesNotMatch(gamma, /href="\/specs\/delta\/spec"/);
+
+  // The specs index links the same page the transform wrote.
+  const index = fs.readFileSync(path.join(generated, 'specs/index.mdx'), 'utf-8');
+  assert.match(index, /\[Specification\]\(\.\/delta\)/);
+  assert.doesNotMatch(index, /\(\.\/delta\/spec\)/);
 
   fs.rmSync(root, { recursive: true, force: true });
 });

@@ -9,6 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getGraph, renderFullMermaid } = require('./graph-data');
+const { getSpecLayout } = require('./spec-layout');
 
 const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
 const SPECS_SOURCE = path.join(__dirname, '../../docs/openspec/specs');
@@ -94,9 +95,7 @@ function generateSpecsIndex() {
 
   const rows = [];
   for (const domain of domains) {
-    const domainPath = path.join(SPECS_SOURCE, domain);
-    const hasSpec = fs.existsSync(path.join(domainPath, 'spec.md'));
-    const hasDesign = fs.existsSync(path.join(domainPath, 'design.md'));
+    const { domainPath, hasSpec, hasDesign, specSlug, designSlug } = getSpecLayout(SPECS_SOURCE, domain);
 
     if (!hasSpec && !hasDesign) continue;
 
@@ -110,11 +109,11 @@ function generateSpecsIndex() {
 
     let docs;
     if (hasSpec && hasDesign) {
-      docs = `[Specification](./${domain}/spec) / [Design](./${domain}/design)`;
+      docs = `[Specification](./${specSlug}) / [Design](./${designSlug})`;
     } else if (hasSpec) {
-      docs = `[Specification](./${domain})`;
+      docs = `[Specification](./${specSlug})`;
     } else {
-      docs = `[Design](./${domain})`;
+      docs = `[Design](./${designSlug})`;
     }
 
     rows.push(`| ${label} | ${docs} |`);
