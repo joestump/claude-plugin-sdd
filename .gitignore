@@ -1,6 +1,7 @@
 node_modules/
 .DS_Store
 .claude/settings.local.json
+.claude/worktrees/
 docs-generated/
 docs-site/node_modules/
 docs-site/build/

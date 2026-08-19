@@ -90,12 +90,18 @@ function transformSpecReferences(content, { specMapping, specEmojis, baseUrl }) 
     if (line.trim().startsWith('<') && !line.includes('className="rfc-keyword')) return line;
 
     return line.replace(specPattern, (match, prefix, number) => {
-      const specPath = specMapping[prefix];
-      const emoji = specEmojis[prefix];
+      // Two kinds of key live in specMapping. A full artifact ID (SPEC-0008)
+      // names one spec page; a bare prefix (ARCH) names the domain page that
+      // hosts ARCH-NNN requirements, where each ID is a RequirementBox anchor.
+      // Only the latter gets a fragment: a spec page's H1 anchor is derived
+      // from the whole heading text, so `#spec-0008` never resolved.
+      const artifactPath = specMapping[match];
+      const specPath = artifactPath || specMapping[prefix];
       if (!specPath) return match;
+      const emoji = specEmojis[prefix];
       const displayText = emoji ? `${emoji} ${match}` : match;
-      const anchorId = match.toLowerCase();
-      return `<a href="${baseUrl}${specPath}#${anchorId}" className="rfc-ref">${displayText}</a>`;
+      const fragment = artifactPath ? '' : `#${match.toLowerCase()}`;
+      return `<a href="${baseUrl}${specPath}${fragment}" className="rfc-ref">${displayText}</a>`;
     });
   }).join('\n');
 }

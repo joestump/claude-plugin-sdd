@@ -1,3 +1,26 @@
 {
-  "SPEC": "/specs/init-and-priming/spec"
+  "SPEC-0018": "/specs/artifact-graph/spec",
+  "SPEC-0034": "/specs/cgg-sdd-integration/spec",
+  "SPEC-0005": "/specs/codebase-discovery/spec",
+  "SPEC-0004": "/specs/docs-generation/spec",
+  "SPEC-0021": "/specs/docusaurus-skill-pages/spec",
+  "SPEC-0001": "/specs/drift-introspection/spec",
+  "SPEC-0003": "/specs/foundational-artifacts/spec",
+  "SPEC-0002": "/specs/init-and-priming/spec",
+  "SPEC-0020": "/specs/loop-autonomous-mode/spec",
+  "SPEC-0014": "/specs/markdown-native-config-and-workspace/spec",
+  "SPEC-0015": "/specs/parallel-agent-coordination/spec",
+  "SPEC-0009": "/specs/parallel-pr-review/spec",
+  "SPEC-0011": "/specs/project-workspace-enrichment/spec",
+  "SPEC-0019": "/specs/qmd-native-skills/spec",
+  "SPEC-0035": "/specs/respond-to-pr-feedback/spec",
+  "SPEC-0008": "/specs/retroactive-issue-management/spec",
+  "SPEC-0013": "/specs/scrum-mode-audit-triage/spec",
+  "SPEC-0012": "/specs/scrum-mode-sprint-planning/spec",
+  "SPEC-0016": "/specs/security-and-quality-guardrails/spec",
+  "SPEC-0036": "/specs/skill-distillation/spec",
+  "SPEC-0017": "/specs/skill-evaluation-and-ci-testing/spec",
+  "SPEC-0007": "/specs/sprint-planning/spec",
+  "SPEC-0010": "/specs/story-sized-issue-granularity/spec",
+  "SPEC-0006": "/specs/tasks-md-fallback/spec"
 }
