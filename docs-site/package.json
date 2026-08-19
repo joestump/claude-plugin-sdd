@@ -52,5 +52,8 @@
   },
   "engines": {
     "node": ">=20.0"
+  },
+  "overrides": {
+    "shell-quote": "1.9.0"
   }
 }
