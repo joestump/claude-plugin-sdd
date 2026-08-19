@@ -120,6 +120,10 @@ function writeFixture() {
   };
 
   domain('alpha', 'SPEC-0001', 'Alpha', 'Alpha stands alone.');
+  // A spec.md converted from an ADR whose H1 was never renumbered. Its ID must
+  // not be registered in the spec mapping: transformSpecReferences runs first,
+  // so it would capture every ADR-0001 mention on the site.
+  domain('stale', 'ADR-0001', 'Stale Conversion', 'Converted, never renumbered.');
   domain('beta', 'SPEC-0002', 'Beta', 'Beta builds on SPEC-0001.');
   // The prose here mentions `### Requirement:` and then cites an ADR on the
   // same line — the shape that used to register "ADR" as a spec prefix.
@@ -173,6 +177,28 @@ test('plugin template: every SPEC reference resolves to its own spec directory',
   // The regression: with the artifact ID keyed by prefix, every one of these
   // pointed at whichever domain was read last.
   assert.doesNotMatch(gamma, /href="\/specs\/gamma\/spec[^"]*"[^>]*>SPEC-000[12]</);
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('plugin template: a spec H1 carrying an ADR number does not claim that ID', async () => {
+  const { root, site } = writeFixture();
+  const plugin = withArtifactTransformsStub(() =>
+    require(path.join(REPO_ROOT, 'templates/docusaurus/plugins/sdd-content'))
+  );
+
+  await plugin({ siteDir: site }, {}).loadContent();
+
+  const gamma = fs.readFileSync(
+    path.join(root, 'docs-generated/specs/gamma/spec.mdx'),
+    'utf-8'
+  );
+  // Still the ADR page, and no spec route claims the ID. Registering it
+  // produced `<a href="/specs/stale/spec"><a href="/decisions/...">ADR-0001</a></a>`,
+  // so the nested-anchor shape is the assertion that actually bites.
+  assert.match(gamma, /href="\/decisions\/ADR-0001-example"/);
+  assert.doesNotMatch(gamma, /href="\/specs\/stale/);
+  assert.doesNotMatch(gamma, /<a [^>]*><a /);
 
   fs.rmSync(root, { recursive: true, force: true });
 });

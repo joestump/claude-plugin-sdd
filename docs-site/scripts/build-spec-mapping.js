@@ -46,7 +46,13 @@ function buildMapping() {
     // gave every domain the identical "SPEC" key, and whichever domain was
     // read last then owned every SPEC-NNNN cross-reference on the site.
     const h1Match = content.match(/^#\s+([A-Z]+-\d{4}):/m);
-    if (h1Match) {
+    // Not `ADR-NNNN`: a spec.md whose H1 still carries an ADR number -- a
+    // conversion that was never renumbered -- would register that ID here, and
+    // transformSpecReferences runs before transformAdrReferences, so every
+    // ADR-NNNN mention on the site would resolve to this spec page. Same
+    // reason `prefixes.delete('ADR')` exists below; the full-ID key bypasses
+    // the prefix set, so it needs the guard too.
+    if (h1Match && !h1Match[1].startsWith('ADR-')) {
       mapping[h1Match[1]] = `/specs/${domain}/spec`;
     }
 
