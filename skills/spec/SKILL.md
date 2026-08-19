@@ -202,6 +202,12 @@ Do NOT inject the Security Requirements section. Proceed with the standard spec 
 
 Read the Security Requirements template from `references/security-requirements-template.md` and inject it into the spec after the functional requirements. The template covers all six required topics: authentication, rate limiting, security headers, request body size limits, CSRF protection, and redirect validation.
 
+The template writes every topic inline. Where a governing artifact already fixes a topic (per the two-ways rule above), replace that topic's body with the citation rather than deleting the topic — the six headings stay, so an uncovered topic is visible as an empty one instead of disappearing:
+
+```markdown
+- **CSRF protection**: Per [ADR-0010](../../adrs/ADR-0010-security-posture.md) §3 — double-submit cookie on all state-changing routes. No deviation in this capability.
+```
+
 ## UI-Facing Detection and Accessibility Injection
 
 <!-- Governing: ADR-0019 (Frontend Quality Standards), SPEC-0016 REQ "Accessibility Requirements for UI Specs" -->
