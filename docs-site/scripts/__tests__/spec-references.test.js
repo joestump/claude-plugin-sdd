@@ -47,9 +47,15 @@ const MAPPING = {
   ARCH: '/specs/alpha/spec',
 };
 
-for (const [label, { transformSpecReferences }] of TRANSFORM_COPIES) {
+// buildAdrMapping keys by the bare four-digit number, not the full ID.
+const ADR_MAPPING = { '0001': '/decisions/ADR-0001-example' };
+
+for (const [label, lib] of TRANSFORM_COPIES) {
+  const { transformSpecReferences, transformAdrReferences } = lib;
   const transform = (content, specEmojis = {}) =>
     transformSpecReferences(content, { specMapping: MAPPING, specEmojis, baseUrl: '' });
+  const transformAdr = (content) =>
+    transformAdrReferences(content, { adrMapping: ADR_MAPPING, adrEmoji: '\u{1F3DB}', baseUrl: '' });
 
   test(`${label}: each artifact ID resolves to its own spec page`, () => {
     assert.match(transform('See SPEC-0001.'), /href="\/specs\/alpha\/spec"/);
@@ -93,6 +99,48 @@ for (const [label, { transformSpecReferences }] of TRANSFORM_COPIES) {
 
   test(`${label}: code fences and inline code are left alone`, () => {
     assert.equal(transform('```\nSPEC-0001\n```'), '```\nSPEC-0001\n```');
+  });
+
+  // --- Already-linked references stay untouched --------------------------
+  //
+  // Linkifying a reference that is already inside inline code, a markdown
+  // link, or an emitted anchor produces `<a><a>...</a></a>`. That is invalid
+  // HTML, and some minifiers reject it outright rather than repairing it.
+
+  test(`${label}: a reference inside inline code is left alone`, () => {
+    assert.equal(transform('The literal `SPEC-0001` is not a reference.'),
+      'The literal `SPEC-0001` is not a reference.');
+    assert.equal(transformAdr('The literal `ADR-0001` is not a reference.'),
+      'The literal `ADR-0001` is not a reference.');
+  });
+
+  test(`${label}: a reference inside a markdown link is left alone`, () => {
+    const spec = 'See [SPEC-0001](/specs/alpha/spec) for the rules.';
+    assert.equal(transform(spec), spec);
+    const adr = 'See [ADR-0001](adr-0001-example.md) for the rationale.';
+    assert.equal(transformAdr(adr), adr);
+  });
+
+  test(`${label}: a reference inside an emitted anchor is left alone`, () => {
+    // Both halves matter: the ID in the href and the ID in the link text.
+    const spec = 'Prior art: <a href="/specs/alpha/spec" className="rfc-ref">SPEC-0001</a> covers it.';
+    assert.equal(transform(spec), spec);
+    const adr = 'Prior art: <a href="/decisions/ADR-0001-example" className="rfc-ref">ADR-0001</a> covers it.';
+    assert.equal(transformAdr(adr), adr);
+  });
+
+  test(`${label}: no anchor is ever nested inside another`, () => {
+    const line = 'Both [SPEC-0001](/specs/alpha/spec) and [ADR-0001](adr-0001-example.md) apply.';
+    const out = transformAdr(transform(line));
+    assert.doesNotMatch(out, /<a [^>]*><a /);
+  });
+
+  test(`${label}: an unprotected reference on the same line still linkifies`, () => {
+    // The guard must be span-scoped, not line-scoped — one protected span
+    // must not suppress a bare mention elsewhere on the line.
+    const out = transform('Compare `SPEC-0001` against SPEC-0002.');
+    assert.match(out, /`SPEC-0001`/);
+    assert.match(out, /href="\/specs\/beta\/spec"[^>]*>SPEC-0002</);
   });
 }
 
@@ -139,6 +187,21 @@ function writeFixture() {
   // /specs/delta, so references to SPEC-0004 must not be sent to
   // /specs/delta/spec, which nothing writes.
   domain('delta', 'SPEC-0004', 'Delta', 'Delta stands alone.', { design: false });
+  // Every shape the linkifier must leave alone, alongside bare mentions of the
+  // same IDs that it must still resolve. Nested (it keeps its design.md) so the
+  // assertions below read the page at /specs/epsilon/spec.
+  domain(
+    'epsilon',
+    'SPEC-0005',
+    'Epsilon',
+    [
+      'Epsilon cites [SPEC-0002](/specs/beta/spec) and [ADR-0001](../../adrs/ADR-0001-example.md).',
+      '',
+      'The literals `SPEC-0002` and `ADR-0001` are prose, not references.',
+      '',
+      'Bare SPEC-0002 and bare ADR-0001 still resolve.',
+    ].join('\n')
+  );
 
   return { root, site };
 }
@@ -254,6 +317,66 @@ test('plugin template: a design-less domain is referenced at its flat page', asy
   const index = fs.readFileSync(path.join(generated, 'specs/index.mdx'), 'utf-8');
   assert.match(index, /\[Specification\]\(\.\/delta\)/);
   assert.doesNotMatch(index, /\(\.\/delta\/spec\)/);
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('plugin template: a reference already inside code, a link, or an anchor is left alone', async () => {
+  const { root, site } = writeFixture();
+  const plugin = withArtifactTransformsStub(() =>
+    require(path.join(REPO_ROOT, 'templates/docusaurus/plugins/sdd-content'))
+  );
+
+  await plugin({ siteDir: site }, {}).loadContent();
+
+  const epsilon = fs.readFileSync(
+    path.join(root, 'docs-generated/specs/epsilon/spec.mdx'),
+    'utf-8'
+  );
+
+  // The defect: `<a href="..."><a href="...">ADR-0001</a></a>`. Invalid HTML,
+  // and some minifiers reject it rather than repairing it.
+  assert.doesNotMatch(epsilon, /<a [^>]*><a /);
+
+  // Inline code stays literal.
+  assert.match(epsilon, /`SPEC-0002`/);
+  assert.match(epsilon, /`ADR-0001`/);
+
+  // Markdown links keep their original label, unwrapped.
+  assert.match(epsilon, /\[SPEC-0002\]\(\/specs\/beta\/spec\)/);
+  assert.match(epsilon, /\[ADR-0001\]\(\.\.\/\.\.\/adrs\/ADR-0001-example\)/);
+
+  // ...and the bare mentions on the last line still linkify, so the guard is
+  // span-scoped rather than a blunt line-level opt-out.
+  assert.match(epsilon, /href="\/specs\/beta\/spec"[^>]*>SPEC-0002</);
+  assert.match(epsilon, /href="\/decisions\/ADR-0001-example"[^>]*>[^<]*ADR-0001</);
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('plugin template: baseUrl comes from the resolved site config', async () => {
+  const { root, site } = writeFixture();
+  const plugin = withArtifactTransformsStub(() =>
+    require(path.join(REPO_ROOT, 'templates/docusaurus/plugins/sdd-content'))
+  );
+
+  // Docusaurus hands plugins the fully-evaluated config. The previous
+  // implementation regex'd docusaurus.config.ts for a `baseUrl: '...'` literal
+  // and never matched, because the shipped config assigns it from a const —
+  // so every chip below was emitted at the host root.
+  await plugin(
+    { siteDir: site, siteConfig: { baseUrl: '/my-project/', title: 'Fixture' } },
+    {}
+  ).loadContent();
+
+  const generated = path.join(root, 'docs-generated');
+  const beta = fs.readFileSync(path.join(generated, 'specs/beta/spec.mdx'), 'utf-8');
+  assert.match(beta, /href="\/my-project\/specs\/alpha\/spec"/);
+  assert.doesNotMatch(beta, /href="\/specs\//);
+
+  const gamma = fs.readFileSync(path.join(generated, 'specs/gamma/spec.mdx'), 'utf-8');
+  assert.match(gamma, /href="\/my-project\/decisions\/ADR-0001-example"/);
+  assert.doesNotMatch(gamma, /href="\/decisions\//);
 
   fs.rmSync(root, { recursive: true, force: true });
 });

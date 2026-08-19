@@ -199,7 +199,11 @@ function buildGraph({ adrsSource, specsSource }) {
   const nodes = {};
   const edges = [];
 
-  const adrFileRe = /^ADR-(\d{4})/;
+  // /i: ADR files are named adr-0001-... in some repos and ADR-0001-... in
+  // others. Case-sensitive here meant zero ADR nodes in the graph, hence no
+  // edges, no mini-DAGs and no graph page at all, on every lowercase-naming
+  // repo.
+  const adrFileRe = /^ADR-(\d{4})/i;
   if (fs.existsSync(adrsSource)) {
     for (const f of fs.readdirSync(adrsSource).sort()) {
       if (!f.endsWith('.md')) continue;
@@ -323,6 +327,36 @@ function renderNeighborMermaid(targetId, { nodes, edges }) {
   return lines.join('\n');
 }
 
+// ADR-0023 and SPEC-0018 are the SDD plugin's *own* artifacts, describing the
+// frontmatter DAG. They exist in the repo this generator was extracted from and
+// in almost no repo that consumes it, so citing them as links put two dead links
+// on every ADR page, every index page, and the graph page. Docusaurus's
+// onBrokenLinks is 'warn' by default, so the build stayed green and nobody
+// noticed.
+//
+// Link them only when this repo actually has them; otherwise name them as plain
+// text. The load-bearing half of the sentence is the /sdd:graph hint, which is
+// true everywhere. Both lookups go by content (the ADR's filename slug, the
+// spec's directory) rather than by number, so a repo that renumbered them still
+// gets links.
+function citeGraphArtifacts(graph) {
+  const nodes = (graph && graph.nodes) || {};
+  const adr = Object.values(nodes).find(
+    (n) => n.kind === 'adr' && /frontmatter-dag/i.test(path.basename(n.path || ''))
+  );
+  const spec = Object.values(nodes).find((n) => n.kind === 'spec' && n.dir === 'artifact-graph');
+
+  const adrRef = adr ? `[${adr.id}](/decisions/${path.basename(adr.path, '.md')})` : 'ADR-0023';
+  // Route via getSpecLayout rather than assuming `/specs/<dir>/spec`: a domain
+  // holding only spec.md renders flat at `/specs/<dir>`, so the nested form is
+  // a dead link there. spec.path is `<specsSource>/<dir>/spec.md`, so its
+  // grandparent is the specs root.
+  const specRef = spec
+    ? `[${spec.id}](/specs/${getSpecLayout(path.dirname(path.dirname(spec.path)), spec.dir).specSlug})`
+    : 'SPEC-0018';
+  return `${adrRef} / ${specRef}`;
+}
+
 function buildMiniDagSection(artifactId, graph) {
   if (!artifactId) return '';
   const mermaid = renderNeighborMermaid(artifactId, graph);
@@ -332,7 +366,7 @@ function buildMiniDagSection(artifactId, graph) {
     '',
     '## Related Artifacts',
     '',
-    `Direct relationships declared in YAML frontmatter (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Run \`/sdd:graph chain ${artifactId}\` for the transitive view.`,
+    `Direct relationships declared in YAML frontmatter (per ${citeGraphArtifacts(graph)}). Run \`/sdd:graph chain ${artifactId}\` for the transitive view.`,
     '',
     '```mermaid',
     mermaid,
@@ -464,7 +498,7 @@ function buildAdrMapping(adrsSource) {
     if (!file.endsWith('.md')) continue;
     if (file === '0000-template.md' || file === 'README.md') continue;
 
-    const match = file.match(/^(?:ADR-)?(\d{4})-/);
+    const match = file.match(/^(?:ADR-)?(\d{4})-/i);
     if (match) {
       const number = match[1];
       const slug = file.replace(/\.md$/, '');
@@ -502,6 +536,44 @@ function transformRfc2119Keywords(content) {
   }).join('\n');
 }
 
+// Spans within a single line that must never be auto-linkified.
+//
+// The reference transforms below turn a bare `ADR-0006` / `SPEC-0004` mention
+// into an <a>. Three places that is wrong:
+//
+//   `ADR-0006`                    inline code — a literal, not a reference
+//   [ADR-0006](adr-0006-x.md)     already a link; wrapping the label yields
+//                                 <a><a>…</a></a>, which is invalid HTML and
+//                                 which some minifiers reject outright
+//   <a href="/decisions/ADR-0006  an anchor an earlier pass already emitted —
+//   -x">ADR-0006</a>              both the href and the label are off limits
+//
+// Markdown links are the common case: an author who writes
+// `[ADR-0006](adr-0006-thing.md)` gets the label wrapped a second time, and the
+// result is a nested anchor on every such reference in the body.
+//
+// Whole <a>…</a> elements are ranged separately from bare tags. `<[^>]+>` alone
+// covers an ID sitting in an href but not one sitting in the link text, which
+// is the half that actually nests.
+function protectedRanges(line) {
+  const ranges = [];
+  for (const re of [/`[^`]*`/g, /\[[^\]]*\]\([^)]*\)/g, /<a\b[^>]*>.*?<\/a>/g, /<[^>]+>/g]) {
+    let m;
+    while ((m = re.exec(line)) !== null) ranges.push([m.index, m.index + m[0].length]);
+  }
+  return ranges;
+}
+
+// String.prototype.replace passes (match, ...groups, offset, whole), so the
+// offset is always the second-to-last argument regardless of group count.
+function matchOffset(args) {
+  return args[args.length - 2];
+}
+
+function isProtected(ranges, start, end) {
+  return ranges.some(([from, to]) => start >= from && end <= to);
+}
+
 function transformSpecReferences(content, { specMapping, specEmojis, baseUrl }) {
   const specPattern = /\b([A-Z]+)-(\d{3,4})\b/g;
   const lines = content.split('\n');
@@ -512,7 +584,10 @@ function transformSpecReferences(content, { specMapping, specEmojis, baseUrl }) 
     if (inCodeBlock || line.startsWith('#')) return line;
     if (line.trim().startsWith('<') && !line.includes('className="rfc-keyword')) return line;
 
-    return line.replace(specPattern, (match, prefix, number) => {
+    const ranges = protectedRanges(line);
+    return line.replace(specPattern, (match, prefix, number, ...rest) => {
+      const offset = matchOffset([match, prefix, number, ...rest]);
+      if (isProtected(ranges, offset, offset + match.length)) return match;
       // Two kinds of key live in specMapping. A full artifact ID (SPEC-0008)
       // names one spec page; a bare prefix (ARCH) names the domain page that
       // hosts ARCH-NNN requirements, where each ID is a RequirementBox anchor.
@@ -539,7 +614,10 @@ function transformAdrReferences(content, { adrMapping, adrEmoji, baseUrl }) {
     if (inCodeBlock || line.startsWith('#')) return line;
     if (line.trim().startsWith('<') && !line.includes('className="rfc-keyword') && !line.includes('className="rfc-ref')) return line;
 
-    return line.replace(adrPattern, (match, number) => {
+    const ranges = protectedRanges(line);
+    return line.replace(adrPattern, (match, number, ...rest) => {
+      const offset = matchOffset([match, number, ...rest]);
+      if (isProtected(ranges, offset, offset + match.length)) return match;
       const adrPath = adrMapping[number];
       if (!adrPath) return match;
       const displayText = `${adrEmoji} ${match}`;
@@ -560,8 +638,28 @@ function escapeYaml(str) {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-function escapeJsxAttr(str) {
-  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// Frontmatter values are whatever YAML says they are, not necessarily strings:
+// `decision-makers: [Alice, Bob]` is an array, and an unquoted `date: 2026-07-27`
+// is a Date under some parsers. Coerce before touching string methods, or the
+// build dies with the memorable-but-unhelpful "str.replace is not a function".
+//
+// The MADR template this plugin's ADRs follow writes decision-makers as a list,
+// so this is the common case, not defensive padding. The crash was merely
+// unreachable while isNumberedAdr failed to match lowercase filenames and
+// suppressed the whole badge header — fixing that without this would trade a
+// silent omission for a hard build failure.
+function toDisplayString(value) {
+  if (value === null || value === undefined) return '';
+  if (Array.isArray(value)) return value.join(', ');
+  // Render as YYYY-MM-DD; the source frontmatter is date-only, and toISOString
+  // would otherwise append a midnight-UTC time the author never wrote.
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value);
+}
+
+function escapeJsxAttr(value) {
+  return toDisplayString(value)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function extractMetadataAdr(content) {
@@ -615,7 +713,7 @@ function transformAdr(srcPath, destPath, fileName, { specMapping, specEmojis, ba
 
   if (fileName === '0000-template.md' || fileName === 'README.md') return;
 
-  const isNumberedAdr = /^(?:ADR-)?\d{4}-/.test(fileName);
+  const isNumberedAdr = /^(?:ADR-)?\d{4}-/i.test(fileName);
   const title = extractTitle(content);
   const { status, date, dm } = extractMetadataAdr(content);
 
@@ -633,8 +731,8 @@ function transformAdr(srcPath, destPath, fileName, { specMapping, specEmojis, ba
 
   let sidebarLabel;
   if (isNumberedAdr) {
-    const adrNum = fileName.match(/^(?:ADR-)?(\d{4})-/)[1];
-    const titleWithoutAdr = title.replace(/^ADR-\d+:\s*/, '');
+    const adrNum = fileName.match(/^(?:ADR-)?(\d{4})-/i)[1];
+    const titleWithoutAdr = title.replace(/^ADR-\d+:\s*/i, '');
     sidebarLabel = `ADR-${adrNum}: ${titleWithoutAdr}`;
   } else {
     sidebarLabel = title;
@@ -643,7 +741,7 @@ function transformAdr(srcPath, destPath, fileName, { specMapping, specEmojis, ba
   const badgeHeader = isNumberedAdr ? `
 <FieldGroup>
   <Field label="Status">
-    <StatusBadge status="${escapeJsxAttr(status.toUpperCase())}" />
+    <StatusBadge status="${escapeJsxAttr(toDisplayString(status).toUpperCase())}" />
   </Field>
   <Field label="Date">
     <DateBadge date="${escapeJsxAttr(date)}" />
@@ -662,8 +760,10 @@ slug: /decisions/${slug}${sidebarClassName}
 ${badgeHeader}
 `;
 
-  const adrIdMatch = fileName.match(/^(ADR-\d{4})/);
-  const artifactId = adrIdMatch ? adrIdMatch[1] : null;
+  // Uppercased: the graph keys its nodes by a constructed `ADR-NNNN`, so a
+  // lowercase filename must normalize or the mini-DAG lookup misses.
+  const adrIdMatch = fileName.match(/^(ADR-\d{4})/i);
+  const artifactId = adrIdMatch ? adrIdMatch[1].toUpperCase() : null;
   const miniDag = buildMiniDagSection(artifactId, graph);
 
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
@@ -772,7 +872,7 @@ function transformSpec(srcPath, destPath, domain, fileType, domainConfig, flat, 
   const metadataHeader = `
 <FieldGroup>
   <Field label="Status">
-    <StatusBadge status="${escapeJsxAttr(metadata.status.toUpperCase())}" />
+    <StatusBadge status="${escapeJsxAttr(toDisplayString(metadata.status).toUpperCase())}" />
   </Field>
   <Field label="Date">
     <DateBadge date="${escapeJsxAttr(metadata.date)}" />
@@ -844,7 +944,7 @@ function renderHierarchySection({ kind, kindPlural }, graph, baseUrl) {
     '',
     '## Hierarchy',
     '',
-    `Authored relationships among ${kindPlural} in this project (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Cross-kind links (e.g., which ADR a spec implements) appear in each artifact's per-page "Related Artifacts" mini-DAG.`,
+    `Authored relationships among ${kindPlural} in this project (per ${citeGraphArtifacts(graph)}). Cross-kind links (e.g., which ADR a spec implements) appear in each artifact's per-page "Related Artifacts" mini-DAG.`,
     '',
     '```mermaid',
     mermaid,
@@ -940,8 +1040,8 @@ function generateDecisionsIndex(adrsSource, docsDest, graph, baseUrl) {
   for (const file of files) {
     const content = fs.readFileSync(path.join(adrsSource, file), 'utf-8');
 
-    const idMatch = file.match(/^(ADR-\d{4})/);
-    const id = idMatch ? idMatch[1] : file.replace(/\.md$/, '');
+    const idMatch = file.match(/^(ADR-\d{4})/i);
+    const id = idMatch ? idMatch[1].toUpperCase() : file.replace(/\.md$/, '');
     const titleMatch = content.match(/^#\s+(?:ADR-\d+:\s*)?(.+)$/m);
     const title = titleMatch ? titleMatch[1].trim() : id;
 
@@ -1046,7 +1146,7 @@ sidebar_position: 1
 
 # Architecture Graph
 
-The artifact graph captures explicit relationships between ADRs and specs declared in YAML frontmatter (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) and [SPEC-0018](/specs/artifact-graph/spec)). Edges describe \`supersedes\`, \`extends\`, \`enables\`, \`governs\`, \`implements\`, \`requires\`, and \`related\` relationships between artifacts. The page below reflects the authored edges only; derived inverses (\`governed-by\`, \`implemented-by\`, etc.) are computed at query time by the \`/sdd:graph\` skill.
+The artifact graph captures explicit relationships between ADRs and specs declared in YAML frontmatter (per ${citeGraphArtifacts(graph)}). Edges describe \`supersedes\`, \`extends\`, \`enables\`, \`governs\`, \`implements\`, \`requires\`, and \`related\` relationships between artifacts. The page below reflects the authored edges only; derived inverses (\`governed-by\`, \`implemented-by\`, etc.) are computed at query time by the \`/sdd:graph\` skill.
 
 ## Stats
 
@@ -1119,20 +1219,27 @@ module.exports = function(context, options) {
   // doesn't abort on a missing docs-generated/ (content lands in loadContent).
   fs.mkdirSync(docsDest, { recursive: true });
 
-  let baseUrl = '';
-  const configPath = path.resolve(siteDir, 'docusaurus.config.ts');
-  if (fs.existsSync(configPath)) {
-    const configContent = fs.readFileSync(configPath, 'utf-8');
-    const baseUrlMatch = configContent.match(/baseUrl:\s*['"]([^'"]+)['"]/);
-    baseUrl = baseUrlMatch ? baseUrlMatch[1].replace(/\/$/, '') : '';
-  }
-
-  let projectTitle = 'Architecture Documentation';
-  if (fs.existsSync(configPath)) {
-    const configContent = fs.readFileSync(configPath, 'utf-8');
-    const titleMatch = configContent.match(/PROJECT_TITLE\s*=\s*['"]([^'"]+)['"]/);
-    if (titleMatch) projectTitle = titleMatch[1];
-  }
+  // Take baseUrl and title from the resolved site config, never by scraping the
+  // config file. Docusaurus hands every plugin the fully-evaluated siteConfig,
+  // so this is both the supported source and the only one that can be right.
+  //
+  // The previous implementation regex'd docusaurus.config.ts for
+  // `baseUrl: '...'` and fell back to '' when it did not match. It never
+  // matched: the config templates/docusaurus ships assigns `baseUrl: BASE_URL`
+  // from a constant, so CI can override it per host, and there is no string
+  // literal on that line to capture. Every cross-reference chip was therefore
+  // emitted at the host root — a 404 on any site not served from '/'. The
+  // failure is invisible locally because the dev server and `npm run serve`
+  // both mount at baseUrl anyway, and invisible in CI because raw <a href>
+  // attributes are not checked by onBrokenLinks.
+  //
+  // The trailing slash is stripped because callers concatenate
+  // `${baseUrl}${path}` where path already leads with '/'. Docusaurus
+  // guarantees siteConfig.baseUrl both starts and ends with '/', so '/harness/'
+  // becomes '/harness' and the root case '/' correctly becomes ''.
+  const siteConfig = context.siteConfig || {};
+  const baseUrl = (siteConfig.baseUrl || '/').replace(/\/$/, '');
+  const projectTitle = siteConfig.title || 'Architecture Documentation';
 
   return {
     name: 'sdd-content',

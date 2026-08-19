@@ -8,7 +8,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getGraph, renderFullMermaid } = require('./graph-data');
+const { citeGraphArtifacts, getGraph, renderFullMermaid } = require('./graph-data');
 const { getSpecLayout } = require('./spec-layout');
 
 const ADRS_SOURCE = path.join(__dirname, '../../docs/adrs');
@@ -48,7 +48,7 @@ function renderHierarchySection({ kind, kindPlural }) {
     '',
     '## Hierarchy',
     '',
-    `Authored relationships among ${kindPlural} in this project (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Cross-kind links (e.g., which ADR a spec implements) appear in each artifact's per-page "Related Artifacts" mini-DAG.`,
+    `Authored relationships among ${kindPlural} in this project (per ${citeGraphArtifacts(graph)}). Cross-kind links (e.g., which ADR a spec implements) appear in each artifact's per-page "Related Artifacts" mini-DAG.`,
     '',
     '```mermaid',
     mermaid,
@@ -161,8 +161,8 @@ function generateDecisionsIndex() {
 
     // Pull the canonical id and short title from the H1 (e.g.,
     // `# ADR-0023: Frontmatter DAG and /sdd:graph Skill`).
-    const idMatch = file.match(/^(ADR-\d{4})/);
-    const id = idMatch ? idMatch[1] : file.replace(/\.md$/, '');
+    const idMatch = file.match(/^(ADR-\d{4})/i);
+    const id = idMatch ? idMatch[1].toUpperCase() : file.replace(/\.md$/, '');
     const titleMatch = content.match(/^#\s+(?:ADR-\d+:\s*)?(.+)$/m);
     const title = titleMatch ? titleMatch[1].trim() : id;
 

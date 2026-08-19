@@ -87,6 +87,47 @@ for (const [label, { getSpecLayout }] of LAYOUT_COPIES) {
   });
 }
 
+test('docs-site: the graph citation routes a design-less domain at its flat page', () => {
+  const { citeGraphArtifacts } = require('../graph-data');
+
+  // citeGraphArtifacts finds the spec node by its directory name, so the
+  // fixture has to use the real one. Built twice -- with and without a
+  // design.md -- because the citation must follow the same nested/flat rule
+  // every other consumer does. Assuming nested emits /specs/artifact-graph/spec
+  // for a domain the transform rendered flat: the exact dead route
+  // spec-layout.js exists to prevent.
+  const tree = (design) => {
+    const specsSource = fs.mkdtempSync(path.join(os.tmpdir(), 'sdd-cite-'));
+    const dir = path.join(specsSource, 'artifact-graph');
+    fs.mkdirSync(dir, { recursive: true });
+    const body = '---\nstatus: active\n---\n\n# SPEC-0018: Artifact Graph\n';
+    fs.writeFileSync(path.join(dir, 'spec.md'), body);
+    if (design) fs.writeFileSync(path.join(dir, 'design.md'), body);
+    return {
+      specsSource,
+      graph: {
+        nodes: {
+          'SPEC-0018': {
+            id: 'SPEC-0018',
+            kind: 'spec',
+            dir: 'artifact-graph',
+            path: path.join(dir, 'spec.md'),
+          },
+        },
+      },
+    };
+  };
+
+  const nested = tree(true);
+  assert.match(citeGraphArtifacts(nested.graph), /\(\/specs\/artifact-graph\/spec\)/);
+  fs.rmSync(nested.specsSource, { recursive: true, force: true });
+
+  const flat = tree(false);
+  assert.match(citeGraphArtifacts(flat.graph), /\(\/specs\/artifact-graph\)/);
+  assert.doesNotMatch(citeGraphArtifacts(flat.graph), /artifact-graph\/spec/);
+  fs.rmSync(flat.specsSource, { recursive: true, force: true });
+});
+
 test('integration lib: the mapping routes each domain at the page it renders as', () => {
   const specsSource = writeSpecsTree();
   const { buildSpecMapping } = require(path.join(INTEGRATION_LIB, 'build-spec-mapping'));

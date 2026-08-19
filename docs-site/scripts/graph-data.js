@@ -14,6 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getSpecLayout } = require('./spec-layout');
 
 const ADR_EDGE_FIELDS = ['supersedes', 'extends', 'enables', 'governs', 'related'];
 const SPEC_EDGE_FIELDS = ['implements', 'requires', 'extends', 'supersedes'];
@@ -144,7 +145,11 @@ function buildGraph({ adrsSource, specsSource }) {
   const nodes = {};
   const edges = [];
 
-  const adrFileRe = /^ADR-(\d{4})/;
+  // /i: ADR files are named adr-0001-... in some repos and ADR-0001-... in
+  // others. Case-sensitive here meant zero ADR nodes in the graph, hence no
+  // edges, no mini-DAGs and no graph page at all, on every lowercase-naming
+  // repo.
+  const adrFileRe = /^ADR-(\d{4})/i;
   if (fs.existsSync(adrsSource)) {
     for (const f of fs.readdirSync(adrsSource).sort()) {
       if (!f.endsWith('.md')) continue;
@@ -298,6 +303,36 @@ function renderNeighborMermaid(targetId, { nodes, edges }) {
  * the result. MUST be appended AFTER any MDX-escape pass so the Mermaid
  * fence stays raw.
  */
+// ADR-0023 and SPEC-0018 are the SDD plugin's *own* artifacts, describing the
+// frontmatter DAG. They exist in the repo this generator was extracted from and
+// in almost no repo that consumes it, so citing them as links put two dead links
+// on every ADR page, every index page, and the graph page. Docusaurus's
+// onBrokenLinks is 'warn' by default, so the build stayed green and nobody
+// noticed.
+//
+// Link them only when this repo actually has them; otherwise name them as plain
+// text. The load-bearing half of the sentence is the /sdd:graph hint, which is
+// true everywhere. Both lookups go by content (the ADR's filename slug, the
+// spec's directory) rather than by number, so a repo that renumbered them still
+// gets links.
+function citeGraphArtifacts(graph) {
+  const nodes = (graph && graph.nodes) || {};
+  const adr = Object.values(nodes).find(
+    (n) => n.kind === 'adr' && /frontmatter-dag/i.test(path.basename(n.path || ''))
+  );
+  const spec = Object.values(nodes).find((n) => n.kind === 'spec' && n.dir === 'artifact-graph');
+
+  const adrRef = adr ? `[${adr.id}](/decisions/${path.basename(adr.path, '.md')})` : 'ADR-0023';
+  // Route via getSpecLayout rather than assuming `/specs/<dir>/spec`: a domain
+  // holding only spec.md renders flat at `/specs/<dir>`, so the nested form is
+  // a dead link there. spec.path is `<specsSource>/<dir>/spec.md`, so its
+  // grandparent is the specs root.
+  const specRef = spec
+    ? `[${spec.id}](/specs/${getSpecLayout(path.dirname(path.dirname(spec.path)), spec.dir).specSlug})`
+    : 'SPEC-0018';
+  return `${adrRef} / ${specRef}`;
+}
+
 function buildMiniDagSection(artifactId, graph) {
   if (!artifactId) return '';
   const mermaid = renderNeighborMermaid(artifactId, graph);
@@ -307,7 +342,7 @@ function buildMiniDagSection(artifactId, graph) {
     '',
     '## Related Artifacts',
     '',
-    `Direct relationships declared in YAML frontmatter (per [ADR-0023](/decisions/ADR-0023-frontmatter-dag-and-graph-skill) / [SPEC-0018](/specs/artifact-graph/spec)). Run \`/sdd:graph chain ${artifactId}\` for the transitive view.`,
+    `Direct relationships declared in YAML frontmatter (per ${citeGraphArtifacts(graph)}). Run \`/sdd:graph chain ${artifactId}\` for the transitive view.`,
     '',
     '```mermaid',
     mermaid,
@@ -344,6 +379,7 @@ function getGraph(opts) {
 
 module.exports = {
   buildGraph,
+  citeGraphArtifacts,
   getGraph,
   parseFrontmatter,
   renderFullMermaid,
