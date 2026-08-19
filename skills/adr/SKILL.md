@@ -68,7 +68,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
    **Default to "no"** when: the session is non-interactive (piped input), batch/CI mode is detected, or the question times out. In those cases, proceed directly to Step 3 as if the user answered "no" — no error, no deviation from existing behavior.
 
-   **If the user answers "no" or "skip"**: Proceed to Step 3 with an empty `## Architecture Diagram` section (the template placeholder text is omitted; write the section header with no body, or omit the section entirely). No call graph is generated.
+   **If the user answers "no" or "skip"**: Proceed to Step 3 with no call graph. The `## Architecture Diagram` section is still REQUIRED (SPEC-0003 REQ "Architecture Diagrams") — hand-author a small flowchart, sequence, or C4 diagram of the decision instead. Only the cgg-generated call graph is skipped, never the section.
 
    **If the user answers "yes"**:
 
@@ -101,7 +101,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
       ```
       The caption comment MUST record the exact filter regex used and today's date.
 
-   In every degradation case (cgg missing, timeout, non-zero exit, all files skipped), the skill MUST complete and write the ADR without a call graph. Never surface a hard failure to the user when cgg is the only failing component.
+   In every degradation case (cgg missing, timeout, non-zero exit, all files skipped), the skill MUST complete and write the ADR without a call graph — hand-authoring the `## Architecture Diagram` section as above, since the section itself is not optional. Never surface a hard failure to the user when cgg is the only failing component.
 
 3. **Write the ADR** to `{adr-dir}/ADR-XXXX-short-title.md`. Include the user-confirmed frontmatter edges from Step 1a in the YAML frontmatter (per the canonical edge schema in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Graph Edge Resolution").
 
@@ -136,7 +136,8 @@ Follow the standard team handoff protocol from the plugin's `${CLAUDE_PLUGIN_ROO
 
 ```markdown
 ---
-status: proposed  # one of: proposed | accepted | deprecated | superseded (values enforced by /sdd:status)
+# status: one of proposed | accepted | deprecated | superseded (enum enforced by /sdd:status)
+status: proposed
 date: {YYYY-MM-DD}
 decision-makers: {list}
 # Optional graph edges (per ADR-0023 / SPEC-0018). All fields are lists of artifact IDs.
