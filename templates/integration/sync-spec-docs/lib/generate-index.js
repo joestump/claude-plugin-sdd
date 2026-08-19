@@ -15,6 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getSpecLayout } = require('./spec-layout');
 
 function countAdrs(adrsSource) {
   if (!fs.existsSync(adrsSource)) return 0;
@@ -45,9 +46,7 @@ function generateSpecsIndex(specsSource, outputDir) {
 
   const rows = [];
   for (const domain of domains) {
-    const domainPath = path.join(specsSource, domain);
-    const hasSpec = fs.existsSync(path.join(domainPath, 'spec.md'));
-    const hasDesign = fs.existsSync(path.join(domainPath, 'design.md'));
+    const { domainPath, hasSpec, hasDesign, specSlug, designSlug } = getSpecLayout(specsSource, domain);
 
     if (!hasSpec && !hasDesign) continue;
 
@@ -61,11 +60,11 @@ function generateSpecsIndex(specsSource, outputDir) {
 
     let docs;
     if (hasSpec && hasDesign) {
-      docs = `[Specification](./${domain}/spec) / [Design](./${domain}/design)`;
+      docs = `[Specification](./${specSlug}) / [Design](./${designSlug})`;
     } else if (hasSpec) {
-      docs = `[Specification](./${domain})`;
+      docs = `[Specification](./${specSlug})`;
     } else {
-      docs = `[Design](./${domain})`;
+      docs = `[Design](./${designSlug})`;
     }
 
     rows.push(`| ${label} | ${docs} |`);

@@ -11,6 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getSpecLayout } = require('./spec-layout');
 
 const SPECS_SOURCE = path.join(__dirname, '../../docs/openspec/specs');
 const MAPPING_DEST = path.join(__dirname, '../src/data/spec-mapping.json');
@@ -32,10 +33,15 @@ function buildMapping() {
     const domainPath = path.join(SPECS_SOURCE, domain);
     if (!fs.statSync(domainPath).isDirectory()) continue;
 
-    const specPath = path.join(domainPath, 'spec.md');
-    if (!fs.existsSync(specPath)) continue;
+    // The route depends on the layout transform-openspecs.js emits for this
+    // domain: nested under the domain when it also has a design.md, flat at
+    // the domain itself when it does not. Both keys below point at the same
+    // page, so the slug is resolved once here.
+    const layout = getSpecLayout(SPECS_SOURCE, domain);
+    if (!layout.hasSpec) continue;
+    const specRoute = `/specs/${layout.specSlug}`;
 
-    const content = fs.readFileSync(specPath, 'utf-8');
+    const content = fs.readFileSync(path.join(domainPath, 'spec.md'), 'utf-8');
 
     const prefixes = new Set();
 
@@ -53,7 +59,7 @@ function buildMapping() {
     // reason `prefixes.delete('ADR')` exists below; the full-ID key bypasses
     // the prefix set, so it needs the guard too.
     if (h1Match && !h1Match[1].startsWith('ADR-')) {
-      mapping[h1Match[1]] = `/specs/${domain}/spec`;
+      mapping[h1Match[1]] = specRoute;
     }
 
     // Also match spec IDs in table format: | ARCH-001 | ... |
@@ -63,7 +69,7 @@ function buildMapping() {
     }
 
     // Also match spec IDs in requirement headings: ### Requirement: ARCH-001
-// /gm and the ^ anchor: unanchored, this matched a paragraph that merely
+    // /gm and the ^ anchor: unanchored, this matched a paragraph that merely
     // mentioned `### Requirement:` and went on to cite an ADR later in the same
     // line, adding "ADR" as a spec prefix. transformSpecReferences runs before
     // transformAdrReferences, so that one stray key sent every ADR-NNNN link on
@@ -78,7 +84,7 @@ function buildMapping() {
     prefixes.delete('ADR');
 
     for (const prefix of prefixes) {
-      mapping[prefix] = `/specs/${domain}/spec`;
+      mapping[prefix] = specRoute;
     }
   }
 

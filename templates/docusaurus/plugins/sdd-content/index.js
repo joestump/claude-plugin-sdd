@@ -342,6 +342,39 @@ function buildMiniDagSection(artifactId, graph) {
 }
 
 // ============================================================================
+// Spec Domain Layout (from spec-layout.js)
+// ============================================================================
+
+/**
+ * Describe how one spec domain directory renders.
+ *
+ * A domain holding both spec.md and design.md becomes a category directory —
+ * `/specs/<domain>/spec` and `/specs/<domain>/design`. A domain holding only
+ * one of the two becomes a single flat page at `/specs/<domain>`. The
+ * transform below writes those files, and the spec-ID mapping and the specs
+ * index link at them, so the decision is made here once rather than
+ * re-derived in three places that can disagree.
+ *
+ * `specSlug`/`designSlug` are route segments relative to the specs root, and
+ * are null when the corresponding source file is absent.
+ */
+function getSpecLayout(specsSource, domain) {
+  const domainPath = path.join(specsSource, domain);
+  const hasSpec = fs.existsSync(path.join(domainPath, 'spec.md'));
+  const hasDesign = fs.existsSync(path.join(domainPath, 'design.md'));
+  const nested = hasSpec && hasDesign;
+
+  return {
+    domainPath,
+    hasSpec,
+    hasDesign,
+    nested,
+    specSlug: hasSpec ? (nested ? `${domain}/spec` : domain) : null,
+    designSlug: hasDesign ? (nested ? `${domain}/design` : domain) : null,
+  };
+}
+
+// ============================================================================
 // Spec Mapping (from build-spec-mapping.js)
 // ============================================================================
 
@@ -359,10 +392,13 @@ function buildSpecMapping(specsSource) {
     const domainPath = path.join(specsSource, domain);
     if (!fs.statSync(domainPath).isDirectory()) continue;
 
-    const specPath = path.join(domainPath, 'spec.md');
-    if (!fs.existsSync(specPath)) continue;
+    // Both keys registered below point at this domain's spec page, whose
+    // route depends on the layout the transform emits for it.
+    const layout = getSpecLayout(specsSource, domain);
+    if (!layout.hasSpec) continue;
+    const specRoute = `/specs/${layout.specSlug}`;
 
-    const content = fs.readFileSync(specPath, 'utf-8');
+    const content = fs.readFileSync(path.join(domainPath, 'spec.md'), 'utf-8');
 
     const prefixes = new Set();
 
@@ -380,7 +416,7 @@ function buildSpecMapping(specsSource) {
     // reason `prefixes.delete('ADR')` exists below; the full-ID key bypasses
     // the prefix set, so it needs the guard too.
     if (h1Match && !h1Match[1].startsWith('ADR-')) {
-      mapping[h1Match[1]] = `/specs/${domain}/spec`;
+      mapping[h1Match[1]] = specRoute;
     }
 
     const tableMatches = content.matchAll(/\|\s*([A-Z]+)-\d{3,4}\s*\|/g);
@@ -388,7 +424,7 @@ function buildSpecMapping(specsSource) {
       prefixes.add(match[1]);
     }
 
-// /gm and the ^ anchor: unanchored, this matched a paragraph that merely
+    // /gm and the ^ anchor: unanchored, this matched a paragraph that merely
     // mentioned `### Requirement:` and went on to cite an ADR later in the same
     // line, adding "ADR" as a spec prefix. transformSpecReferences runs before
     // transformAdrReferences, so that one stray key sent every ADR-NNNN link on
@@ -403,7 +439,7 @@ function buildSpecMapping(specsSource) {
     prefixes.delete('ADR');
 
     for (const prefix of prefixes) {
-      mapping[prefix] = `/specs/${domain}/spec`;
+      mapping[prefix] = specRoute;
     }
   }
 
@@ -846,9 +882,7 @@ function generateSpecsIndex(specsSource, docsDest, graph, baseUrl) {
 
   const rows = [];
   for (const domain of domains) {
-    const domainPath = path.join(specsSource, domain);
-    const hasSpec = fs.existsSync(path.join(domainPath, 'spec.md'));
-    const hasDesign = fs.existsSync(path.join(domainPath, 'design.md'));
+    const { domainPath, hasSpec, hasDesign, specSlug, designSlug } = getSpecLayout(specsSource, domain);
 
     if (!hasSpec && !hasDesign) continue;
 
@@ -861,11 +895,11 @@ function generateSpecsIndex(specsSource, docsDest, graph, baseUrl) {
 
     let docs;
     if (hasSpec && hasDesign) {
-      docs = `[Specification](./${domain}/spec) / [Design](./${domain}/design)`;
+      docs = `[Specification](./${specSlug}) / [Design](./${designSlug})`;
     } else if (hasSpec) {
-      docs = `[Specification](./${domain})`;
+      docs = `[Specification](./${specSlug})`;
     } else {
-      docs = `[Design](./${domain})`;
+      docs = `[Design](./${designSlug})`;
     }
 
     rows.push(`| ${label} | ${docs} |`);
@@ -1170,12 +1204,13 @@ module.exports = function(context, options) {
           const domainPath = path.join(specsSource, domain);
           if (!fs.statSync(domainPath).isDirectory()) continue;
 
-          const hasSpec = fs.existsSync(path.join(domainPath, 'spec.md'));
-          const hasDesign = fs.existsSync(path.join(domainPath, 'design.md'));
+          // Nested vs flat comes from getSpecLayout(), which buildSpecMapping()
+          // and generateSpecsIndex() read too -- they link at what is written here.
+          const { hasSpec, hasDesign, nested } = getSpecLayout(specsSource, domain);
 
           if (!hasSpec && !hasDesign) continue;
 
-          if (hasSpec && hasDesign) {
+          if (nested) {
             const destDomainPath = path.join(SPECS_DEST, domain);
             fs.mkdirSync(destDomainPath, { recursive: true });
             generateCategoryJson(destDomainPath, domain, domainConfig);

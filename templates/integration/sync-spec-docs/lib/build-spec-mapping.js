@@ -16,6 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getSpecLayout } = require('./spec-layout');
 
 function buildSpecMapping({ specsSource, pathPrefix = '' }) {
   const specMapping = {};
@@ -31,10 +32,13 @@ function buildSpecMapping({ specsSource, pathPrefix = '' }) {
     const domainPath = path.join(specsSource, domain);
     if (!fs.statSync(domainPath).isDirectory()) continue;
 
-    const specPath = path.join(domainPath, 'spec.md');
-    if (!fs.existsSync(specPath)) continue;
+    // Both keys registered below point at this domain's spec page, whose route
+    // depends on the layout transform-openspecs.js emits for the domain.
+    const layout = getSpecLayout(specsSource, domain);
+    if (!layout.hasSpec) continue;
+    const specRoute = `${pathPrefix}/specs/${layout.specSlug}`;
 
-    const content = fs.readFileSync(specPath, 'utf-8');
+    const content = fs.readFileSync(path.join(domainPath, 'spec.md'), 'utf-8');
 
     const prefixes = new Set();
 
@@ -52,7 +56,7 @@ function buildSpecMapping({ specsSource, pathPrefix = '' }) {
     // reason `prefixes.delete('ADR')` exists below; the full-ID key bypasses
     // the prefix set, so it needs the guard too.
     if (h1Match && !h1Match[1].startsWith('ADR-')) {
-      specMapping[h1Match[1]] = `${pathPrefix}/specs/${domain}/spec`;
+      specMapping[h1Match[1]] = specRoute;
     }
 
     // Also match spec IDs in table format: | ARCH-001 | ... |
@@ -62,7 +66,7 @@ function buildSpecMapping({ specsSource, pathPrefix = '' }) {
     }
 
     // Also match spec IDs in requirement headings: ### Requirement: ARCH-001
-// /gm and the ^ anchor: unanchored, this matched a paragraph that merely
+    // /gm and the ^ anchor: unanchored, this matched a paragraph that merely
     // mentioned `### Requirement:` and went on to cite an ADR later in the same
     // line, adding "ADR" as a spec prefix. transformSpecReferences runs before
     // transformAdrReferences, so that one stray key sent every ADR-NNNN link on
@@ -77,7 +81,7 @@ function buildSpecMapping({ specsSource, pathPrefix = '' }) {
     prefixes.delete('ADR');
 
     for (const prefix of prefixes) {
-      specMapping[prefix] = `${pathPrefix}/specs/${domain}/spec`;
+      specMapping[prefix] = specRoute;
     }
   }
 
