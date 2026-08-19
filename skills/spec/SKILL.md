@@ -190,6 +190,8 @@ A spec is **NOT web-facing** if it exclusively involves: CLI tools, internal lib
 
 You MUST inject a **## Security Requirements** section into spec.md, placed after the functional `## Requirements` section. This section MUST cover all six topics below. Use the template in the "Security Requirements Section Template" below.
 
+Each topic MAY be satisfied one of two ways: written inline, or by an **explicit reference to a governing artifact** (an ADR or spec) that already fixes that topic project-wide — provided the reference names the artifact (e.g., "per [ADR-0010] §2") and that artifact genuinely governs the surfaces this spec touches. Prefer the reference form when the project has a security-posture ADR: restating the same six paragraphs in every web-facing spec is how copies drift apart and the baseline silently rots. Topics with no governing artifact, and anything this spec changes about the baseline, MUST be written inline.
+
 You MUST also apply **auth-by-default**: when generating endpoint tables or lists, every endpoint MUST default to "Auth: Required". Any endpoint the spec author wants to be public MUST be listed as "Auth: Public" with an explicit justification (e.g., "Health check — required for load balancer probes"). Do NOT leave any endpoint without an auth designation.
 
 ### When the spec is NOT web-facing
@@ -199,6 +201,12 @@ Do NOT inject the Security Requirements section. Proceed with the standard spec 
 ## Security Requirements Section Template
 
 Read the Security Requirements template from `references/security-requirements-template.md` and inject it into the spec after the functional requirements. The template covers all six required topics: authentication, rate limiting, security headers, request body size limits, CSRF protection, and redirect validation.
+
+The template writes every topic inline. Where a governing artifact already fixes a topic (per the two-ways rule above), replace that topic's body with the citation rather than deleting the topic — the six headings stay, so an uncovered topic is visible as an empty one instead of disappearing:
+
+```markdown
+- **CSRF protection**: Per [ADR-0010](../../adrs/ADR-0010-security-posture.md) §3 — double-submit cookie on all state-changing routes. No deviation in this capability.
+```
 
 ## UI-Facing Detection and Accessibility Injection
 

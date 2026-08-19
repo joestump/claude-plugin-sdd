@@ -75,6 +75,17 @@ Governing: ADR-0018 (Security-by-Default), ADR-0019 (Frontend Quality Standards)
 - External traceability matrix: Loses co-location; line numbers go stale with every edit; a single matrix file is an even worse merge conflict hotspot
 - Remove governing comments entirely: Loses code-level traceability; `/sdd:check` and `/sdd:audit` lose their primary signal for verifying implementation alignment
 
+### Governing-Artifact References Satisfy Security Topics
+
+**Choice**: Each of the six mandatory security topics may be satisfied either inline or by an explicit reference to a governing artifact (an ADR or spec) that already fixes that topic project-wide. Topics with no governing artifact, and any deviation from the governed baseline, MUST still be written inline.
+
+**Rationale**: The six topics were mandatory-inline, so a project with a security-posture ADR restated the same six paragraphs in every web-facing spec. Copies drift: the third spec's CSP list stops matching the ADR's, and neither one is obviously wrong to a reader. The reference form gives one editable source of truth, and the deviation carve-out keeps the thing the inline rule was actually protecting — a spec that *changes* the baseline cannot hide that change behind a citation. The security-headers topic already permitted "or reference an existing security headers ADR", so this generalizes an allowance the spec had already made once.
+
+**Alternatives considered**:
+- Keep every topic mandatory-inline: The status quo. Correct in a project with no security ADR, wasteful and drift-prone in one that has it, and the drift is silent
+- Allow a whole-section reference: Loses per-topic granularity — a single "see ADR-0010" cannot show which of the six topics the ADR actually covers, so an uncovered topic disappears rather than being flagged
+- Generate the inline text from the governing artifact: Same drift with extra machinery, and it needs a regeneration step nothing currently runs
+
 ### Go-Specific Quality as Conditional Injection
 
 **Choice**: Go quality guidelines are injected only when `go.mod` is detected, making them conditional on project technology.
@@ -231,6 +242,7 @@ The detection is intentionally broad — it is better to inject a section that t
 ## Risks / Trade-offs
 
 - **Mandatory sections add spec length** -> For simple internal tools, the security and accessibility sections may feel heavy-handed. Mitigation: spec authors can pare down the sections to match their threat model, but the sections are present as a starting point rather than absent by default.
+- **A governing-artifact reference can hide a deviation** -> A spec may cite an ADR for a topic while quietly doing something the ADR does not sanction, and a reader following the citation sees the baseline rather than the exception. Mitigation: the spec requires deviations to be written inline even when the topic otherwise has a governing artifact, and the reference must name the artifact (and section where applicable) so a reviewer can check the claim rather than take it on faith.
 - **False positives in lint patterns** -> Text-based matching will flag safe usages (e.g., `io.ReadAll` on an already-bounded body, `innerHTML` with pre-sanitized content). Mitigation: findings are for human review with remediation suggestions, not automated blocking. Projects can add suppression comments (e.g., `// nosec: body already bounded by MaxBytesReader`).
 - **Companion test stories increase sprint volume** -> Creating test stories for every UI-touching feature adds 30-50% more issues per sprint. Mitigation: test stories are estimated at half the effort of feature stories; they can be batched or deprioritized by the team if capacity is limited.
 - **Go-specific guidelines may not cover all Go patterns** -> The initial set (slog, %w, sentinel errors, context propagation) addresses findings from three repos but is not exhaustive. Mitigation: the pattern set is additive — new patterns can be added in future spec revisions without breaking existing behavior.
