@@ -366,9 +366,21 @@ function buildSpecMapping(specsSource) {
 
     const prefixes = new Set();
 
-    const h1Match = content.match(/^#\s+([A-Z]+)-\d{4}:/m);
-    if (h1Match) {
-      prefixes.add(h1Match[1]);
+    // The H1 declares the spec's own artifact ID — `# SPEC-0008: {Title}`.
+    // That ID is unique across the whole project, so it is keyed by the full
+    // ID. The requirement IDs collected below really are domain-scoped, so
+    // those stay keyed by their prefix; keying the artifact ID the same way
+    // gave every domain the identical "SPEC" key, and whichever domain was
+    // read last then owned every SPEC-NNNN cross-reference on the site.
+    const h1Match = content.match(/^#\s+([A-Z]+-\d{4}):/m);
+    // Not `ADR-NNNN`: a spec.md whose H1 still carries an ADR number -- a
+    // conversion that was never renumbered -- would register that ID here, and
+    // transformSpecReferences runs before transformAdrReferences, so every
+    // ADR-NNNN mention on the site would resolve to this spec page. Same
+    // reason `prefixes.delete('ADR')` exists below; the full-ID key bypasses
+    // the prefix set, so it needs the guard too.
+    if (h1Match && !h1Match[1].startsWith('ADR-')) {
+      mapping[h1Match[1]] = `/specs/${domain}/spec`;
     }
 
     const tableMatches = content.matchAll(/\|\s*([A-Z]+)-\d{3,4}\s*\|/g);
@@ -376,10 +388,19 @@ function buildSpecMapping(specsSource) {
       prefixes.add(match[1]);
     }
 
-    const headingMatches = content.matchAll(/###\s+Requirement:.*?([A-Z]+)-\d{3,4}/g);
+// /gm and the ^ anchor: unanchored, this matched a paragraph that merely
+    // mentioned `### Requirement:` and went on to cite an ADR later in the same
+    // line, adding "ADR" as a spec prefix. transformSpecReferences runs before
+    // transformAdrReferences, so that one stray key sent every ADR-NNNN link on
+    // the site to a spec page.
+    const headingMatches = content.matchAll(/^###\s+Requirement:.*?([A-Z]+)-\d{3,4}/gm);
     for (const match of headingMatches) {
       prefixes.add(match[1]);
     }
+
+    // ADR-NNNN belongs to transformAdrReferences. A spec that tabulates ADR
+    // numbers must not claim the prefix out from under it.
+    prefixes.delete('ADR');
 
     for (const prefix of prefixes) {
       mapping[prefix] = `/specs/${domain}/spec`;
@@ -456,12 +477,18 @@ function transformSpecReferences(content, { specMapping, specEmojis, baseUrl }) 
     if (line.trim().startsWith('<') && !line.includes('className="rfc-keyword')) return line;
 
     return line.replace(specPattern, (match, prefix, number) => {
-      const specPath = specMapping[prefix];
-      const emoji = specEmojis[prefix];
+      // Two kinds of key live in specMapping. A full artifact ID (SPEC-0008)
+      // names one spec page; a bare prefix (ARCH) names the domain page that
+      // hosts ARCH-NNN requirements, where each ID is a RequirementBox anchor.
+      // Only the latter gets a fragment: a spec page's H1 anchor is derived
+      // from the whole heading text, so `#spec-0008` never resolved.
+      const artifactPath = specMapping[match];
+      const specPath = artifactPath || specMapping[prefix];
       if (!specPath) return match;
+      const emoji = specEmojis[prefix];
       const displayText = emoji ? `${emoji} ${match}` : match;
-      const anchorId = match.toLowerCase();
-      return `<a href="${baseUrl}${specPath}#${anchorId}" className="rfc-ref">${displayText}</a>`;
+      const fragment = artifactPath ? '' : `#${match.toLowerCase()}`;
+      return `<a href="${baseUrl}${specPath}${fragment}" className="rfc-ref">${displayText}</a>`;
     });
   }).join('\n');
 }

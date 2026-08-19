@@ -2,8 +2,9 @@
 /**
  * Build Spec ID Mapping
  *
- * Scans all OpenSpec files to extract spec ID prefixes and generates
- * a mapping from prefix to spec URL path.
+ * Scans all OpenSpec files and generates the mapping the reference
+ * transforms resolve against: one entry per spec artifact ID (SPEC-0008), plus
+ * one per domain-scoped requirement prefix (ARCH).
  *
  * Output: src/data/spec-mapping.json
  */
@@ -38,10 +39,21 @@ function buildMapping() {
 
     const prefixes = new Set();
 
-    // Match spec number from H1 heading: # SPEC-XXXX: {Title}
-    const h1Match = content.match(/^#\s+([A-Z]+)-\d{4}:/m);
-    if (h1Match) {
-      prefixes.add(h1Match[1]);
+    // The H1 declares the spec's own artifact ID — `# SPEC-0008: {Title}`.
+    // That ID is unique across the whole project, so it is keyed by the full
+    // ID. The requirement IDs collected below really are domain-scoped, so
+    // those stay keyed by their prefix; keying the artifact ID the same way
+    // gave every domain the identical "SPEC" key, and whichever domain was
+    // read last then owned every SPEC-NNNN cross-reference on the site.
+    const h1Match = content.match(/^#\s+([A-Z]+-\d{4}):/m);
+    // Not `ADR-NNNN`: a spec.md whose H1 still carries an ADR number -- a
+    // conversion that was never renumbered -- would register that ID here, and
+    // transformSpecReferences runs before transformAdrReferences, so every
+    // ADR-NNNN mention on the site would resolve to this spec page. Same
+    // reason `prefixes.delete('ADR')` exists below; the full-ID key bypasses
+    // the prefix set, so it needs the guard too.
+    if (h1Match && !h1Match[1].startsWith('ADR-')) {
+      mapping[h1Match[1]] = `/specs/${domain}/spec`;
     }
 
     // Also match spec IDs in table format: | ARCH-001 | ... |
@@ -51,10 +63,19 @@ function buildMapping() {
     }
 
     // Also match spec IDs in requirement headings: ### Requirement: ARCH-001
-    const headingMatches = content.matchAll(/###\s+Requirement:.*?([A-Z]+)-\d{3,4}/g);
+// /gm and the ^ anchor: unanchored, this matched a paragraph that merely
+    // mentioned `### Requirement:` and went on to cite an ADR later in the same
+    // line, adding "ADR" as a spec prefix. transformSpecReferences runs before
+    // transformAdrReferences, so that one stray key sent every ADR-NNNN link on
+    // the site to a spec page.
+    const headingMatches = content.matchAll(/^###\s+Requirement:.*?([A-Z]+)-\d{3,4}/gm);
     for (const match of headingMatches) {
       prefixes.add(match[1]);
     }
+
+    // ADR-NNNN belongs to transformAdrReferences. A spec that tabulates ADR
+    // numbers must not claim the prefix out from under it.
+    prefixes.delete('ADR');
 
     for (const prefix of prefixes) {
       mapping[prefix] = `/specs/${domain}/spec`;
@@ -69,7 +90,7 @@ function buildMapping() {
     fs.writeFileSync(EMOJIS_DEST, JSON.stringify({}, null, 2));
   }
 
-  console.log(`  Generated spec mapping with ${Object.keys(mapping).length} prefixes`);
+  console.log(`  Generated spec mapping with ${Object.keys(mapping).length} entries`);
   return mapping;
 }
 
