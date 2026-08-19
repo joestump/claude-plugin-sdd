@@ -1187,20 +1187,27 @@ module.exports = function(context, options) {
   // doesn't abort on a missing docs-generated/ (content lands in loadContent).
   fs.mkdirSync(docsDest, { recursive: true });
 
-  let baseUrl = '';
-  const configPath = path.resolve(siteDir, 'docusaurus.config.ts');
-  if (fs.existsSync(configPath)) {
-    const configContent = fs.readFileSync(configPath, 'utf-8');
-    const baseUrlMatch = configContent.match(/baseUrl:\s*['"]([^'"]+)['"]/);
-    baseUrl = baseUrlMatch ? baseUrlMatch[1].replace(/\/$/, '') : '';
-  }
-
-  let projectTitle = 'Architecture Documentation';
-  if (fs.existsSync(configPath)) {
-    const configContent = fs.readFileSync(configPath, 'utf-8');
-    const titleMatch = configContent.match(/PROJECT_TITLE\s*=\s*['"]([^'"]+)['"]/);
-    if (titleMatch) projectTitle = titleMatch[1];
-  }
+  // Take baseUrl and title from the resolved site config, never by scraping the
+  // config file. Docusaurus hands every plugin the fully-evaluated siteConfig,
+  // so this is both the supported source and the only one that can be right.
+  //
+  // The previous implementation regex'd docusaurus.config.ts for
+  // `baseUrl: '...'` and fell back to '' when it did not match. It never
+  // matched: the config templates/docusaurus ships assigns `baseUrl: BASE_URL`
+  // from a constant, so CI can override it per host, and there is no string
+  // literal on that line to capture. Every cross-reference chip was therefore
+  // emitted at the host root — a 404 on any site not served from '/'. The
+  // failure is invisible locally because the dev server and `npm run serve`
+  // both mount at baseUrl anyway, and invisible in CI because raw <a href>
+  // attributes are not checked by onBrokenLinks.
+  //
+  // The trailing slash is stripped because callers concatenate
+  // `${baseUrl}${path}` where path already leads with '/'. Docusaurus
+  // guarantees siteConfig.baseUrl both starts and ends with '/', so '/harness/'
+  // becomes '/harness' and the root case '/' correctly becomes ''.
+  const siteConfig = context.siteConfig || {};
+  const baseUrl = (siteConfig.baseUrl || '/').replace(/\/$/, '');
+  const projectTitle = siteConfig.title || 'Architecture Documentation';
 
   return {
     name: 'sdd-content',

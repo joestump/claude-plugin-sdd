@@ -39,6 +39,45 @@ function buildAdrMapping(adrsSource) {
 }
 
 /**
+ * Resolve `baseUrl` out of a docusaurus.config.ts without evaluating it.
+ *
+ * The scripts in this directory run outside Docusaurus, so they cannot read
+ * `context.siteConfig` the way a plugin can and have to parse the config file.
+ * Two shapes are in play, and handling only the first fails silently:
+ *
+ *   baseUrl: '/my-project/'   a literal
+ *   baseUrl: BASE_URL         a const, so CI can override it per host
+ *
+ * Both this repo's config and the one in templates/docusaurus use the second
+ * shape, so the literal-only regex matched nothing, fell back to '', and every
+ * generated cross-reference chip was emitted at the host root — a 404 on any
+ * site not served from '/'. Markdown links hid the bug, because Docusaurus
+ * resolves those against baseUrl itself; the raw <a href> chips these
+ * transforms emit are not resolved and needed the prefix baked in.
+ */
+function readBaseUrl(configPath) {
+  if (!fs.existsSync(configPath)) return '';
+  const source = fs.readFileSync(configPath, 'utf-8');
+
+  const assignment = source.match(/baseUrl:\s*(?:['"]([^'"]+)['"]|([A-Za-z_$][\w$]*))/);
+  if (!assignment) return '';
+
+  let value = assignment[1];
+  if (value === undefined) {
+    // Indirect: follow the identifier to its declaration in the same file.
+    const declaration = source.match(
+      new RegExp(`\\b(?:const|let|var)\\s+${assignment[2]}\\s*=\\s*['"]([^'"]+)['"]`)
+    );
+    if (!declaration) return '';
+    value = declaration[1];
+  }
+
+  // Callers concatenate `${baseUrl}${path}` where path already leads with '/',
+  // so the root case '/' has to collapse to ''.
+  return value.replace(/\/$/, '');
+}
+
+/**
  * Transform RFC 2119 keywords (MUST, SHALL, MAY, etc.) into highlighted spans.
  * Skips code blocks, headings, indented lines, and inline code spans.
  */
@@ -177,6 +216,7 @@ function fixMarkdownLinks(content) {
 module.exports = {
   isCodeFence,
   buildAdrMapping,
+  readBaseUrl,
   transformRfc2119Keywords,
   transformSpecReferences,
   transformAdrReferences,

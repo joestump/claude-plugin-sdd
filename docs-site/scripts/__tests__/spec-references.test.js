@@ -353,3 +353,30 @@ test('plugin template: a reference already inside code, a link, or an anchor is 
 
   fs.rmSync(root, { recursive: true, force: true });
 });
+
+test('plugin template: baseUrl comes from the resolved site config', async () => {
+  const { root, site } = writeFixture();
+  const plugin = withArtifactTransformsStub(() =>
+    require(path.join(REPO_ROOT, 'templates/docusaurus/plugins/sdd-content'))
+  );
+
+  // Docusaurus hands plugins the fully-evaluated config. The previous
+  // implementation regex'd docusaurus.config.ts for a `baseUrl: '...'` literal
+  // and never matched, because the shipped config assigns it from a const —
+  // so every chip below was emitted at the host root.
+  await plugin(
+    { siteDir: site, siteConfig: { baseUrl: '/my-project/', title: 'Fixture' } },
+    {}
+  ).loadContent();
+
+  const generated = path.join(root, 'docs-generated');
+  const beta = fs.readFileSync(path.join(generated, 'specs/beta/spec.mdx'), 'utf-8');
+  assert.match(beta, /href="\/my-project\/specs\/alpha\/spec"/);
+  assert.doesNotMatch(beta, /href="\/specs\//);
+
+  const gamma = fs.readFileSync(path.join(generated, 'specs/gamma/spec.mdx'), 'utf-8');
+  assert.match(gamma, /href="\/my-project\/decisions\/ADR-0001-example"/);
+  assert.doesNotMatch(gamma, /href="\/decisions\//);
+
+  fs.rmSync(root, { recursive: true, force: true });
+});

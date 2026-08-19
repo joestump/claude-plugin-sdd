@@ -38,6 +38,7 @@ const {
   isCodeFence,
   transformAdrReferences,
   transformSpecReferences,
+  readBaseUrl,
 } = require('./transform-utils');
 
 const REPO_ROOT = path.join(__dirname, '../..');
@@ -50,14 +51,8 @@ const TRIGGERS_SOURCE = path.join(REPO_ROOT, 'evals/triggers');
 
 const ADR_EMOJI = '📝';
 
-// Read baseUrl from docusaurus.config.ts (mirrors transform-adrs.js).
 const configPath = path.join(__dirname, '../docusaurus.config.ts');
-let BASE_URL = '';
-if (fs.existsSync(configPath)) {
-  const configContent = fs.readFileSync(configPath, 'utf-8');
-  const baseUrlMatch = configContent.match(/baseUrl:\s*['"]([^'"]+)['"]/);
-  BASE_URL = baseUrlMatch ? baseUrlMatch[1].replace(/\/$/, '') : '';
-}
+const BASE_URL = readBaseUrl(configPath);
 
 let SPEC_MAPPING = {};
 let SPEC_EMOJIS = {};
