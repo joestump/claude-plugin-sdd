@@ -14,6 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getSpecLayout } = require('./spec-layout');
 
 const ADR_EDGE_FIELDS = ['supersedes', 'extends', 'enables', 'governs', 'related'];
 const SPEC_EDGE_FIELDS = ['implements', 'requires', 'extends', 'supersedes'];
@@ -322,7 +323,13 @@ function citeGraphArtifacts(graph) {
   const spec = Object.values(nodes).find((n) => n.kind === 'spec' && n.dir === 'artifact-graph');
 
   const adrRef = adr ? `[${adr.id}](/decisions/${path.basename(adr.path, '.md')})` : 'ADR-0023';
-  const specRef = spec ? `[${spec.id}](/specs/${spec.dir}/spec)` : 'SPEC-0018';
+  // Route via getSpecLayout rather than assuming `/specs/<dir>/spec`: a domain
+  // holding only spec.md renders flat at `/specs/<dir>`, so the nested form is
+  // a dead link there. spec.path is `<specsSource>/<dir>/spec.md`, so its
+  // grandparent is the specs root.
+  const specRef = spec
+    ? `[${spec.id}](/specs/${getSpecLayout(path.dirname(path.dirname(spec.path)), spec.dir).specSlug})`
+    : 'SPEC-0018';
   return `${adrRef} / ${specRef}`;
 }
 
