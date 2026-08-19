@@ -147,7 +147,7 @@ When creating a new spec from scratch, both files are created together — align
 
    Before writing either file, verify the drafts are internally consistent. Fix any failure before proceeding to Step 5 — each of these defects is cheap to catch at authoring time and expensive to discover later, because every downstream reference (requirement IDs, tracker issues, graph edges, cross-spec links) inherits it:
 
-   1. **SPEC number match**: the SPEC number in the spec.md H1 (`# SPEC-XXXX: ...`) MUST equal the next sequential number determined in Step 3. A mismatch is typically a stale number carried over from a template seed or a draft renumbered after edge suggestions — it must be reconciled before the file exists on disk.
+   1. **SPEC number match**: the SPEC number in the spec.md H1 (`# SPEC-XXXX: ...`) MUST match the number this run is authoring under. On a **new** spec that is the next sequential number determined in Step 3. On an **update** to an existing spec (the Step 2 update path) it is the number already in the file — an update MUST NOT renumber a spec, because every tracker issue, graph edge, and cross-spec reference already cites the old number. A mismatch on the new-spec path is typically a stale number carried over from a template seed or a draft renumbered after edge suggestions — reconcile it before the file exists on disk.
    2. **Frontmatter edge targets exist**: every artifact ID listed in the frontmatter edges (`implements`, `requires`, `extends`, `supersedes`) MUST resolve to an existing ADR or spec in `{adr-dir}`/`{spec-dir}`. An edge to a nonexistent artifact fails `/sdd:graph validate` the moment it runs.
    3. **Relative links resolve**: every relative markdown link in both spec.md and design.md MUST point at a file that exists on disk, resolved against the linking file's directory. Check this mechanically (e.g., extract `](...)` targets that are relative paths and stat each) — hand-finished specs accumulate broken relative links that render silently in editors.
 
@@ -499,7 +499,7 @@ date: {YYYY-MM-DD}
   - **Security section present for web-facing specs** (Governing: ADR-0018, SPEC-0016)
   - **Auth-by-default applied to all endpoint tables** (Governing: ADR-0018, SPEC-0016)
   - **Accessibility section present for UI-facing specs** (Governing: ADR-0019, SPEC-0016)
-  - SPEC number consistency: the H1's `SPEC-XXXX` matches the number chosen in Step 3, and no stale spec number appears anywhere in either file
+  - SPEC number consistency: the H1's `SPEC-XXXX` matches the number this run is authoring under (Step 3's next number on a new spec; the file's existing number on an update — an update never renumbers), and no stale spec number appears anywhere in either file
   - Every frontmatter edge target (`implements`/`requires`/`extends`/`supersedes`) resolves to an existing artifact
   - Every relative markdown link in both files resolves to an existing file
   - design.md retains its `## Open Questions` section (an explicit "None currently" is acceptable; silently dropping the section loses the designated home for unresolved questions)
