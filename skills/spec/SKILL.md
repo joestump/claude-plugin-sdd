@@ -393,6 +393,23 @@ date: {YYYY-MM-DD}
 
 # SPEC-XXXX: {Capability Title}
 
+## Graph Edges
+
+<!-- Mirrors the frontmatter edges -- regenerate this section whenever edges change.
+     One bullet per edge target, naming the edge verb. Omit the entire section when
+     the spec declares no edges.
+
+     NOT named "Related Artifacts": /sdd:docs appends a generated section under
+     exactly that heading (the mini-DAG, per ADR-0023), and two H2s with the same
+     text give the rendered page duplicate anchors and a doubled TOC entry.
+
+     Link targets are relative to this file. The paths below assume the default
+     layout (specs at {spec-dir}/{capability}/spec.md, ADRs at docs/adrs/); resolve
+     them against the actual {adr-dir}/{spec-dir} from Step 0 when they differ. -->
+
+- **Implements:** [ADR-XXXX](../../../adrs/ADR-XXXX-title.md) — {the decision this spec realizes}
+- **Requires:** [SPEC-XXXX](../capability/spec.md) — {the capability this spec depends on}
+
 ## Overview
 
 {Brief description of what this capability does and why it exists. If derived from an ADR, reference it here (e.g., "See ADR-0003").}
@@ -488,6 +505,7 @@ date: {YYYY-MM-DD}
 - When ANY change is made to spec.md, design.md MUST be reviewed and updated where requirements have changed the architecture, decisions, or rationale -- and vice versa. Both files MUST remain consistent with each other at all times.
 - spec.md MUST use RFC 2119 language (SHALL, MUST, MUST NOT, SHOULD, SHOULD NOT, MAY, REQUIRED, RECOMMENDED, OPTIONAL) for ALL normative requirements
 - spec.md MUST use spec numbering: SPEC-XXXX (sequential, zero-padded to 4 digits). NEVER use RFC-XXXX -- "RFC 2119" refers to the requirements language standard, NOT the spec numbering scheme
+- When the spec declares frontmatter edges, spec.md MUST carry a `## Graph Edges` section immediately after the H1 that mirrors them -- one bullet per edge target naming the edge verb (`Implements` / `Requires` / `Extends` / `Supersedes`) and linking the target. The heading MUST NOT be `Related Artifacts`: `/sdd:docs` appends a generated mini-DAG section under that exact heading, and a second H2 with the same text gives every rendered spec page duplicate anchors and a doubled TOC entry. Frontmatter is machine-readable; this section is the human-readable rendering, so readers of the raw or rendered page see the graph without parsing YAML. On ANY update that changes edges, the section MUST be regenerated in the same pass -- a stale section is a lie about the graph. Omit the section entirely when there are no edges
 - Scenarios MUST use exactly 4 hashtags (`####`) -- using 3 hashtags or bullets will cause silent failures in downstream tooling
 - Every requirement MUST have at least one scenario
 - design.md focuses on HOW and WHY -- architecture and rationale, not line-by-line implementation details
