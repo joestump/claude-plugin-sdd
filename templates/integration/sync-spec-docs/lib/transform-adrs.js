@@ -100,7 +100,7 @@ function transformAdr(srcPath, destPath, fileName, config) {
 
   if (fileName === '0000-template.md' || fileName === 'README.md') return;
 
-  const isNumberedAdr = /^(?:ADR-)?\d{4}-/.test(fileName);
+  const isNumberedAdr = /^(?:ADR-)?\d{4}-/i.test(fileName);
   const title = extractTitle(content);
   const { status, date, dm } = extractMetadata(content);
 
@@ -118,8 +118,8 @@ function transformAdr(srcPath, destPath, fileName, config) {
 
   let sidebarLabel;
   if (isNumberedAdr) {
-    const adrNum = fileName.match(/^(?:ADR-)?(\d{4})-/)[1];
-    const titleWithoutAdr = title.replace(/^ADR-\d+:\s*/, '');
+    const adrNum = fileName.match(/^(?:ADR-)?(\d{4})-/i)[1];
+    const titleWithoutAdr = title.replace(/^ADR-\d+:\s*/i, '');
     sidebarLabel = `ADR-${adrNum}: ${titleWithoutAdr}`;
   } else {
     sidebarLabel = title;

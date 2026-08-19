@@ -28,7 +28,7 @@ function buildAdrMapping(adrsSource) {
     if (!file.endsWith('.md')) continue;
     if (file === '0000-template.md' || file === 'README.md') continue;
 
-    const match = file.match(/^(?:ADR-)?(\d{4})-/);
+    const match = file.match(/^(?:ADR-)?(\d{4})-/i);
     if (match) {
       const number = match[1];
       const slug = file.replace(/\.md$/, '');

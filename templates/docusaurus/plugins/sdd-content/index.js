@@ -199,7 +199,11 @@ function buildGraph({ adrsSource, specsSource }) {
   const nodes = {};
   const edges = [];
 
-  const adrFileRe = /^ADR-(\d{4})/;
+  // /i: ADR files are named adr-0001-... in some repos and ADR-0001-... in
+  // others. Case-sensitive here meant zero ADR nodes in the graph, hence no
+  // edges, no mini-DAGs and no graph page at all, on every lowercase-naming
+  // repo.
+  const adrFileRe = /^ADR-(\d{4})/i;
   if (fs.existsSync(adrsSource)) {
     for (const f of fs.readdirSync(adrsSource).sort()) {
       if (!f.endsWith('.md')) continue;
@@ -488,7 +492,7 @@ function buildAdrMapping(adrsSource) {
     if (!file.endsWith('.md')) continue;
     if (file === '0000-template.md' || file === 'README.md') continue;
 
-    const match = file.match(/^(?:ADR-)?(\d{4})-/);
+    const match = file.match(/^(?:ADR-)?(\d{4})-/i);
     if (match) {
       const number = match[1];
       const slug = file.replace(/\.md$/, '');
@@ -628,8 +632,28 @@ function escapeYaml(str) {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-function escapeJsxAttr(str) {
-  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// Frontmatter values are whatever YAML says they are, not necessarily strings:
+// `decision-makers: [Alice, Bob]` is an array, and an unquoted `date: 2026-07-27`
+// is a Date under some parsers. Coerce before touching string methods, or the
+// build dies with the memorable-but-unhelpful "str.replace is not a function".
+//
+// The MADR template this plugin's ADRs follow writes decision-makers as a list,
+// so this is the common case, not defensive padding. The crash was merely
+// unreachable while isNumberedAdr failed to match lowercase filenames and
+// suppressed the whole badge header — fixing that without this would trade a
+// silent omission for a hard build failure.
+function toDisplayString(value) {
+  if (value === null || value === undefined) return '';
+  if (Array.isArray(value)) return value.join(', ');
+  // Render as YYYY-MM-DD; the source frontmatter is date-only, and toISOString
+  // would otherwise append a midnight-UTC time the author never wrote.
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value);
+}
+
+function escapeJsxAttr(value) {
+  return toDisplayString(value)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function extractMetadataAdr(content) {
@@ -683,7 +707,7 @@ function transformAdr(srcPath, destPath, fileName, { specMapping, specEmojis, ba
 
   if (fileName === '0000-template.md' || fileName === 'README.md') return;
 
-  const isNumberedAdr = /^(?:ADR-)?\d{4}-/.test(fileName);
+  const isNumberedAdr = /^(?:ADR-)?\d{4}-/i.test(fileName);
   const title = extractTitle(content);
   const { status, date, dm } = extractMetadataAdr(content);
 
@@ -701,8 +725,8 @@ function transformAdr(srcPath, destPath, fileName, { specMapping, specEmojis, ba
 
   let sidebarLabel;
   if (isNumberedAdr) {
-    const adrNum = fileName.match(/^(?:ADR-)?(\d{4})-/)[1];
-    const titleWithoutAdr = title.replace(/^ADR-\d+:\s*/, '');
+    const adrNum = fileName.match(/^(?:ADR-)?(\d{4})-/i)[1];
+    const titleWithoutAdr = title.replace(/^ADR-\d+:\s*/i, '');
     sidebarLabel = `ADR-${adrNum}: ${titleWithoutAdr}`;
   } else {
     sidebarLabel = title;
@@ -711,7 +735,7 @@ function transformAdr(srcPath, destPath, fileName, { specMapping, specEmojis, ba
   const badgeHeader = isNumberedAdr ? `
 <FieldGroup>
   <Field label="Status">
-    <StatusBadge status="${escapeJsxAttr(status.toUpperCase())}" />
+    <StatusBadge status="${escapeJsxAttr(toDisplayString(status).toUpperCase())}" />
   </Field>
   <Field label="Date">
     <DateBadge date="${escapeJsxAttr(date)}" />
@@ -730,8 +754,10 @@ slug: /decisions/${slug}${sidebarClassName}
 ${badgeHeader}
 `;
 
-  const adrIdMatch = fileName.match(/^(ADR-\d{4})/);
-  const artifactId = adrIdMatch ? adrIdMatch[1] : null;
+  // Uppercased: the graph keys its nodes by a constructed `ADR-NNNN`, so a
+  // lowercase filename must normalize or the mini-DAG lookup misses.
+  const adrIdMatch = fileName.match(/^(ADR-\d{4})/i);
+  const artifactId = adrIdMatch ? adrIdMatch[1].toUpperCase() : null;
   const miniDag = buildMiniDagSection(artifactId, graph);
 
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
@@ -840,7 +866,7 @@ function transformSpec(srcPath, destPath, domain, fileType, domainConfig, flat, 
   const metadataHeader = `
 <FieldGroup>
   <Field label="Status">
-    <StatusBadge status="${escapeJsxAttr(metadata.status.toUpperCase())}" />
+    <StatusBadge status="${escapeJsxAttr(toDisplayString(metadata.status).toUpperCase())}" />
   </Field>
   <Field label="Date">
     <DateBadge date="${escapeJsxAttr(metadata.date)}" />
@@ -1008,8 +1034,8 @@ function generateDecisionsIndex(adrsSource, docsDest, graph, baseUrl) {
   for (const file of files) {
     const content = fs.readFileSync(path.join(adrsSource, file), 'utf-8');
 
-    const idMatch = file.match(/^(ADR-\d{4})/);
-    const id = idMatch ? idMatch[1] : file.replace(/\.md$/, '');
+    const idMatch = file.match(/^(ADR-\d{4})/i);
+    const id = idMatch ? idMatch[1].toUpperCase() : file.replace(/\.md$/, '');
     const titleMatch = content.match(/^#\s+(?:ADR-\d+:\s*)?(.+)$/m);
     const title = titleMatch ? titleMatch[1].trim() : id;
 

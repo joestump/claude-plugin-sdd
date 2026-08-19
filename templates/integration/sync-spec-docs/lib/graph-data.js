@@ -39,7 +39,11 @@ function buildGraph({ adrsSource, specsSource }) {
   const nodes = {};
   const edges = [];
 
-  const adrFileRe = /^ADR-(\d{4})/;
+  // /i: ADR files are named adr-0001-... in some repos and ADR-0001-... in
+  // others. Case-sensitive here meant zero ADR nodes in the graph, hence no
+  // edges, no mini-DAGs and no graph page at all, on every lowercase-naming
+  // repo.
+  const adrFileRe = /^ADR-(\d{4})/i;
   if (fs.existsSync(adrsSource)) {
     for (const f of fs.readdirSync(adrsSource).sort()) {
       if (!f.endsWith('.md')) continue;

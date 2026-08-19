@@ -161,8 +161,8 @@ function generateDecisionsIndex() {
 
     // Pull the canonical id and short title from the H1 (e.g.,
     // `# ADR-0023: Frontmatter DAG and /sdd:graph Skill`).
-    const idMatch = file.match(/^(ADR-\d{4})/);
-    const id = idMatch ? idMatch[1] : file.replace(/\.md$/, '');
+    const idMatch = file.match(/^(ADR-\d{4})/i);
+    const id = idMatch ? idMatch[1].toUpperCase() : file.replace(/\.md$/, '');
     const titleMatch = content.match(/^#\s+(?:ADR-\d+:\s*)?(.+)$/m);
     const title = titleMatch ? titleMatch[1].trim() : id;
 

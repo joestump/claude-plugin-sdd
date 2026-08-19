@@ -115,7 +115,7 @@ function transformAdr(srcPath, destPath, fileName) {
 
   if (fileName === '0000-template.md' || fileName === 'README.md') return;
 
-  const isNumberedAdr = /^(?:ADR-)?\d{4}-/.test(fileName);
+  const isNumberedAdr = /^(?:ADR-)?\d{4}-/i.test(fileName);
   const title = extractTitle(content);
   const { status, date, dm } = extractMetadata(content);
 
@@ -133,8 +133,8 @@ function transformAdr(srcPath, destPath, fileName) {
 
   let sidebarLabel;
   if (isNumberedAdr) {
-    const adrNum = fileName.match(/^(?:ADR-)?(\d{4})-/)[1];
-    const titleWithoutAdr = title.replace(/^ADR-\d+:\s*/, '');
+    const adrNum = fileName.match(/^(?:ADR-)?(\d{4})-/i)[1];
+    const titleWithoutAdr = title.replace(/^ADR-\d+:\s*/i, '');
     sidebarLabel = `ADR-${adrNum}: ${titleWithoutAdr}`;
   } else {
     sidebarLabel = title;
@@ -166,7 +166,7 @@ ${badgeHeader}
   // `ADR-` prefix is required (matches `graph-data.js`'s
   // `adrFileRe`); an unprefixed `0023-foo.md` won't be in the graph
   // anyway, so there's nothing to render a mini-DAG against.
-  const adrIdMatch = fileName.match(/^(ADR-\d{4})/);
+  const adrIdMatch = fileName.match(/^(ADR-\d{4})/i);
   const artifactId = adrIdMatch ? adrIdMatch[1] : null;
   const miniDag = buildMiniDagSection(artifactId, ARTIFACT_GRAPH);
 
