@@ -71,6 +71,44 @@ function transformRfc2119Keywords(content) {
   }).join('\n');
 }
 
+// Spans within a single line that must never be auto-linkified.
+//
+// The reference transforms below turn a bare `ADR-0006` / `SPEC-0004` mention
+// into an <a>. Three places that is wrong:
+//
+//   `ADR-0006`                    inline code — a literal, not a reference
+//   [ADR-0006](adr-0006-x.md)     already a link; wrapping the label yields
+//                                 <a><a>…</a></a>, which is invalid HTML and
+//                                 which some minifiers reject outright
+//   <a href="/decisions/ADR-0006  an anchor an earlier pass already emitted —
+//   -x">ADR-0006</a>              both the href and the label are off limits
+//
+// Markdown links are the common case: an author who writes
+// `[ADR-0006](adr-0006-thing.md)` gets the label wrapped a second time, and the
+// result is a nested anchor on every such reference in the body.
+//
+// Whole <a>…</a> elements are ranged separately from bare tags. `<[^>]+>` alone
+// covers an ID sitting in an href but not one sitting in the link text, which
+// is the half that actually nests.
+function protectedRanges(line) {
+  const ranges = [];
+  for (const re of [/`[^`]*`/g, /\[[^\]]*\]\([^)]*\)/g, /<a\b[^>]*>.*?<\/a>/g, /<[^>]+>/g]) {
+    let m;
+    while ((m = re.exec(line)) !== null) ranges.push([m.index, m.index + m[0].length]);
+  }
+  return ranges;
+}
+
+// String.prototype.replace passes (match, ...groups, offset, whole), so the
+// offset is always the second-to-last argument regardless of group count.
+function matchOffset(args) {
+  return args[args.length - 2];
+}
+
+function isProtected(ranges, start, end) {
+  return ranges.some(([from, to]) => start >= from && end <= to);
+}
+
 /**
  * Transform spec ID references (e.g., ARCH-001) into linked spans.
  */
@@ -84,7 +122,10 @@ function transformSpecReferences(content, { specMapping, specEmojis, baseUrl }) 
     if (inCodeBlock || line.startsWith('#')) return line;
     if (line.trim().startsWith('<') && !line.includes('className="rfc-keyword')) return line;
 
-    return line.replace(specPattern, (match, prefix, number) => {
+    const ranges = protectedRanges(line);
+    return line.replace(specPattern, (match, prefix, number, ...rest) => {
+      const offset = matchOffset([match, prefix, number, ...rest]);
+      if (isProtected(ranges, offset, offset + match.length)) return match;
       // Two kinds of key live in specMapping. A full artifact ID (SPEC-0008)
       // names one spec page; a bare prefix (ARCH) names the domain page that
       // hosts ARCH-NNN requirements, where each ID is a RequirementBox anchor.
@@ -114,7 +155,10 @@ function transformAdrReferences(content, { adrMapping, adrEmoji, baseUrl }) {
     if (inCodeBlock || line.startsWith('#')) return line;
     if (line.trim().startsWith('<') && !line.includes('className="rfc-keyword') && !line.includes('className="rfc-ref')) return line;
 
-    return line.replace(adrPattern, (match, number) => {
+    const ranges = protectedRanges(line);
+    return line.replace(adrPattern, (match, number, ...rest) => {
+      const offset = matchOffset([match, number, ...rest]);
+      if (isProtected(ranges, offset, offset + match.length)) return match;
       const adrPath = adrMapping[number];
       if (!adrPath) return match;
       const displayText = `${adrEmoji} ${match}`;
