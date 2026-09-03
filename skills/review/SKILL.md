@@ -10,7 +10,7 @@ argument-hint: "[SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run] [
 
 # Review and Merge PRs
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pairs. Each pair processes PRs through exactly one review-response round: the reviewer checks the diff against spec acceptance criteria, the responder addresses feedback, and the reviewer re-evaluates. Approved PRs are merged; unresolved PRs are left with comments for human follow-up. See ADR-0010 and SPEC-0009.
 
@@ -22,7 +22,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
 
 1. **Parse arguments**: Parse `$ARGUMENTS`.
 
@@ -37,7 +37,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
    - `--dry-run`: Preview which PRs would be reviewed without taking any action. Default: off.
    - `--module <name>`: Resolve artifact paths relative to the named module. Default: none.
 
-2. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`, but only GitHub, GitLab, and Gitea are supported (PR/MR capability required). If the saved tracker is Beads, Jira, or Linear, inform the user that `/sdd:review` requires a tracker with PR support.
+2. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Tracker Detection", but only GitHub, GitLab, and Gitea are supported (PR/MR capability required). If the saved tracker is Beads, Jira, or Linear, inform the user that `/sdd:review` requires a tracker with PR support.
 
 3. **Discover target PRs**: Search the tracker for open PRs matching the target.
    - **GitHub**: `gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url --limit 50` or `gh pr view {number} --json number,title,headRefName,body,url` for explicit PR numbers.
@@ -119,7 +119,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
    4. On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error and stop. Per ADR-0024, no fallback in v5.
 
-5. **Read review config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Read the `#### Review` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Max Pairs`=2, `Merge Strategy`="squash", `Auto Cleanup`=false. CLI flags override: `--pairs N` overrides `Max Pairs`, `--no-merge` prevents merging.
+5. **Read review config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution". Read the `#### Review` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Max Pairs`=2, `Merge Strategy`="squash", `Auto Cleanup`=false. CLI flags override: `--pairs N` overrides `Max Pairs`, `--no-merge` prevents merging.
 
 6. **Dry-run gate**: If `--dry-run` is set, output a preview table and stop:
 
@@ -231,7 +231,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
     **12.1: Shut down team.** Send `shutdown_request` to all agents via `SendMessage`.
 
-    **12.2: Offer worktree cleanup.** If CLAUDE.md `Review > Auto Cleanup` is `true`, clean up worktrees for successfully-processed PRs automatically, following the **Worktree Cleanup** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` (remove the worktree, then delete the branch ref — removing the worktree alone leaves the branch behind permanently, and since the default squash merge strategy makes `git branch -d` refuse, the pattern's tracker check is what actually clears merged branches). Otherwise, preserve them.
+    **12.2: Offer worktree cleanup.** If CLAUDE.md `Review > Auto Cleanup` is `true`, clean up worktrees for successfully-processed PRs automatically, following the **Worktree Cleanup** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Worktree Cleanup" (remove the worktree, then delete the branch ref — removing the worktree alone leaves the branch behind permanently, and since the default squash merge strategy makes `git branch -d` refuse, the pattern's tracker check is what actually clears merged branches). Otherwise, preserve them.
 
     **12.3: Final report.**
 
@@ -291,7 +291,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
 - MUST load spec and design context before dispatching reviewers
 - MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
-- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to read configuration from CLAUDE.md
+- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" to read configuration from CLAUDE.md
 - MUST use round-robin distribution across pairs (Governing: SPEC-0009 REQ "PR Distribution")
 - MUST limit to exactly one review-response round per PR — no unbounded iteration (Governing: ADR-0010)
 - Reviewers MUST reference spec acceptance criteria in their reviews — not just style (Governing: SPEC-0009 REQ "Review Protocol")

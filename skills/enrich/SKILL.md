@@ -9,7 +9,7 @@ argument-hint: "[SPEC-XXXX or spec-name] [--branch-prefix <prefix>] [--dry-run] 
 
 # Enrich Issues with Developer Workflow Conventions
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 You are retroactively adding `### Branch` and `### PR Convention` sections to existing tracker issues that were created by `/sdd:plan` (or manually) for a given spec. The canonical templates for these sections live in `${CLAUDE_PLUGIN_ROOT}/references/issue-authoring.md` § Enrichment Sections (which references `shared-patterns.md` for the underlying Branch Naming Conventions and PR Close Keywords). This skill is purely additive — it never replaces existing content.
 
@@ -17,7 +17,7 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
 
 1. **Parse arguments**: Extract from `$ARGUMENTS`:
    - Spec identifier: a SPEC number (e.g., `SPEC-0007`) or capability directory name
@@ -31,9 +31,9 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
 
 3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` to get the spec number and understand the requirements. Validate spec pairing per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation".
 
-4. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. If no tracker is found, error — enrichment requires a tracker.
+4. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Tracker Detection". If no tracker is found, error — enrichment requires a tracker.
 
-5. **Read branch/PR config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Read the `### SDD Configuration` section from CLAUDE.md, specifically the `#### Branch Conventions` and `#### PR Conventions` subsections:
+5. **Read branch/PR config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution". Read the `### SDD Configuration` section from CLAUDE.md, specifically the `#### Branch Conventions` and `#### PR Conventions` subsections:
 
    ```markdown
    #### Branch Conventions
@@ -146,8 +146,8 @@ This skill reads the `Branch Conventions` and `PR Conventions` subsections of th
 - PR close keywords MUST match the detected tracker
 - MUST use `ToolSearch` for tracker tools at runtime
 - Failures on individual issues MUST be reported but MUST NOT stop processing remaining issues
-- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to read configuration from CLAUDE.md
-- MUST use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`) for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
+- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" to read configuration from CLAUDE.md
+- MUST use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern") for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - No `--review` support (utility skill)
 - **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 0a — sync from the configured tracker into `.sdd/issues/` before iterating issues, subject to the 5-minute dedup window. On sync failure, fall back to live tracker queries with a one-line warning (NEVER block) (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")
 - **v5.0.0+**: MUST trigger Tier 1 mutation update of `{repo}-issues` after enrichment per Step 10 — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")

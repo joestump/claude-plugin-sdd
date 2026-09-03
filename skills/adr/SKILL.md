@@ -7,7 +7,7 @@ argument-hint: "[short description of the decision] [--review] [--module <name>]
 
 # Create an Architecture Decision Record (ADR)
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 You are creating a new ADR using the MADR (Markdown Architectural Decision Records) format.
 
@@ -15,7 +15,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved ADR directory is referred to as `{adr-dir}` below.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved ADR directory is referred to as `{adr-dir}` below.
 
 1. **Determine the next ADR number**: Scan `{adr-dir}` for existing `ADR-XXXX-*.md` files and increment to the next number. Start at ADR-0001 if none exist. Create `{adr-dir}` if it does not exist. If `$ARGUMENTS` is empty (ignoring flags like `--review` and `--module`), use `AskUserQuestion` to ask the user what decision they want to document.
 
@@ -130,7 +130,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
 ### Team Handoff Protocol (only for `--review` mode)
 
-Follow the standard team handoff protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. The drafter writes the ADR; the architect reviews against the Rules checklist below.
+Follow the standard team handoff protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Team Handoff Protocol". The drafter writes the ADR; the architect reviews against the Rules checklist below.
 
 ## MADR Template
 

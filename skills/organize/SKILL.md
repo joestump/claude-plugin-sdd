@@ -9,7 +9,7 @@ argument-hint: "[SPEC-XXXX or spec-name] [--project <name>] [--dry-run] [--modul
 
 # Organize Issues into Projects
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 You are retroactively grouping existing tracker issues into tracker-native projects and enriching project workspaces. You use a three-tier intervention model that lets the operator control how invasive the changes are. See ADR-0012 and SPEC-0011.
 
@@ -17,7 +17,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
 
 1. **Parse arguments**: Extract from `$ARGUMENTS`:
    - Spec identifier: a SPEC number (e.g., `SPEC-0007`) or capability directory name
@@ -31,7 +31,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
 3. **Read spec**: Read `{spec-dir}/{capability-name}/spec.md` and `design.md` to understand the spec number, requirement names, and architecture. Validate spec pairing per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation".
 
-4. **Detect tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Also read `Projects` settings from the `### SDD Configuration` section in CLAUDE.md for cached project IDs and enrichment config (Views, Columns, Iteration Weeks). If no tracker is found, error — projects require a tracker.
+4. **Detect tracker**: Follow the "Config Resolution" and "Tracker Detection" flows in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" and § "Tracker Detection". Also read `Projects` settings from the `### SDD Configuration` section in CLAUDE.md for cached project IDs and enrichment config (Views, Columns, Iteration Weeks). If no tracker is found, error — projects require a tracker.
 
 5. **Find existing issues**: Search the tracker for issues whose body references the spec number.
    - **GitHub**: `gh issue list --search "SPEC-XXXX" --json number,title,body,labels --limit 100`
@@ -73,7 +73,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
    **(c) Complete refactor**: All tier (b) changes PLUS:
    - Re-group issues across epics (move misplaced stories)
-   - Fix/add labels using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`)
+   - Fix/add labels using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern")
    - Create native dependency links (Gitea)
    - Update issue bodies with `### Branch` and `### PR Convention` sections (if missing)
 
@@ -90,7 +90,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    - Configure board columns from CLAUDE.md `Projects > Columns` (default: Todo, In Progress, In Review, Done)
 
    **Tier (c) additional steps:**
-   - Re-label issues using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`)
+   - Re-label issues using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern")
    - Create Gitea native dependency links
    - Add `### Branch` / `### PR Convention` to issue bodies that lack them (same logic as `/sdd:enrich`)
 
@@ -139,11 +139,11 @@ This skill reads and writes the `Projects` subsection of the `### SDD Configurat
 - MUST skip projects that already exist (idempotent)
 - MUST use `ToolSearch` for project tools at runtime
 - Failures MUST be reported but MUST NOT stop processing remaining issues
-- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to read configuration from CLAUDE.md
+- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" to read configuration from CLAUDE.md
 - MUST check CLAUDE.md `Projects` for cached project IDs before creating
 - When writing config to CLAUDE.md, preserve existing keys
 - MUST link created projects to the repository for trackers that support project-repository associations (e.g., GitHub Projects V2 via `gh project link`, Gitea)
-- MUST use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`) for all label applications in tier (c) (Governing: SPEC-0011 REQ "Auto-Create Labels")
+- MUST use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern") for all label applications in tier (c) (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - MUST degrade gracefully when tracker features are unavailable — skip and report, never fail (Governing: SPEC-0011 REQ "Graceful Degradation")
 - No `--review` support (utility skill)
 - **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 0a — sync from tracker before discovering issues, subject to 5-min dedup. On failure, fall back to live queries with a warning (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")
