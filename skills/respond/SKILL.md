@@ -13,7 +13,7 @@ argument-hint: "[PR number(s) or URL | (empty = infer from current branch)] [--r
 
 # Respond to PR Review Feedback
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 You are the **author-side responder** for a pull request. A reviewer — human or
 automated — has left feedback, requested changes, or the PR has failing CI.
@@ -31,7 +31,7 @@ use `/sdd:respond` to address the review someone left on your PR.
 ## Process
 
 0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern in
-   the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the spec directory.
+   the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the spec directory.
    If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that
    module. The resolved spec directory is `{spec-dir}`.
 
@@ -66,7 +66,7 @@ use `/sdd:respond` to address the review someone left on your PR.
    report the conflict and ask the user which they meant via `AskUserQuestion`.
 
 2. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's
-   `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Only **GitHub**, **GitLab**, and **Gitea** are
+   `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Tracker Detection". Only **GitHub**, **GitLab**, and **Gitea** are
    supported (PR/MR review capability is required). If the saved tracker is Beads,
    Jira, or Linear, inform the user that `/sdd:respond` requires a tracker with PR
    review support and stop.
@@ -147,7 +147,7 @@ use `/sdd:respond` to address the review someone left on your PR.
    2. Address each **fix** item. Keep changes scoped to the feedback — do not
       opportunistically refactor unrelated code.
    3. Where changes touch code governed by an ADR or spec, add or update the
-      file-level **governing comment** block per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`
+      file-level **governing comment** block per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Governing Comment Format"
       § "Governing Comment Format".
    4. Run the project's tests and linters. If a fix can't be made to pass, do not
       push a broken state silently — reclassify the item as **reply** and explain
@@ -195,7 +195,7 @@ use `/sdd:respond` to address the review someone left on your PR.
    The issue body MUST link back to the source: the PR number, the review thread
    URL, and the governing spec/ADR if one applies. Apply a tracker label such as
    `follow-up` when the **Try-Then-Create Label Pattern** in
-   `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` confirms it exists or can be created. In an
+   `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern" confirms it exists or can be created. In an
    interactive session, confirm via `AskUserQuestion` before creating issues
    (filing trackable work is outward-facing); in non-interactive/CI runs, file
    them and list every created issue in the summary. With `--no-defer-issues`,

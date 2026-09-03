@@ -4,6 +4,16 @@
 
 Patterns used across multiple SDD plugin skills. Skills reference specific sections by heading instead of duplicating the content.
 
+## How to Read This File
+
+Do not read this file top to bottom. Skills cite it as `shared-patterns.md § "Section Name"`, where the name is one of the `## ` headings below, verbatim. Load only that section:
+
+1. Find the start line: `grep -n '^## Section Name' ${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`
+2. Find the end line: the next `^## ` heading after it (`grep -n '^## ' …` and take the following hit)
+3. Read that line range and nothing else
+
+Every reference from a `SKILL.md` names its section. This file is ~800 lines; reading it whole on every skill invocation was the single largest avoidable per-session cost measured in a long-lived project, and none of that content was needed at once.
+
 > **Harness portability.** Throughout this reference, "CLAUDE.md" means the **project memory file** — `CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`, resolved per `harness-compat.md` § "Project Memory File" (same directory as this file). Likewise, named tools (`AskUserQuestion`, `TeamCreate`, `SendMessage`, `ToolSearch`, …) denote capabilities with per-harness mappings and fallbacks defined in `harness-compat.md` § "Capability Map".
 
 ## Artifact Path Resolution
