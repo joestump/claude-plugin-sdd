@@ -173,7 +173,7 @@ The `/sdd:graph` skill SHALL support two diagnostic query verbs that operate ove
 
 | Verb | Behavior |
 |------|----------|
-| `orphans` | Returns three categories: (a) source files with no governing comment block, (b) specs with no implementing source files, (c) ADRs with no implementing spec |
+| `orphans` | Returns four categories: (a) source files with no governing comment block, (a') source files that contain a `Governing:` marker from which no artifact ID could be parsed, reported with the reason, (b) specs with no implementing source files, (c) ADRs with no implementing spec |
 | `cycles` | Returns all cycles detected during validation. If validation passed, returns an empty result. |
 
 Diagnostic verbs MUST tolerate large outputs by supporting an optional scope filter (e.g., `--scope src/auth/` to limit `orphans` detection to a subtree).
@@ -182,6 +182,17 @@ Diagnostic verbs MUST tolerate large outputs by supporting an optional scope fil
 
 - **WHEN** the user runs `/sdd:graph orphans` and 5 source files lack governing comment blocks
 - **THEN** the output SHALL list those files under "Source files without governing artifacts"
+
+#### Scenario: Unrecognized governing comment
+
+- **WHEN** a source file contains a `Governing:` marker that names no `ADR-XXXX` / `SPEC-XXXX` artifact (for example `// Governing: #24`), or uses a comment opener the parser does not accept
+- **THEN** the `orphans` output SHALL list the file under "Source files with unrecognized governing comments" with the reason, and SHALL NOT list it under "Source files without governing artifacts"
+- **AND** `validate` SHALL emit a `governing-unrecognized` warning for the file
+
+#### Scenario: Multiple governing lines in one file
+
+- **WHEN** a source file's first `Governing:` line names only an issue and a later `Governing:` line names ADR-0009 and SPEC-0006
+- **THEN** the graph SHALL contain edges from the file to both ADR-0009 and SPEC-0006, and neither artifact SHALL be reported as orphaned on account of that file
 
 #### Scenario: Orphan spec
 
