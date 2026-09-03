@@ -2,7 +2,7 @@
 name: adr
 description: Create a new Architecture Decision Record (ADR) using MADR format. Use when the user wants to document an architectural decision, says "create an ADR", "we need an ADR for", or discusses a decision that should be recorded.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion
-argument-hint: "[short description of the decision] [--review] [--module <name>]"
+argument-hint: "[short description of the decision] [--quick] [--review] [--module <name>]"
 ---
 
 # Create an Architecture Decision Record (ADR)
@@ -17,7 +17,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
 0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved ADR directory is referred to as `{adr-dir}` below.
 
-1. **Determine the next ADR number**: Scan `{adr-dir}` for existing `ADR-XXXX-*.md` files and increment to the next number. Start at ADR-0001 if none exist. Create `{adr-dir}` if it does not exist. If `$ARGUMENTS` is empty (ignoring flags like `--review` and `--module`), use `AskUserQuestion` to ask the user what decision they want to document.
+1. **Determine the next ADR number**: Scan `{adr-dir}` for existing `ADR-XXXX-*.md` files and increment to the next number. Start at ADR-0001 if none exist. Create `{adr-dir}` if it does not exist. If `$ARGUMENTS` is empty (ignoring flags like `--quick`, `--review` and `--module`), use `AskUserQuestion` to ask the user what decision they want to document.
 
 1a. **qmd-aware edge pre-search** (v5.0.0+):
 
@@ -43,6 +43,13 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
    5. On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error and stop. Per ADR-0024, fallback paths were eliminated in v5; the failure mode is "fix qmd, retry."
 
+1b. **Choose the tier**: Every ADR is either **full** (the MADR Template below) or **lightweight** (the Lightweight Template below, requested with `--quick`). The tier follows the option space, not how important the decision feels:
+
+   - **Lightweight** when the honest alternative to the chosen option is "do not do this" — there is one viable way to do the thing, and what is worth recording is *that* it is being done and *why*. Typical: a data-model choice with a narrow trade-off, adopting a library no peer was seriously in contention with, a naming or layout convention. These decisions still deserve an ADR (best practices: don't wait for "big enough") — just not a padded options matrix or a diagram.
+   - **Full** when two or more options were genuinely viable and someone could reasonably have chosen the other. The pros and cons of the road not taken are the most valuable part of the record, so if a second real option exists the full template is mandatory.
+
+   If `--quick` is present, use the lightweight tier. If it is absent but drafting surfaces only one option you can argue for honestly — every other candidate you would list gets dismissed in its own description ("zero benefit", "not really an alternative") — stop padding and ask via `AskUserQuestion`: "This decision has one viable option. Write it as a lightweight ADR (`--quick`) instead of listing alternatives the text would immediately dismiss?" Default to lightweight when the session is non-interactive. Conversely, if `--quick` was given but a second viable option surfaces while drafting, say so and switch to the full template.
+
 2. **Choose drafting mode**: Check if `$ARGUMENTS` contains `--review`.
 
    **Default (no `--review`)**: Single-agent mode. Research the codebase (read relevant files, understand the current architecture), draft the ADR directly, self-review against the architect's checklist in the Rules section, then write the file.
@@ -56,9 +63,11 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
      - The drafter should research the codebase (read relevant files, understand the current architecture) before writing
      - If `TeamCreate` fails — or is not a registered tool on this harness — fall back to single-agent mode: draft the ADR directly, then self-review against the architect's checklist in the Rules section before writing.
 
-2b. **Optional call graph embedding** (opt-in, SPEC-0034):
+2b. **Optional call graph embedding** (opt-in, SPEC-0034; full tier only):
 
    <!-- Governing: ADR-0033 (cgg call graph integration), SPEC-0034 REQ "Enhanced /sdd:adr" -->
+
+   **Lightweight tier: skip this step entirely.** A lightweight ADR has no `## Architecture Diagram` section (SPEC-0003 REQ "Architecture Diagrams" exempts `tier: quick`), so there is nothing to embed a call graph into.
 
    After the ADR body is fully drafted and before writing to disk, ask the user whether to include a call graph:
 
@@ -103,7 +112,7 @@ You are creating a new ADR using the MADR (Markdown Architectural Decision Recor
 
    In every degradation case (cgg missing, timeout, non-zero exit, all files skipped), the skill MUST complete and write the ADR without a call graph — hand-authoring the `## Architecture Diagram` section as above, since the section itself is not optional. Never surface a hard failure to the user when cgg is the only failing component.
 
-3. **Write the ADR** to `{adr-dir}/ADR-XXXX-short-title.md`. Include the user-confirmed frontmatter edges from Step 1a in the YAML frontmatter (per the canonical edge schema in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Graph Edge Resolution").
+3. **Write the ADR** to `{adr-dir}/ADR-XXXX-short-title.md` using the template for the tier chosen in Step 1b. Include the user-confirmed frontmatter edges from Step 1a in the YAML frontmatter (per the canonical edge schema in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Graph Edge Resolution"). A lightweight ADR carries `tier: quick` in its frontmatter so readers and `/sdd:audit` know the omitted sections are deliberate.
 
 3a. **Tier 1 mutation update** (v5.0.0+):
 
@@ -211,26 +220,68 @@ Use flowchart, sequence, or C4 diagrams as appropriate.}
 {Additional context, links to related ADRs, references.}
 ```
 
+## Lightweight Template (`--quick`)
+
+For a decision with one viable option. Same frontmatter as the full template plus `tier: quick`. No Decision Drivers, no options matrix, no Architecture Diagram — the sections are omitted, not left as placeholders.
+
+```markdown
+---
+# status: one of proposed | accepted | deprecated | superseded (enum enforced by /sdd:status)
+status: proposed
+date: {YYYY-MM-DD}
+decision-makers: {list}
+tier: quick
+# Optional graph edges exactly as in the full template (supersedes / extends / enables / governs / related).
+---
+
+# ADR-XXXX: {short title, representative of solved problem and found solution}
+
+## Context and Problem Statement
+
+{1-3 sentences: what forced a decision, and what question is being answered.}
+
+## Decision
+
+{The chosen option in one or two sentences, then why it is the right call — the full template's "Chosen option: ..., because ..." line, promoted to the whole section.}
+
+## Alternative
+
+{One line naming the alternative that was actually on the table — usually "Do not do this: {what happens then}" — and why it loses. If a second real alternative belongs here, this is a full-tier ADR: switch templates.}
+
+## Consequences
+
+* Good, because {positive consequence}
+* Bad, because {negative consequence}
+
+## More Information
+
+{Optional: related ADRs, the spec this will become, the issue that prompted it.}
+```
+
 ## Rules
 
 - ADR numbers MUST be sequential and zero-padded to 4 digits: ADR-0001, ADR-0002, etc.
-- MUST include at least 2 considered options with substantive pros and cons for each
+- Full-tier ADRs MUST include at least 2 considered options with substantive pros and cons for each
+- Lightweight ADRs (`--quick`, `tier: quick`) MUST name exactly one chosen option and one alternative (normally "do not do this"), and MUST NOT list options the text itself dismisses — a strawman option is worse than none, because it makes the record look weighed when it was not. If a second viable option exists, the ADR is full tier
+- MUST offer the lightweight tier (Step 1b) when drafting without `--quick` surfaces only one viable option, rather than padding Considered Options
 - Status starts as `proposed` -- the user decides when to mark `accepted`
 - The `status` frontmatter value MUST be exactly one of `proposed`, `accepted`, `deprecated`, `superseded` -- the same enum `/sdd:status` enforces. Free-form or differently-capitalized values (e.g. `Accepted`, `done`) break status filtering and `/sdd:list` rendering
 - Self-review (default) or architect review (`--review`) MUST check for:
-  - Completeness of all required sections (Context, Options, Outcome, Pros/Cons)
+  - Completeness of all required sections for the tier — full: Context, Decision Drivers, Options, Outcome, Pros/Cons, Diagram; lightweight: Context, Decision, Alternative, Consequences
+  - Tier fit: a lightweight ADR hiding a second viable alternative, or a full ADR whose extra options are strawmen, is in the wrong tier
   - Realistic and balanced pros/cons (not just cheerleading the chosen option)
   - Clear decision rationale that explains "why this over alternatives"
   - Correct MADR structure and frontmatter
 - Keep the title short and descriptive
 - Focus on the "why" -- what problem does this solve and why this solution?
 - Reference existing ADRs if this supersedes or relates to them
-- Every ADR MUST include at least one Mermaid diagram in its Architecture Diagram section, matching the mandatory section in SPEC-0003 -- use flowchart, sequence, or C4 diagrams as appropriate. When the cgg call-graph opt-in (Step 2b) is declined or unavailable, write a small hand-authored diagram instead of leaving the section empty
+- Every full-tier ADR MUST include at least one Mermaid diagram in its Architecture Diagram section, matching the mandatory section in SPEC-0003 -- use flowchart, sequence, or C4 diagrams as appropriate. When the cgg call-graph opt-in (Step 2b) is declined or unavailable, write a small hand-authored diagram instead of leaving the section empty
+- Lightweight ADRs (`tier: quick`) MUST NOT include an Architecture Diagram section -- SPEC-0003 REQ "Architecture Diagrams" exempts them, and an empty or placeholder section is worse than none
 - **v5.0.0+**: MUST run qmd-aware edge pre-search per Step 1a — surface candidate `supersedes`/`extends`/`related` edges to the user via AskUserQuestion before drafting. The user's confirmed edges land in the new ADR's frontmatter (Governing: ADR-0024, SPEC-0019 REQ "qmd-Smart Authoring Skills")
 - **v5.0.0+**: MUST trigger Tier 1 `{repo}-adrs` re-sync after writing the new file per Step 3a — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
 - MUST check the `{repo}-adrs` context blurb for drift after the Tier 1 re-sync per Step 3a — the re-sync maintains the index only, and a stale context is asserted to every consumer on every query
 - **v5.0.0+**: On qmd unreachable / timeout during the edge pre-search, MUST surface the error and stop — never fall back to "draft without edge suggestions" (per ADR-0024)
-- **v5.0.0+**: MUST offer the call graph opt-in via `AskUserQuestion` per Step 2b — default to "no" in non-interactive/batch/CI mode; MUST degrade gracefully on cgg absence or failure and never block ADR creation (Governing: ADR-0033, SPEC-0034 REQ "Enhanced /sdd:adr")
+- **v5.0.0+**: MUST offer the call graph opt-in via `AskUserQuestion` per Step 2b on full-tier ADRs (never on lightweight ones) — default to "no" in non-interactive/batch/CI mode; MUST degrade gracefully on cgg absence or failure and never block ADR creation (Governing: ADR-0033, SPEC-0034 REQ "Enhanced /sdd:adr")
 
 ## Graph Edge Frontmatter (per ADR-0023 / SPEC-0018)
 

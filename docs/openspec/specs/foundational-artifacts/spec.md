@@ -12,12 +12,29 @@ Standard formats for architectural decisions (MADR) and specifications (OpenSpec
 
 ### Requirement: MADR ADR Format
 
-The `/sdd:adr` skill SHALL create ADRs using the MADR (Markdown Architectural Decision Records) format. Each ADR MUST include YAML frontmatter with `status` and `date` fields. Each ADR MUST include sections for Context and Problem Statement, Decision Drivers, Considered Options, Decision Outcome (with Consequences and Confirmation), Pros and Cons of the Options, and Architecture Diagram.
+The `/sdd:adr` skill SHALL create ADRs using the MADR (Markdown Architectural Decision Records) format. Each ADR MUST include YAML frontmatter with `status` and `date` fields.
+
+ADRs come in two tiers, chosen by the option space rather than by perceived importance:
+
+- A **full** ADR MUST include sections for Context and Problem Statement, Decision Drivers, Considered Options, Decision Outcome (with Consequences and Confirmation), Pros and Cons of the Options, and Architecture Diagram, and MUST present at least two substantively argued options.
+- A **lightweight** ADR — requested with `--quick` and marked `tier: quick` in frontmatter — MUST include Context and Problem Statement, Decision, Alternative, and Consequences. It MUST name exactly one chosen option and exactly one alternative (typically "do not do this"), and MUST NOT list options the text itself dismisses.
+
+When drafting without `--quick` surfaces only one viable option, the skill MUST offer the lightweight tier rather than padding Considered Options with alternatives it would immediately reject. When drafting with `--quick` surfaces a second viable option, the skill MUST switch to the full tier.
 
 #### Scenario: Create a new ADR
 
 - **WHEN** a user runs `/sdd:adr` with a description
 - **THEN** the skill SHALL create a new ADR file at `docs/adrs/ADR-XXXX-short-title.md` with all required MADR sections, YAML frontmatter with status "proposed", and the current date
+
+#### Scenario: Lightweight ADR
+
+- **WHEN** the user runs `/sdd:adr --quick "store equipment placement as a fixed grid"`
+- **THEN** the created ADR SHALL carry `tier: quick` in its frontmatter, SHALL contain Context and Problem Statement, Decision, Alternative, and Consequences sections, and SHALL NOT contain Considered Options, Pros and Cons of the Options, or Architecture Diagram sections
+
+#### Scenario: Single viable option without --quick
+
+- **WHEN** the user runs `/sdd:adr` without `--quick` and drafting finds only one option that can be argued for honestly
+- **THEN** the skill SHALL ask whether to write a lightweight ADR instead of listing alternatives it would dismiss, and SHALL default to the lightweight tier in a non-interactive session
 
 #### Scenario: Sequential ADR numbering
 
@@ -31,12 +48,17 @@ The `/sdd:adr` skill SHALL create ADRs using the MADR (Markdown Architectural De
 
 ### Requirement: Architecture Diagrams
 
-Every ADR MUST include an Architecture Diagram section containing at least one Mermaid diagram. The diagram SHOULD use C4 context/container diagrams for system-level decisions, sequence diagrams for flows, and ERDs for data models.
+Every full-tier ADR MUST include an Architecture Diagram section containing at least one Mermaid diagram. The diagram SHOULD use C4 context/container diagrams for system-level decisions, sequence diagrams for flows, and ERDs for data models. Lightweight ADRs (`tier: quick`) MUST NOT include an Architecture Diagram section — it is omitted, not left empty.
 
 #### Scenario: Mermaid diagram inclusion
 
 - **WHEN** an ADR is created
 - **THEN** it SHALL contain at least one Mermaid diagram in the Architecture Diagram section
+
+#### Scenario: Lightweight ADR has no diagram
+
+- **WHEN** an ADR is created with `--quick`
+- **THEN** it SHALL have no Architecture Diagram section, and the call-graph opt-in SHALL NOT be offered
 
 ### Requirement: OpenSpec Specification Format
 
