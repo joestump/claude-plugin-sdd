@@ -70,7 +70,7 @@ When orchestrating multiple SDD plugin skills in a single session (e.g., running
 
 Run `make check` (`make test` + `make lint` + `make scan`) before pushing.
 
-- `make test` runs the docs-site build-script unit tests (`node --test`) and then a full docs-site build.
+- `make test` runs the docs-site build-script unit tests (`node --test`), the `/sdd:graph` helper's unit tests (`python3 -m unittest` over `skills/graph/lib/`), and then a full docs-site build.
 - `make lint` runs `scripts/check-structure.sh` — plugin manifest, SKILL.md frontmatter, `skills/_index.json` consistency, eval definition shape, and a guard against bare `JSX.Element` annotations in `templates/` — plus a docs-site typecheck.
 - `make scan` runs `scripts/gitleaks-scan.sh` — gitleaks over git history and the working tree. Needs `gitleaks` installed (`brew install gitleaks`); it fails rather than skipping when the tool is missing.
 
@@ -81,6 +81,8 @@ The LLM-graded skill evals under `evals/` run only in CI; `make test` does not i
 ### Release Process
 
 `main` is protected: direct pushes are rejected, and `lint`, `test`, and `gitleaks` must pass before anything merges. Enforcement includes admins, so the version bump goes through a PR like any other change.
+
+Bump the version whenever skill behaviour changes, not only for milestones. Claude Code caches an installed plugin under a directory named for the manifest version (`~/.claude/plugins/cache/claude-plugin-sdd/sdd/<version>/`), so a fix merged to `main` without a version bump never reaches an existing install — the cached copy keeps reporting the old version and the old behaviour. `.claude-plugin/plugin.json` is the only manifest; `make lint` fails on any stray `plugin.json` elsewhere.
 
 When releasing a new version:
 1. Bump the version in `.claude-plugin/plugin.json`

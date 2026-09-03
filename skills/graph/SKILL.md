@@ -9,7 +9,7 @@ argument-hint: "<verb> [<artifact-id>] [--scope <subtree>] [--module <name>] [--
 
 # /sdd:graph — Artifact Graph Skill
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 You are running `/sdd:graph`. This skill builds an in-memory directed graph of the project's ADRs, specs, and governed source files, then answers queries against it.
 
@@ -19,7 +19,7 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR and spec directories. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
    In Story 2 the helper accepts a single root and a single ADR/spec dir per invocation. Workspace-mode aggregation (multiple modules, `[module]/ID` prefixes) lands in Story 5.
 
@@ -103,13 +103,16 @@ Single contiguous bidirectional diagram: ancestors above (rendered as top-down c
 
 ### `orphans`
 
-Surfaces three categories of orphan as flat markdown tables (default for flat results per SPEC-0018):
+Surfaces four categories of orphan as flat markdown tables (default for flat results per SPEC-0018):
 
-1. **Source files without governing artifacts** — non-markdown source files in the project tree that contain no `Governing:` comment block. Discovered by a dedicated walk so these files do not become graph nodes (they remain invisible to traversal queries) but DO surface here. The walk uses the same exclusions as the graph builder (`.git`, `node_modules`, `vendor`, build/cache dirs, `docs/`, `skills/`, `references/`, etc.). Markdown files are skipped — they participate via frontmatter (ADRs, specs) or are out of scope for v1 (READMEs, ad-hoc docs).
-2. **Specs with no implementing code** — specs that no source file's governing comment references.
-3. **ADRs with no implementing spec** — ADRs that no spec declares `implements:` against.
+1. **Source files without governing artifacts** — non-markdown source files in the project tree that contain no `Governing:` comment at all. Discovered by a dedicated walk so these files do not become graph nodes (they remain invisible to traversal queries) but DO surface here. The walk uses the same exclusions as the graph builder (`.git`, `node_modules`, `vendor`, build/cache dirs, `docs/`, `skills/`, `references/`, etc.). Markdown files are skipped — they participate via frontmatter (ADRs, specs) or are out of scope for v1 (READMEs, ad-hoc docs).
+2. **Source files with unrecognized governing comments** — files that DO contain a `Governing:` marker but from which the parser could read no `ADR-XXXX` / `SPEC-XXXX` ID: an issue-only reference (`// Governing: #24`), or a comment opener the parser does not accept. Each row carries the reason. These are listed apart from category 1 because the fix is the opposite — reformat the comment the file already has, do not add another. The same files also surface as `governing-unrecognized` warnings in `validate`.
+3. **Specs with no implementing code** — specs that no source file's governing comment references.
+4. **ADRs with no implementing spec** — ADRs that no spec declares `implements:` against.
 
-Optional `--scope <subtree>` restricts category 1 to source files under the given path. Categories 2 and 3 always cover the full graph.
+Optional `--scope <subtree>` restricts categories 1 and 2 to source files under the given path. Categories 3 and 4 always cover the full graph.
+
+**How governing comments are read.** The helper scans the first 4096 bytes of each file for every line matching `<opener> Governing: ...` or `<opener> Implements: ...` — openers are `//`, `#`, `<!--`, `*` (JSDoc / block-comment continuation), and `/*` — and unions the artifact IDs across all of them. The canonical two-line block (`Governing:` + `Implements:`) and a repo that keeps an issue-style line above the artifact-style one are therefore both credited correctly; the first `Governing:` line no longer decides the file's fate on its own.
 
 **Operator-facing framing.** A spec is flagged whenever no `Governing:` comment in source code references it; comment-less code is invisible by design (per SPEC-0018 § "Files without governing comments"). For repos that haven't yet attached governing comments to source code, expect every spec and ADR to be flagged. The output includes a one-line preamble explaining this so first-time readers know the verb is working as intended, not reporting a real catastrophe.
 
@@ -216,6 +219,7 @@ Distinguishable from success responses by the presence of a top-level `error` fi
   "query": {"verb": "orphans"},
   "results": {
     "code_files_without_governing": [...],
+    "code_files_with_unrecognized_governing": [{"file": "...", "reason": "..."}, ...],
     "specs_without_implementing_code": [...],
     "adrs_without_implementing_spec": [...]
   }

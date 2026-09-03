@@ -9,7 +9,7 @@ argument-hint: "[add|update|embed|status|remove] [--module <name>] [--foreground
 
 # Index Repository into QMD
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 Create per-repository [qmd](https://github.com/tobi/qmd) collections so agents and humans can run hybrid search across a repo's ADRs, OpenSpec specs, source code, and tracker issues from a single query plane. Each repository owns four collections (`{repo}-adrs`, `{repo}-specs`, `{repo}-code`, `{repo}-issues`) so searches can be filtered cleanly with `qmd query "..." -c {repo}-adrs`. The issues collection is populated by syncing the configured tracker into `.sdd/issues/{id}.md` files (per ADR-0025 and `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md`). Workspace projects (ADR-0016) get one set of collections per module: `{repo}-{module}-{kind}`.
 
@@ -17,7 +17,7 @@ Create per-repository [qmd](https://github.com/tobi/qmd) collections so agents a
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. If `$ARGUMENTS` contains `--module <name>`, scope to that module; otherwise, in a workspace, iterate all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`, both per-module in workspace mode.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution". If `$ARGUMENTS` contains `--module <name>`, scope to that module; otherwise, in a workspace, iterate all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`, both per-module in workspace mode.
 
 ### Step 1: Parse Subcommand
 
@@ -187,7 +187,7 @@ For each collection in the name set:
 
 6. **Issues collection initial sync** (per ADR-0025 / SPEC-0019 REQ "Issues Collection Sync via /sdd:index"). The `*-issues` collection is unique among the four — its source directory `.sdd/issues/` is initially empty (no synced issue files exist until the first sync). Before running `qmd collection add` for the issues collection, run an initial sync via the tracker-sync layer to populate `.sdd/issues/`:
 
-   1. Detect the configured tracker per the **Tracker Detection** flow in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. If no tracker is detected, skip the issues collection entirely with a one-line warning ("No tracker configured — skipping `{repo}-issues` collection. Run `/sdd:init` to configure a tracker, or use the tasks.md fallback per ADR-0007."). Continue with the other three collections.
+   1. Detect the configured tracker per the **Tracker Detection** flow in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Tracker Detection". If no tracker is detected, skip the issues collection entirely with a one-line warning ("No tracker configured — skipping `{repo}-issues` collection. Run `/sdd:init` to configure a tracker, or use the tasks.md fallback per ADR-0007."). Continue with the other three collections.
    2. If a tracker is detected, invoke the per-tracker fetch+normalize per `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md` § "Per-Tracker Sync" → relevant tracker section. The sync writes one `.sdd/issues/{id}.md` file per open and recently-closed issue, using the canonical frontmatter schema documented in `tracker-sync.md` § "Canonical Frontmatter Schema".
    3. After the sync completes, write the cursor to `.sdd/issues/_meta.json` per `tracker-sync.md` § "Cursor Management".
    4. Then proceed with `qmd collection add` for the `*-issues` collection per the steps above.
@@ -534,7 +534,7 @@ In aggregate mode, render one section per module before the report's shared sect
 
 - MUST run preflight checks (qmd installed, in git repo, CLAUDE.md present) before any side-effecting `qmd` command — partial failures are confusing and hard to undo
 - MUST derive the repo name from `git rev-parse --show-toplevel` rather than the current working directory; users may invoke from a subdirectory
-- MUST use the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` instead of hardcoding `docs/adrs/` or `docs/openspec/specs/` — repos can override these paths in CLAUDE.md (Governing: ADR-0015)
+- MUST use the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" instead of hardcoding `docs/adrs/` or `docs/openspec/specs/` — repos can override these paths in CLAUDE.md (Governing: ADR-0015)
 - MUST create four collections per repo (or per module in workspace mode): `-adrs`, `-specs`, `-code`, and `-issues` — collection-level filtering (`-c <name>`) is the primary mechanism users will use to keep different content types separate. The issues collection MAY be skipped (with a warning) when no tracker is configured per ADR-0007 (Governing: ADR-0025, SPEC-0019 REQ "Issues Collection Layout")
 - MUST run an issues sync via `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md` BEFORE running `qmd collection add` for the issues collection in the `add` operation — the source directory `.sdd/issues/` is initially empty, so the collection has nothing to scan until the first sync writes the markdown files (Governing: SPEC-0019 REQ "Issues Collection Sync via /sdd:index")
 - MUST run an issues sync via `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md` BEFORE `qmd update` in the `update` operation — fresh issue state must land in `.sdd/issues/` before the file scan picks up the changes

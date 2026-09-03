@@ -7,7 +7,7 @@ argument-hint: "[target] [--module <name>]"
 
 # Quick Drift Check
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 You are performing a fast, focused drift check on a specific target. This skill detects whether code aligns with its governing ADRs and specs.
 
@@ -15,7 +15,7 @@ You are performing a fast, focused drift check on a specific target. This skill 
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
 
    <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
 
@@ -45,7 +45,7 @@ You are performing a fast, focused drift check on a specific target. This skill 
 
    On entry, check the qmd index's last-modified timestamp for this repo's collections (use the exact-prefix match algorithm from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "This-Repo Collection Identification" to identify them, then take the maximum `lastUpdated` across them). If that timestamp is older than the configured staleness threshold, run a silent `qmd update` first.
 
-   The threshold default is **120 minutes** and is configurable in CLAUDE.md `### SDD Configuration` `#### Index Freshness` `**Staleness Threshold**` (e.g., `30m`, `4h`). Read it via the **Config Resolution** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`.
+   The threshold default is **120 minutes** and is configurable in CLAUDE.md `### SDD Configuration` `#### Index Freshness` `**Staleness Threshold**` (e.g., `30m`, `4h`). Read it via the **Config Resolution** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution".
 
    On stale → update path, emit a one-line note in the report header: `Index was {age} stale — refreshed before running.` On fresh, proceed silently. On qmd update failure, surface the error per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Error Handling" and continue (best-effort; the check still runs against the existing index).
 

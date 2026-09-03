@@ -10,7 +10,7 @@ argument-hint: "[SPEC-XXXX | issue numbers | (empty = propose from backlog)] [--
 
 # Work on Issues
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 You are picking up tracker issues and implementing them in parallel using git worktrees. Each issue gets its own worktree and worker agent.
 
@@ -22,7 +22,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
 
 1. **Parse arguments**: Parse `$ARGUMENTS`.
 
@@ -61,11 +61,11 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
 2. **Load architecture context** (when a spec is provided or issues reference a spec): Read the spec's `spec.md` and `design.md`. Validate spec pairing per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation". Scan for referenced ADRs (e.g., `ADR-0001`) and read those too. This context will be sent to every worker. If no spec is associated with the selected issues, skip this step — workers will rely on issue body and codebase context alone.
 
-3. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Fallback to `tasks.md` parsing if no tracker is found.
+3. **Detect tracker**: Follow the "Tracker Detection" flow in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Tracker Detection". Fallback to `tasks.md` parsing if no tracker is found.
 
 3a. **Ensure lifecycle labels exist** (Governing: SPEC-0015 REQ "Issue Lifecycle Labels"):
 
-   Create the lifecycle labels using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`) — attempt to use each label, and only create it if it doesn't exist. This avoids failures on repeated runs.
+   Create the lifecycle labels using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern") — attempt to use each label, and only create it if it doesn't exist. This avoids failures on repeated runs.
 
    | Label | Color | Meaning |
    |-------|-------|---------|
@@ -172,7 +172,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
      - If the user says stop, halt and report.
    - Run `git fetch` to ensure we have the latest remote state.
 
-7. **Read worktree config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Read the `#### Worktrees` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Base Dir`=`.claude/worktrees/`, `Max Agents`=3, `Auto Cleanup`=false, `PR Mode`="ready". CLI flags override config values.
+7. **Read worktree config from CLAUDE.md**: Follow the "Config Resolution" pattern in the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution". Read the `#### Worktrees` subsection from the `### SDD Configuration` section in CLAUDE.md. Defaults: `Base Dir`=`.claude/worktrees/`, `Max Agents`=3, `Auto Cleanup`=false, `PR Mode`="ready". CLI flags override config values.
 
 7a. **Resolve parallelism limit** (Governing: SPEC-0015 REQ "Parallelism Limits", ADR-0017 Layer 1):
 
@@ -208,7 +208,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
 8a. **Build sibling PR manifest** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"):
 
-   Before dispatching any workers, build a pre-flight awareness manifest so each agent knows what siblings are doing. Follow the **Pre-Flight PR Awareness** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`.
+   Before dispatching any workers, build a pre-flight awareness manifest so each agent knows what siblings are doing. Follow the **Pre-Flight PR Awareness** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Pre-Flight PR Awareness".
 
    1. **Query the tracker for all open PRs** in the current sprint, epic, or spec scope:
       ```bash
@@ -229,7 +229,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
       - **Shared Types Available** — types, helpers, and their locations (with merge status)
       - **In-Progress Sibling PRs** — table of PR number, issue, branch, files, and status
 
-   This manifest is injected into each worker's context in step 9.4. Workers keep it current via live `SendMessage` broadcasts per the **Worker Communication Protocol** in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`.
+   This manifest is injected into each worker's context in step 9.4. Workers keep it current via live `SendMessage` broadcasts per the **Worker Communication Protocol** in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Worker Communication Protocol".
 
 9. **Create worktrees and assign work**: For each workable issue (respecting dependency order and max-agents concurrency):
 
@@ -297,7 +297,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
        4. On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error to the lead via SendMessage and stop work on this issue. Per ADR-0024, the pre-v5 fallback ("just write new code") is gone in v5; the failure mode is "fix qmd, retry."
 
-    3b. **Coordinate with sibling workers** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"). Follow the "Worker Communication Protocol" in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. Before modifying any file:
+    3b. **Coordinate with sibling workers** (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness"). Follow the "Worker Communication Protocol" in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Worker Communication Protocol". Before modifying any file:
        - **Check the Sibling PR Manifest** for files already claimed by siblings. If the file appears under "Files Currently Being Modified by Siblings", send `CONFLICT_ALERT` and wait for lead coordination instead of modifying it.
        - **Check for shared types** in the manifest's "Shared Types Available" section. If a needed type, struct, interface, or helper already exists (from a merged foundation PR or an in-progress sibling), import it from the expected location instead of creating a duplicate.
        - **Broadcast live updates** via `SendMessage` to all siblings:
@@ -386,7 +386,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
 11a. **Compute topological merge order** (Governing: SPEC-0015 REQ "Topological Merge Ordering"):
 
-   After all workers have completed and PRs are in `in-review` state, compute the optimal merge order before merging begins. Follow the **Topological Merge Ordering** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`.
+   After all workers have completed and PRs are in `in-review` state, compute the optimal merge order before merging begins. Follow the **Topological Merge Ordering** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Topological Merge Ordering".
 
    1. **Collect file lists for each PR:**
       ```bash
@@ -446,7 +446,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
     **12.2: Offer worktree cleanup.** If CLAUDE.md `Worktrees > Auto Cleanup` is `true`, clean up worktrees for successfully-PRed issues automatically. Otherwise, use `AskUserQuestion`:
     - "Remove worktrees for completed issues? (Failed issue worktrees are always preserved.)"
     - Options: "Yes, clean up" / "No, keep them"
-    - If yes: for each successful issue, follow the **Worktree Cleanup** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` — `git worktree remove` alone leaves the branch ref behind permanently, so the branch delete step is not optional. Note that at this point the issue's PR is open and unmerged; the branch is deletable only because `git push -u` in step 11 put every commit on the remote, and the pattern's step 3 is what keeps a branch with unpushed work from being lost.
+    - If yes: for each successful issue, follow the **Worktree Cleanup** pattern in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Worktree Cleanup" — `git worktree remove` alone leaves the branch ref behind permanently, so the branch delete step is not optional. Note that at this point the issue's PR is open and unmerged; the branch is deletable only because `git push -u` in step 11 put every commit on the remote, and the pattern's step 3 is what keeps a branch with unpushed work from being lost.
 
     **12.3: Batch deferred design doc updates** (Governing: SPEC-0015 REQ "Design Document Isolation"):
 
@@ -536,7 +536,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - When no arguments are provided, MUST analyze the backlog and propose a batch to the user before starting any work
 - MUST read spec.md and design.md before dispatching workers only when a spec is provided or resolvable from issue bodies
 - MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
-- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to read configuration from CLAUDE.md
+- MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" to read configuration from CLAUDE.md
 - MUST extract branch names from issue bodies — never invent branch names
 - MUST skip epics (labeled `epic` or titled "Implement ...") — only work on implementation issues
 - MUST skip issues without `### Branch` sections and suggest `/sdd:enrich`
@@ -565,7 +565,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - Workers MUST broadcast `TYPE_CREATED` via `SendMessage` after creating new types, structs, interfaces, or shared helpers
 - Workers receiving `TYPE_CREATED` MUST import the type rather than creating a duplicate
 - Workers receiving `FILE_CLAIM` for a file they also need MUST send `CONFLICT_ALERT` and wait for lead coordination
-- MUST ensure lifecycle labels (`queued`, `in-progress`, `in-review`, `merged`) exist before assigning work — using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`) (Governing: SPEC-0015 REQ "Issue Lifecycle Labels")
+- MUST ensure lifecycle labels (`queued`, `in-progress`, `in-review`, `merged`) exist before assigning work — using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern") (Governing: SPEC-0015 REQ "Issue Lifecycle Labels")
 - MUST apply `queued` label to all workable issues upon discovery
 - MUST transition `queued` -> `in-progress` when an agent picks up an issue, removing the previous label first
 - MUST transition `in-progress` -> `in-review` when a PR is created, removing the previous label first
