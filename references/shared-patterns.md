@@ -453,6 +453,8 @@ All skills that generate or modify code MUST use file-level governing comment bl
 
 For markdown files: `<!-- Governing: ... -->`
 
+`/sdd:graph` reads the first 4096 bytes of each file, accepts `//`, `#`, `<!--`, `*` (JSDoc / block-comment continuation) and `/*` as openers, and unions the artifact IDs from every `Governing:` / `Implements:` line it finds. A `Governing:` / `Implements:` line that names no `ADR-XXXX` / `SPEC-XXXX` (an issue reference, say) is reported by `validate` and `orphans` as *unrecognized* rather than treated as absent.
+
 ### Rules
 - MUST use file-level blocks at the top of each file (not per-line annotations)
 - Inline governing comments SHOULD only be used when the connection is non-obvious from the file-level block
