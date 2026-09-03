@@ -303,19 +303,43 @@ def _read_text(path: Path) -> str:
         return ""
 
 
-# Governing comment block per ADR-0020 / SPEC-0016 REQ "Governing Comment Format".
-# File-level only — first comment line that starts with `Governing:`.
+# Governing Comment Parsing
+#
+# Governing comment lines per ADR-0020 / SPEC-0016 REQ "Governing Comment
+# Format". Every `Governing:` and `Implements:` line in the file head is
+# considered and the artifact IDs they name are unioned — the canonical block
+# is two lines (`Governing:` + `Implements:`), and a repo may carry an
+# issue-style line (`// Governing: #24`) above the artifact-style one. Taking
+# only the first `Governing:` match let the issue line suppress the real one
+# and never credited the `Implements:` line at all.
+#
+# A file that contains the `Governing:` marker but yields no ADR-XXXX /
+# SPEC-XXXX IDs is reported separately from a file with no marker at all
+# (see `_walk_code_files`): "no traceability" and "traceability the parser
+# cannot read" call for opposite responses from the operator.
+#
+# @joestump 09/03/2026 - Accept `*` as an opener (JSDoc / block-comment
+# continuation lines), scan all matches instead of the first, and classify
+# unrecognized governing comments instead of folding them into orphans (#216).
 _GOVERNING_RE = re.compile(
     r"""
     ^[ \t]*                       # optional leading indent
-    (?://|\#|<!--)                # comment opener: //, #, <!--
-    [ \t]*Governing:[ \t]*        # marker
+    (?://|\#|<!--|\*|/\*)         # comment opener: //, #, <!--, * (JSDoc), /*
+    [ \t]*(?:Governing|Implements):[ \t]*  # marker (both lines of the block)
     (.+?)                         # body of governing line (non-greedy)
-    [ \t]*(?:-->)?[ \t]*$         # optional --> closer for HTML comments
+    [ \t]*(?:-->|\*/)?[ \t]*$     # optional closer for HTML / block comments
     """,
     re.IGNORECASE | re.VERBOSE | re.MULTILINE,
 )
+# Loose marker probe: any `Governing:` token, regardless of opener. A hit here
+# with no `_GOVERNING_RE` match means the comment is in a shape the parser
+# does not accept (unknown opener, mid-line placement, ...).
+_GOVERNING_MARKER_RE = re.compile(r"\b(?:Governing|Implements):", re.IGNORECASE)
 _GOVERNING_ID_RE = re.compile(r"\b(ADR-\d{4}|SPEC-\d{4})\b")
+
+# Reasons attached to files whose governing comment could not be used.
+UNRECOGNIZED_NO_IDS = "governing comment names no ADR-XXXX / SPEC-XXXX artifact"
+UNRECOGNIZED_OPENER = "`Governing:` present but not in a recognized comment opener"
 
 _DEFAULT_CODE_EXCLUDES = frozenset(
     {".git", "node_modules", "vendor", ".venv", "venv", "__pycache__",
@@ -330,7 +354,7 @@ def discover_code_edges(root: Path, excludes: frozenset[str] = _DEFAULT_CODE_EXC
     whose first 4096 bytes contain a governing-comment block. Markdown files
     are skipped — they participate via frontmatter, not governing comments.
     """
-    edges, _ = _walk_code_files(root, excludes)
+    edges, _, _ = _walk_code_files(root, excludes)
     return edges
 
 
@@ -347,22 +371,44 @@ def discover_orphan_code(
     "Code files" excludes markdown (`.md`, `.markdown`) — markdown
     participates via frontmatter, not governing comments. It also
     excludes binary files (any file whose head doesn't decode as UTF-8).
+
+    Files that carry a `Governing:` marker the parser cannot use are NOT
+    in this list — see `discover_unrecognized_governing`.
     """
-    _, orphans = _walk_code_files(root, excludes)
+    _, orphans, _ = _walk_code_files(root, excludes)
     return orphans
+
+
+def discover_unrecognized_governing(
+    root: Path, excludes: frozenset[str] = _DEFAULT_CODE_EXCLUDES
+) -> list[tuple[Path, str]]:
+    """Walk `root` and return (path, reason) for code files whose head
+    contains a `Governing:` marker that yields no artifact IDs.
+
+    These are neither governed (no edge can be built) nor comment-less
+    (the author did attempt traceability). Reporting them as orphans told
+    the operator to add a comment the file already has.
+    """
+    _, _, unrecognized = _walk_code_files(root, excludes)
+    return unrecognized
 
 
 def _walk_code_files(
     root: Path, excludes: frozenset[str]
-) -> tuple[list[tuple[Path, list[str]]], list[Path]]:
-    """Single tree walk that returns both governed-edge files and orphan files.
+) -> tuple[list[tuple[Path, list[str]]], list[Path], list[tuple[Path, str]]]:
+    """Single tree walk that classifies every code file in `root`.
 
-    Returns (edges, orphans):
-      - edges: list of (path, ids) for files with governing comment blocks
-      - orphans: list of paths for files without governing comment blocks
+    Returns (edges, orphans, unrecognized):
+      - edges: list of (path, ids) for files whose governing comment lines
+        name at least one artifact. IDs are unioned across every matching
+        line in the head, not taken from the first line only.
+      - orphans: list of paths for files with no `Governing:` marker at all
+      - unrecognized: list of (path, reason) for files that contain the
+        marker but from which no artifact ID could be read
     """
     edges: list[tuple[Path, list[str]]] = []
     orphans: list[Path] = []
+    unrecognized: list[tuple[Path, str]] = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = sorted(
             d for d in dirnames if d not in excludes and not d.startswith(".")
@@ -383,20 +429,22 @@ def _walk_code_files(
             # Skip files that look binary (high non-printable ratio).
             if _looks_binary(head):
                 continue
-            m = _GOVERNING_RE.search(text)
-            if m:
-                ids = sorted(set(_GOVERNING_ID_RE.findall(m.group(1))))
-                if ids:
-                    edges.append((path, ids))
-                else:
-                    # Block exists but referenced no IDs — treat as comment-less
-                    # for orphan purposes.
-                    orphans.append(path)
+            matches = list(_GOVERNING_RE.finditer(text))
+            ids: set[str] = set()
+            for m in matches:
+                ids.update(_GOVERNING_ID_RE.findall(m.group(1)))
+            if ids:
+                edges.append((path, sorted(ids)))
+            elif matches:
+                unrecognized.append((path, UNRECOGNIZED_NO_IDS))
+            elif _GOVERNING_MARKER_RE.search(text):
+                unrecognized.append((path, UNRECOGNIZED_OPENER))
             else:
                 orphans.append(path)
     return (
         sorted(edges, key=lambda t: str(t[0])),
         sorted(orphans),
+        sorted(unrecognized, key=lambda t: str(t[0])),
     )
 
 
@@ -606,7 +654,8 @@ def build_graph(
     # authored in code (per ADR-0020). Downstream verbs that distinguish
     # provenance can read the source-node `kind` (code vs adr/spec) along
     # with the `derived` flag.
-    for path, ids in discover_code_edges(root):
+    code_edges, _, unrecognized_governing = _walk_code_files(root, _DEFAULT_CODE_EXCLUDES)
+    for path, ids in code_edges:
         rel = str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
         full_node = prefix + rel
         if full_node not in g.nodes:
@@ -614,6 +663,23 @@ def build_graph(
         for target in ids:
             full_target = _maybe_prefix_target(target, prefix)
             g.edges.append(Edge(source=full_node, target=full_target, type="governed-by", derived=False))
+
+    # 3b. Governing comments the parser could not use. Same class as the
+    # authored-derived-field warning: the file is not wrong enough to block
+    # queries, but silently treating it as ungoverned hid the real problem
+    # behind a misleading `orphans` row (#216).
+    for path, reason in unrecognized_governing:
+        rel = str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
+        g.add_diagnostic(
+            severity="warning",
+            code="governing-unrecognized",
+            message=(
+                f"{prefix}{rel}: {reason} — file is treated as ungoverned. "
+                "Expected `// Governing: ADR-XXXX (...), SPEC-XXXX REQ \"...\"` "
+                "at the top of the file (openers: //, #, <!--, *, /*)."
+            ),
+            source_id=prefix + rel,
+        )
 
     # 4. Validate.
     _validate(g)
@@ -1642,6 +1708,10 @@ def _orphans_json(graph: Graph, root: Path, scope: str | None) -> str:
         "query": {"verb": "orphans", "scope": scope} if scope else {"verb": "orphans"},
         "results": {
             "code_files_without_governing": _orphan_code(graph, root, scope),
+            "code_files_with_unrecognized_governing": [
+                {"file": rel, "reason": reason}
+                for rel, reason in _unrecognized_code(graph, root, scope)
+            ],
             "specs_without_implementing_code": _orphan_specs(graph),
             "adrs_without_implementing_spec": _orphan_adrs(graph),
         },
@@ -1700,11 +1770,15 @@ def _validate_json(graph: Graph) -> str:
 def cmd_orphans(graph: Graph, root: Path, scope: str | None = None) -> str:
     """Render orphan diagnostic per SPEC-0018 REQ "Diagnostic Query Verbs".
 
-    Three orphan categories:
+    Four orphan categories:
       a. Source files with no governing comment block — found via a fresh
          walk of `root` (using the same exclusions as the graph builder).
          These files are NOT graph nodes, per SPEC-0018: they remain
          invisible to traversal queries and surface only here.
+      a'. Source files whose governing comment the parser could not use
+         (marker present, no artifact IDs readable). Listed apart from (a)
+         because the fix is different: reformat the comment, do not add
+         one. Each row carries the reason.
       b. Specs with no implementing source files — specs that no code
          file's governing comment references.
       c. ADRs with no implementing spec — ADRs that no spec declares
@@ -1716,16 +1790,17 @@ def cmd_orphans(graph: Graph, root: Path, scope: str | None = None) -> str:
     comments to source code, expect every spec and ADR to be flagged.
 
     Output is a flat markdown table per SPEC-0018 (default for flat
-    results). Optional `scope` filter restricts category (a) to files
-    under the given subtree.
+    results). Optional `scope` filter restricts categories (a) and (a')
+    to files under the given subtree.
     """
     out: list[str] = ["# /sdd:graph orphans", ""]
 
     code_orphans = _orphan_code(graph, root, scope)
+    code_unrecognized = _unrecognized_code(graph, root, scope)
     spec_orphans = _orphan_specs(graph)
     adr_orphans = _orphan_adrs(graph)
 
-    if not (code_orphans or spec_orphans or adr_orphans):
+    if not (code_orphans or code_unrecognized or spec_orphans or adr_orphans):
         out.append("No orphans detected.")
         out.append("")
         return "\n".join(out)
@@ -1734,7 +1809,9 @@ def cmd_orphans(graph: Graph, root: Path, scope: str | None = None) -> str:
         "Orphans surface artifacts that have no traceability link to code: a spec is "
         "flagged whenever no `Governing:` comment in source code references it, "
         "and an ADR is flagged whenever no spec declares `implements:` against it. "
-        "Source files without governing comments are listed separately."
+        "Source files without governing comments are listed separately, and source "
+        "files whose `Governing:` comment could not be parsed are listed apart from "
+        "those — they need the comment reformatted, not added."
     )
     out.append("")
 
@@ -1745,6 +1822,15 @@ def cmd_orphans(graph: Graph, root: Path, scope: str | None = None) -> str:
         out.append("|------|")
         for path in code_orphans:
             out.append(f"| `{_md_escape(path)}` |")
+        out.append("")
+
+    if code_unrecognized:
+        out.append("## Source files with unrecognized governing comments")
+        out.append("")
+        out.append("| File | Reason |")
+        out.append("|------|--------|")
+        for path, reason in code_unrecognized:
+            out.append(f"| `{_md_escape(path)}` | {_md_escape(reason)} |")
         out.append("")
 
     if spec_orphans:
@@ -1794,15 +1880,39 @@ def _orphan_code(graph: Graph, root: Path, scope: str | None) -> list[str]:
     `scope` filters results to a subtree. Empty / `.` / `./` / leading
     `./` are all normalized to "include everything."
     """
-    paths = discover_orphan_code(root)
-    scope_clean = (scope or "").lstrip("./").rstrip("/")
     rel_paths: list[str] = []
-    for p in paths:
-        rel = str(p.relative_to(root)) if p.is_relative_to(root) else str(p)
-        if scope_clean and not (rel == scope_clean or rel.startswith(scope_clean + "/")):
-            continue
-        rel_paths.append(rel)
+    for p in discover_orphan_code(root):
+        rel = _rel_path(root, p)
+        if _in_scope(rel, scope):
+            rel_paths.append(rel)
     return rel_paths
+
+
+def _unrecognized_code(graph: Graph, root: Path, scope: str | None) -> list[tuple[str, str]]:
+    """Code files with a `Governing:` marker the parser could not use, as
+    (relative path, reason) pairs. Same walk, exclusions, and scope
+    semantics as `_orphan_code`.
+    """
+    out: list[tuple[str, str]] = []
+    for p, reason in discover_unrecognized_governing(root):
+        rel = _rel_path(root, p)
+        if _in_scope(rel, scope):
+            out.append((rel, reason))
+    return out
+
+
+def _rel_path(root: Path, p: Path) -> str:
+    return str(p.relative_to(root)) if p.is_relative_to(root) else str(p)
+
+
+def _in_scope(rel: str, scope: str | None) -> bool:
+    """True when `rel` is under `scope`. Empty / `.` / `./` / leading `./`
+    are all normalized to "include everything."
+    """
+    scope_clean = (scope or "").lstrip("./").rstrip("/")
+    if not scope_clean:
+        return True
+    return rel == scope_clean or rel.startswith(scope_clean + "/")
 
 
 def _orphan_specs(graph: Graph) -> list[str]:

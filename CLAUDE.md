@@ -70,7 +70,7 @@ When orchestrating multiple SDD plugin skills in a single session (e.g., running
 
 Run `make check` (`make test` + `make lint` + `make scan`) before pushing.
 
-- `make test` runs the docs-site build-script unit tests (`node --test`) and then a full docs-site build.
+- `make test` runs the docs-site build-script unit tests (`node --test`), the `/sdd:graph` helper's unit tests (`python3 -m unittest` over `skills/graph/lib/`), and then a full docs-site build.
 - `make lint` runs `scripts/check-structure.sh` — plugin manifest, SKILL.md frontmatter, `skills/_index.json` consistency, eval definition shape, and a guard against bare `JSX.Element` annotations in `templates/` — plus a docs-site typecheck.
 - `make scan` runs `scripts/gitleaks-scan.sh` — gitleaks over git history and the working tree. Needs `gitleaks` installed (`brew install gitleaks`); it fails rather than skipping when the tool is missing.
 

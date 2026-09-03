@@ -7,7 +7,7 @@ argument-hint: "[capability name or ADR reference] [--review] [--module <name>]"
 
 # Create an OpenSpec Specification
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 You are creating or updating an OpenSpec specification. Every spec is a **paired artifact**: `spec.md` (requirements — what the system does) and `design.md` (architecture and rationale — how and why it does it).
 
@@ -21,7 +21,7 @@ When creating a new spec from scratch, both files are created together — align
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is referred to as `{spec-dir}` below.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is referred to as `{spec-dir}` below.
 
 1. **Determine the capability name**: Use kebab-case (e.g., `web-dashboard`, `webhook-trigger`). If converting from an ADR, derive from the ADR title. If `$ARGUMENTS` is empty (ignoring flags like `--review` and `--module`), use `AskUserQuestion` to ask the user what capability they want to specify.
 
@@ -178,7 +178,7 @@ When creating a new spec from scratch, both files are created together — align
 
 ### Team Handoff Protocol (only for `--review` mode)
 
-Follow the standard team handoff protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`. The drafter is the spec-writer; the reviewer is the architect who checks both spec.md and design.md against the Rules checklist below.
+Follow the standard team handoff protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Team Handoff Protocol". The drafter is the spec-writer; the reviewer is the architect who checks both spec.md and design.md against the Rules checklist below.
 
 ## Web-Facing Detection and Security Injection
 
@@ -234,7 +234,7 @@ A spec is **NOT UI-facing** if it exclusively involves: API-only backends consum
 
 ### When the spec IS UI-facing
 
-You MUST inject an **## Accessibility Requirements** section into spec.md, placed after the functional `## Requirements` section (and after the Security Requirements section if both apply). This section MUST cover all six topics below. Use the template in the "Accessibility Requirements Section Template" below.
+You MUST inject an **## Accessibility Requirements** section into spec.md, placed after the functional `## Requirements` section (and after the Security Requirements section if both apply). This section MUST cover all six topics below. Use the template in the "Accessibility Requirements Section Template" below **verbatim** — it is deliberately compact. Do NOT expand it with the full checklist: that lives once in `${CLAUDE_PLUGIN_ROOT}/references/accessibility-requirements.md`, and a project with dozens of UI specs was found carrying the same 42-line block in every one of them.
 
 ### When the spec is NOT UI-facing
 
@@ -245,44 +245,16 @@ Do NOT inject the Accessibility Requirements section. Proceed with the standard 
 ```markdown
 ## Accessibility Requirements
 
-This spec involves user-facing UI. The following accessibility requirements are MANDATORY per WCAG 2.1 AA.
+This spec involves user-facing UI. The following are MANDATORY for every UI component this spec produces, per WCAG 2.1 AA:
 
-### WCAG 2.1 AA Compliance
+- **WCAG 2.1 AA compliance** — the minimum conformance target
+- **ARIA landmarks** — `role="banner"`, `role="navigation"`, `role="main"`, `role="contentinfo"` on page-structure elements
+- **`aria-label` on icon-only controls** — every button or link with no visible text label
+- **`aria-live` regions for dynamic content** — `polite` for routine updates, `assertive` for critical status changes (HTMX swaps, auto-refresh panels, real-time status)
+- **Keyboard navigation** — logical tab order, Enter/Space activation, Escape to dismiss, arrow keys within composite widgets
+- **Focus management in modals and dialogs** — trap focus while open, move focus to the first focusable element on open, return it to the trigger on close
 
-All UI components produced by this spec MUST meet WCAG 2.1 Level AA conformance as the minimum accessibility target.
-
-### ARIA Landmarks
-
-Page structure elements MUST include ARIA landmark roles:
-- `role="banner"` on the site header
-- `role="navigation"` on navigation regions
-- `role="main"` on the primary content area
-- `role="contentinfo"` on the site footer
-
-### Icon-Only Controls
-
-All icon-only controls (buttons, links) that have no visible text label MUST include an `aria-label` attribute describing the control's purpose.
-
-### Dynamic Content Regions
-
-Dynamically updated content (HTMX swaps, auto-refresh panels, real-time status updates) MUST use `aria-live` regions:
-- `aria-live="polite"` for non-urgent updates
-- `aria-live="assertive"` for critical status changes
-
-### Keyboard Navigation
-
-All interactive elements MUST be operable via keyboard:
-- Logical tab order following visual layout
-- Enter/Space to activate buttons and controls
-- Escape to dismiss popups, dropdowns, and dialogs
-- Arrow keys for navigation within composite widgets (tabs, menus, tree views)
-
-### Focus Management
-
-Modals and dialogs MUST implement focus management:
-- Focus MUST be trapped within the modal when open (Tab/Shift+Tab cycles within the modal)
-- Focus MUST move to the modal's first focusable element on open
-- Focus MUST return to the triggering element when the modal is closed
+The full checklist behind each line is the SDD plugin's `references/accessibility-requirements.md`; this section is the normative summary and is not expanded inline.
 ```
 
 ## Backend Quality Detection and Guidelines Injection

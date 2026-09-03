@@ -9,7 +9,7 @@ argument-hint: "[skill-name] [--label bug|documentation|enhancement|usability] [
 
 # Report Friction with the SDD Plugin
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File".
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
 This is a meta-skill: when an SDD plugin skill burns time, breaks, or guides you wrong, you can use this to file a feedback issue against the plugin's own repository (`joestump/claude-plugin-sdd`). The user always sees and approves the entire submission first.
 
@@ -19,7 +19,7 @@ This skill is for **significant** friction with the SDD plugin specifically — 
 
 ### Examples that QUALIFY (file an issue)
 
-- A `/sdd:plan` invocation said "use the canonical Branch Naming pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md`", but that section described a slug algorithm that produced branch names rejected by the tracker. You had to manually fix every branch name.
+- A `/sdd:plan` invocation said "use the canonical Branch Naming pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Branch Naming Conventions"", but that section described a slug algorithm that produced branch names rejected by the tracker. You had to manually fix every branch name.
 - `/sdd:work` instructed you to broadcast `FILE_CLAIM` via `SendMessage`, but the agent harness rejected the call because no Team was active. The SKILL.md did not mention that Team initialization was a prerequisite. You spent ~8k tokens debugging.
 - `/sdd:check` told you to scan for "the first `# ` heading" to extract titles, but four files in the corpus had a leading H1 in a comment block, causing wrong titles in every report. SKILL.md should specify "first H1 outside frontmatter and outside HTML/comment blocks."
 - The same skill failed three times in a row with the same error message. The error came from the skill's own logic, not from the user's environment.
@@ -69,7 +69,7 @@ Two labels go on every issue this skill files:
 
 If `$ARGUMENTS` contains `--label <name>`, use that as the second label and skip the auto-classification.
 
-**Labels are best-effort — the report matters more than its labels.** You are almost always filing into a repo you cannot write to: you are reporting friction from *your* project against *this* plugin. Creating a missing label needs write access, so `gh label create` returns HTTP 404 for an external reporter, and the **Try-Then-Create Label Pattern** in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` does not apply here — that pattern assumes write access to the target repo.
+**Labels are best-effort — the report matters more than its labels.** You are almost always filing into a repo you cannot write to: you are reporting friction from *your* project against *this* plugin. Creating a missing label needs write access, so `gh label create` returns HTTP 404 for an external reporter, and the **Try-Then-Create Label Pattern** in `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern" does not apply here — that pattern assumes write access to the target repo.
 
 This matters because `gh issue create --label` is atomic: if any named label does not exist, the command fails and **no issue is created at all**. Applied naively, a missing label turns a complete, sanitized, user-approved friction report into nothing. So treat labelling as try-then-omit, never try-then-create:
 
