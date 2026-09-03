@@ -28,7 +28,7 @@ help: ## Show this help
 check: test lint scan ## Run tests, linters, and the secret scan
 
 .PHONY: test
-test: test-unit build ## Run the build-script unit tests, then build the docs site
+test: test-unit test-graph build ## Run the build-script and graph-helper unit tests, then build the docs site
 
 .PHONY: lint
 lint: lint-structure lint-types ## Validate plugin structure and docs-site types
@@ -52,6 +52,13 @@ test-unit: $(NODE_MODULES) ## Run the docs-site build-script unit tests
 			echo "no *.test.js files found under $(DOCS_SITE)/scripts" >&2; exit 1; \
 		fi; \
 		node --test $$files
+
+# The /sdd:graph helper is the one piece of the plugin that is code rather
+# than markdown, and its parsing rules (governing comments, frontmatter) have
+# already regressed silently once (#216). Stdlib unittest, no dependencies.
+.PHONY: test-graph
+test-graph: ## Run the /sdd:graph helper unit tests
+	python3 -m unittest discover -s skills/graph/lib -p 'test_*.py'
 
 # --- Lint components -------------------------------------------------------
 
