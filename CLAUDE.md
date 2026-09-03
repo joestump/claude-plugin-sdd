@@ -82,6 +82,8 @@ The LLM-graded skill evals under `evals/` run only in CI; `make test` does not i
 
 `main` is protected: direct pushes are rejected, and `lint`, `test`, and `gitleaks` must pass before anything merges. Enforcement includes admins, so the version bump goes through a PR like any other change.
 
+Bump the version whenever skill behaviour changes, not only for milestones. Claude Code caches an installed plugin under a directory named for the manifest version (`~/.claude/plugins/cache/claude-plugin-sdd/sdd/<version>/`), so a fix merged to `main` without a version bump never reaches an existing install — the cached copy keeps reporting the old version and the old behaviour. `.claude-plugin/plugin.json` is the only manifest; `make lint` fails on any stray `plugin.json` elsewhere.
+
 When releasing a new version:
 1. Bump the version in `.claude-plugin/plugin.json`
 2. Open a PR with the bump and merge it once CI is green (squash — `main` requires linear history)
