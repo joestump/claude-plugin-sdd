@@ -52,7 +52,7 @@ Every full-tier ADR MUST include an Architecture Diagram section containing at l
 
 #### Scenario: Mermaid diagram inclusion
 
-- **WHEN** an ADR is created
+- **WHEN** a full-tier ADR is created
 - **THEN** it SHALL contain at least one Mermaid diagram in the Architecture Diagram section
 
 #### Scenario: Lightweight ADR has no diagram
