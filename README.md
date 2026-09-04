@@ -8,7 +8,7 @@ The skills are written in the open Agent Skills format and are harness-portable:
 
 | Skill | Invoke | Description |
 |-------|--------|-------------|
-| **ADR** | `/sdd:adr [description] [--review]` | Create an ADR using MADR format with Mermaid diagrams |
+| **ADR** | `/sdd:adr [description] [--quick] [--review]` | Create an ADR using MADR format with Mermaid diagrams; `--quick` for single-option decisions |
 | **Spec** | `/sdd:spec [capability] [--review]` | Create spec.md + design.md with RFC 2119 requirements and Mermaid diagrams |
 | **Init** | `/sdd:init` | Set up CLAUDE.md with architecture context for design-aware sessions |
 | **Prime** | `/sdd:prime [topic]` | Load ADR and spec context into the session, optionally filtered by topic |
@@ -151,7 +151,8 @@ Creates ADRs using [MADR](https://adr.github.io/madr/) format:
 - Sequential numbering: `ADR-0001`, `ADR-0002`, etc.
 - Stored in `docs/adrs/`
 - Mermaid architecture diagrams included by default
-- YAML frontmatter with status, date, decision-makers
+- `--quick` writes a lightweight ADR (context, decision, one-line alternative, consequences — no options matrix, no diagram) for decisions whose only honest alternative is "don't"; the skill offers it itself when drafting finds a single viable option
+- YAML frontmatter with status, date, decision-makers (and `tier: quick` for lightweight ADRs)
 - Single-agent by default; add `--review` for team-based drafting with architect review
 - Offers to add an Architecture Context section to your CLAUDE.md on first use
 - After writing, suggests formalizing the decision into a spec with `/sdd:spec`
