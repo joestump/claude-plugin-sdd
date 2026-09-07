@@ -216,7 +216,33 @@ The template writes every topic inline. Where a governing artifact already fixes
 - **CSRF protection**: Per [ADR-0010](../../adrs/ADR-0010-security-posture.md) §3 — double-submit cookie on all state-changing routes. No deviation in this capability.
 ```
 
+
+## PRD Template (Client-Facing Capabilities)
+
+<!-- Governing: paired-artifact lineage with skills/adr — ADRs record
+engineering decisions; the PRD records product intent. Produced grill-first,
+before spec.md/design.md. Client-ready at the client-review status gate. -->
+
+When the requester wants a **client-ready PRD** — or the capability's
+requirements must be interrogated out of a stakeholder before engineering
+specification begins — produce a Product Requirements Document from
+`references/prd-template.md` instead of jumping straight to the spec pair.
+
+The template embeds a **grill-first production process**: map the request as a
+design tree, work the question frontier in rounds (each question with a
+recommended answer; facts explored via the repository, decisions reserved for
+the user), and do not draft until the frontier is empty, every section can be
+filled without a placeholder, and the blast radius has been confirmed against
+the actual codebase.
+
+Write the PRD as `{spec-dir}/{capability-name}/prd.md` alongside the eventual
+spec pair. Its **Success criteria** section feeds the spec's scenarios and
+becomes the completion gate for execution runs; its **Blast radius** section is
+the collision check against existing capabilities. Status gates:
+`draft → client-review → approved → shipped`.
+
 ## UI-Facing Detection and Accessibility Injection
+
 
 <!-- Governing: ADR-0019 (Frontend Quality Standards), SPEC-0016 REQ "Accessibility Requirements for UI Specs" -->
 
