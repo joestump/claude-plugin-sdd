@@ -66,6 +66,14 @@ ACYCLIC_EDGE_TYPES: frozenset[str] = frozenset(
     {"supersedes", "extends", "enables", "governs", "implements", "requires"}
 )
 
+# Acyclic edge types that point DOWNSTREAM (source unblocks / governs its
+# target). The remaining acyclic types point UPSTREAM (source builds on or
+# follows its target). `_validate_no_cycles` normalizes both groups to the
+# upstream direction before its DFS so a mixed pair like `enables` +
+# `extends` between the same two artifacts is not misread as a cycle
+# (issue #234).
+DOWNSTREAM_EDGE_TYPES: frozenset[str] = frozenset({"enables", "governs"})
+
 ADR_STATUSES = frozenset({"proposed", "accepted", "deprecated", "superseded"})
 SPEC_STATUSES = frozenset({"draft", "review", "approved", "implemented", "deprecated"})
 
@@ -864,31 +872,36 @@ def _validate_id_resolution(g: Graph) -> None:
 def _validate_no_cycles(g: Graph) -> None:
     """Detect cycles in DAG-required edge types via Tarjan-style DFS.
 
-    `governs` (ADR→SPEC) and `implements` (SPEC→ADR) are semantic inverses
-    describing the same relationship from opposite ends. Authoring both is
-    valid (and shown in SPEC-0018's own JSON example), but my detector
-    would otherwise treat the round-trip A→governs→B→implements→A as a
-    cycle. To honor dual authoring, an authored `governs` edge is omitted
-    from the cycle-detection adjacency when a matching authored `implements`
-    edge exists in the opposite direction; the implements edge alone
-    covers the relationship.
+    A true cycle requires edges that disagree about time: A must depend on B
+    while B also depends on A. Edge types disagree about *direction* though —
+    `supersedes`, `extends`, `implements`, and `requires` point **upstream**
+    (source builds on / follows target), while `enables` and `governs` point
+    **downstream** (source unblocks / governs target). A single DFS over the
+    raw directions therefore misreads any semantically-consistent mixed pair
+    — e.g. `ADR-A enables: [ADR-B]` with `ADR-B extends: [ADR-A]` — as a
+    2-cycle (issue #234). Instead of special-casing individual type pairs,
+    the adjacency is **direction-normalized**: downstream-pointing types
+    (`enables`, `governs`) are inverted before the DFS so every edge in the
+    adjacency expresses "depends on / builds on", and a detected cycle is a
+    genuine temporal contradiction. `governs`/`implements` dual authoring
+    (shown in SPEC-0018's own JSON example) is covered by the same
+    normalization: it collapses to two same-direction edges, which cannot
+    cycle.
     """
-    # Pre-compute the set of (spec, adr) pairs covered by authored `implements`.
-    implements_pairs: set[tuple[str, str]] = {
-        (e.source, e.target)
-        for e in g.edges
-        if e.type == "implements" and not e.derived
-    }
-    # Build adjacency for acyclic-required edges only (ignores `related`).
+    # Build the dependency-direction adjacency for acyclic-required edges
+    # only (ignores `related`).
     adj: dict[str, list[tuple[str, str]]] = {}
     for edge in g.edges:
         if edge.derived or edge.type not in ACYCLIC_EDGE_TYPES:
             continue
         if edge.target not in g.nodes:
             continue  # already reported by id-resolution
-        if edge.type == "governs" and (edge.target, edge.source) in implements_pairs:
-            continue  # semantic-inverse pair already covered by implements
-        adj.setdefault(edge.source, []).append((edge.target, edge.type))
+        if edge.type in DOWNSTREAM_EDGE_TYPES:
+            # Flip to upstream orientation: A enables B means B's validity
+            # postdates A, so in dependency terms B "depends on" A.
+            adj.setdefault(edge.target, []).append((edge.source, edge.type))
+        else:
+            adj.setdefault(edge.source, []).append((edge.target, edge.type))
 
     color: dict[str, int] = {}  # 0=white, 1=gray, 2=black
     parent: dict[str, tuple[str, str] | None] = {}
