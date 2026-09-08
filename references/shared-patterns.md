@@ -811,3 +811,59 @@ To find open PRs referencing a spec:
 - **GitHub**: `gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url --limit 50` or `gh pr view {number} --json ...` for specific PRs
 - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to list pull requests
 - **GitLab**: Use MCP tools or `glab mr list --search "SPEC-XXXX"`
+
+## Grill-First Interrogation
+
+<!-- Requested by @elirubel. Generic interrogation pattern — not PRD-specific.
+     Both /sdd:adr and /sdd:spec run this BEFORE drafting. -->
+
+Before drafting an ADR or a spec, map the request as a **design tree** and work
+it to convergence using frontier rounds. Do not draft until the tree is fully
+explored.
+
+**The design tree.** Every decision branches into the decisions that hang off
+it. The root is the request itself. Children are the choices, constraints, and
+unknowns that depend on it. Grandchildren depend on those, and so on.
+
+**Frontier rounds.** The frontier is every question whose prerequisites are
+already settled — the questions you can ask _now_ without guessing at answers
+you haven't heard yet. Ask the whole frontier in one round:
+
+1. Number each question and give your recommended answer.
+2. Wait for the user's answers before the next round.
+3. Each round's answers reshape the tree: settled decisions push the frontier
+   outward and unblock questions that depended on them. Recompute and ask the
+   next round.
+4. A question whose answer depends on another question still open in this
+   round belongs to a _later_ round, not this one.
+
+**Facts are yours; decisions are theirs.** When a frontier question needs a
+fact from the environment (filesystem, codebase, tools), dispatch a sub-agent
+or explore yourself — never ask the user for anything you can look up. Don't
+block on it: a running exploration is an unsettled prerequisite, so only the
+questions downstream of it wait; ask the rest of the frontier now. The
+_decisions_ are the user's: put each to them and wait.
+
+**Convergence gate.** The grill is done when the frontier is empty: every
+branch visited, nothing left silently assumed. Do not draft until the user
+confirms shared understanding.
+
+**Format a round like so:**
+
+```
+❓ **Q1** - **<question title>**: <question body, might be multiple
+   paragraphs, including multiple choices>
+
+➡️ <your recommended answer>
+
+---
+
+❓ **Q2** - **<question title>**: <question body>
+
+➡️ <your recommended answer>
+```
+
+**Anti-pattern: asking the user for facts.** If you find yourself asking
+"what database does this use?" or "what port does the server listen on?" —
+stop. Look it up. Only ask about _intent_, _preference_, and _tradeoff
+tolerance_.
