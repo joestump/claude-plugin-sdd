@@ -1,10 +1,39 @@
 {
-  "Creating Artifacts": ["adr", "spec"],
-  "Sprint Planning": ["plan", "organize", "enrich"],
-  "Implementation": ["work", "review", "respond"],
-  "Drift Detection": ["check", "audit"],
-  "Discovery": ["discover", "search"],
-  "Documentation": ["docs", "graph", "index"],
-  "Session Management": ["init", "prime"],
-  "Lifecycle Management": ["list", "status", "report-friction"]
+  "Creating Artifacts": [
+    "adr",
+    "spec",
+    "prd"
+  ],
+  "Sprint Planning": [
+    "plan",
+    "organize",
+    "enrich"
+  ],
+  "Implementation": [
+    "work",
+    "review",
+    "respond"
+  ],
+  "Drift Detection": [
+    "check",
+    "audit"
+  ],
+  "Discovery": [
+    "discover",
+    "search"
+  ],
+  "Documentation": [
+    "docs",
+    "graph",
+    "index"
+  ],
+  "Session Management": [
+    "init",
+    "prime"
+  ],
+  "Lifecycle Management": [
+    "list",
+    "status",
+    "report-friction"
+  ]
 }

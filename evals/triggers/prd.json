@@ -1,0 +1,8 @@
+[
+  {"query": "create a PRD for our client-facing approval workflow feature", "should_trigger": true},
+  {"query": "/sdd:prd", "should_trigger": true},
+  {"query": "write a product requirements document for the client onboarding portal", "should_trigger": true},
+  {"query": "I need a PRD for the Retention Engine v2 rollout", "should_trigger": true},
+  {"query": "create a spec for the internal caching layer", "should_trigger": false},
+  {"query": "implement the payout API", "should_trigger": false}
+]
