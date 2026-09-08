@@ -31,7 +31,7 @@ check: test lint scan ## Run tests, linters, and the secret scan
 test: test-unit test-graph build ## Run the build-script and graph-helper unit tests, then build the docs site
 
 .PHONY: lint
-lint: lint-structure lint-types ## Validate plugin structure and docs-site types
+lint: lint-structure lint-graph lint-types ## Validate plugin structure, artifact graph, and docs-site types
 
 # Kept out of `lint` deliberately: lint is static analysis of the tree, while
 # this also reads git history and needs a separate tool installed. CI runs it
@@ -69,6 +69,13 @@ lint-structure: ## Check the plugin manifest, skill frontmatter, and JSON syntax
 .PHONY: lint-types
 lint-types: $(NODE_MODULES) ## Typecheck the docs site
 	cd $(DOCS_SITE) && npm run typecheck
+
+# Validates the repo's own ADR/spec frontmatter graph. The plugin eating its
+# own cooking: a mixed-direction pair that reads as a false cycle would make
+# /sdd:graph unusable on this repo while unit tests stayed green (#234).
+.PHONY: lint-graph
+lint-graph: ## Run the /sdd:graph validator against this repo's own artifacts
+	python3 skills/graph/lib/graph.py validate --root .
 
 # --- Build and serve -------------------------------------------------------
 

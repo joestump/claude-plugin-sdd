@@ -227,5 +227,63 @@ class OrphansVerbTests(unittest.TestCase):
         self.assertEqual(["src/plain.js"], results["code_files_without_governing"])
 
 
+class CycleValidationTests(unittest.TestCase):
+    """Direction-normalized cycle detection (issue #234).
+
+    `enables`/`governs` point downstream while `extends`/`requires`/
+    `implements`/`supersedes` point upstream. A semantically-consistent
+    mixed pair (A enables B, B extends A) must NOT be reported as a
+    cycle, while genuine temporal contradictions still must be.
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _adr(self, id_: str, frontmatter: str) -> None:
+        _write(
+            self.root,
+            f"docs/adrs/{id_}-test.md",
+            f"---\nstatus: accepted\ndate: 2026-01-01\n{frontmatter}\n---\n\n# {id_}\n",
+        )
+
+    def _build(self) -> graph.Graph:
+        return graph.build_graph(
+            self.root,
+            self.root / "docs" / "adrs",
+            self.root / "docs" / "openspec" / "specs",
+        )
+
+    def _error_codes(self, g: graph.Graph) -> list[str]:
+        return [d.code for d in g.diagnostics if d.severity == "error"]
+
+    def test_mixed_enables_extends_pair_is_not_a_cycle(self) -> None:
+        self._adr("ADR-0001", "enables: [ADR-0002]")
+        self._adr("ADR-0002", "extends: [ADR-0001]")
+        self.assertEqual([], self._error_codes(self._build()))
+
+    def test_dual_governs_implements_authoring_is_not_a_cycle(self) -> None:
+        self._adr("ADR-0001", "governs: [SPEC-0001]")
+        _write(
+            self.root,
+            "docs/openspec/specs/one/spec.md",
+            "---\nstatus: approved\ndate: 2026-01-01\nimplements: [ADR-0001]\n---\n\n# SPEC-0001\n",
+        )
+        self.assertEqual([], self._error_codes(self._build()))
+
+    def test_genuine_extends_cycle_is_still_reported(self) -> None:
+        self._adr("ADR-0001", "extends: [ADR-0002]")
+        self._adr("ADR-0002", "extends: [ADR-0001]")
+        self.assertIn("cycle", self._error_codes(self._build()))
+
+    def test_genuine_enables_cycle_is_still_reported(self) -> None:
+        self._adr("ADR-0001", "enables: [ADR-0002]")
+        self._adr("ADR-0002", "enables: [ADR-0001]")
+        self.assertIn("cycle", self._error_codes(self._build()))
+
+
 if __name__ == "__main__":
     unittest.main()
