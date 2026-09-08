@@ -3,7 +3,6 @@ status: proposed
 date: 2026-09-08
 decision-makers: joestump, elirubel
 extends: [ADR-0003]
-governs: [SPEC-0042]
 related: [ADR-0023, ADR-0025]
 ---
 
