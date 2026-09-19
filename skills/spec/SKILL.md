@@ -18,6 +18,8 @@ You are creating or updating an OpenSpec specification. Every spec is a **paired
 When creating a new spec from scratch, both files are created together — alignment is automatic. The pairing review obligation applies to subsequent updates where one file may change without the other.
 
 ## Process
+0. **Grill-first interrogation**: Before drafting, stress-test the request per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Grill-First Interrogation Pattern" — work the question frontier in rounds, recommend answers, reserve decisions for the user, and converge before writing. Emit a clarification log section if grilling occurred.
+
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
