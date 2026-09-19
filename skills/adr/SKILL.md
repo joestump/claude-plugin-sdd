@@ -12,6 +12,8 @@ argument-hint: "[short description of the decision] [--quick] [--review] [--modu
 You are creating a new ADR using the MADR (Markdown Architectural Decision Records) format.
 
 ## Process
+0. **Grill-first interrogation**: Before drafting, stress-test the request per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Grill-First Interrogation Pattern" — work the question frontier in rounds, recommend answers, reserve decisions for the user, and converge before writing. Emit a clarification log section if grilling occurred.
+
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 

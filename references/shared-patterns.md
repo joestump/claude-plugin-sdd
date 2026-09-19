@@ -811,3 +811,35 @@ To find open PRs referencing a spec:
 - **GitHub**: `gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url --limit 50` or `gh pr view {number} --json ...` for specific PRs
 - **Gitea**: Use MCP tools (discovered via `ToolSearch`) to list pull requests
 - **GitLab**: Use MCP tools or `glab mr list --search "SPEC-XXXX"`
+
+## Grill-First Interrogation Pattern
+
+<!-- Governing: ADR-0003 (Artifact Formats) — patterns are reference-only; no graph edge -->
+
+Before drafting an ADR or spec, stress-test the request with a systematic interrogation. The goal is to surface every decision and dependency before committing to prose.
+
+### Algorithm
+
+1. **Map the request as a design tree.** Every decision branches into dependent decisions. Draw the tree mentally or as a sketch; the frontier is what remains unsettled.
+
+2. **Work the question frontier in rounds.** The frontier is every question whose prerequisites are already settled. Ask the whole frontier in one round:
+   - Each question numbered, with your **recommended answer**
+   - Wait for user responses before computing the next frontier
+   - A question that depends on an unanswered one belongs to a later round
+
+3. **Facts are yours; decisions are theirs.** When a frontier question needs a fact (codebase behavior, existing surface, prior decisions):
+   - Explore the repository or dispatch a sub-agent — **never ask the user** for something you can look up
+   - Only the *decisions* go to the user
+   - Show the fact-finding: cite files, quote governing comments, name the existing surface
+
+4. **Convergence gate.** The grill is done when **all** hold:
+   - The frontier is empty (no remaining questions)
+   - Every ADR or spec section can be filled without a placeholder
+   - The blast radius has been confirmed against the actual codebase (grep the surfaces, don't assume)
+
+5. **The Q&A trail is deliverable.** Record the rounds as a clarification log inside the artifact. For client-facing work, the questions demonstrate the thoroughness the client is paying for.
+
+### Cites
+
+`/sdd:adr` and `/sdd:spec` invoke this pattern before the outline phase. When they do, they emit:
+> Grilling per `shared-patterns.md § "Grill-First Interrogation Pattern"`
