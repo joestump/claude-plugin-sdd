@@ -110,6 +110,14 @@ You are performing a deep, comprehensive audit of design artifact alignment acro
    - Check for contradictory requirements within the same spec -- `[CRITICAL]`
    - Check for requirements that are untestable or ambiguous -- `[INFO]`
 
+   **PRD Status Gates** (per SPEC-0037; skip entirely when the PRD directory does not exist): PRDs are optional and client-facing-only, so **never report an ADR or spec for having no upstream PRD** — absence of a PRD is never a finding (ADR-0036 commitment 1). For each PRD:
+   - `approved` or `shipped` PRD whose `governs:` list resolves to no existing ADR or spec -- `[WARNING]`
+   - `shipped` PRD with a success criterion carrying no met evidence and no recorded waiver -- `[CRITICAL]`
+   - `approved` or `shipped` PRD with unresolved entries under `## Open questions` -- `[WARNING]`
+   - Success criteria that are not EARS-shaped (no `shall`, no leading EARS keyword) -- `[WARNING]`
+   - `status:` outside the `draft` / `client-review` / `approved` / `shipped` enum -- `[WARNING]`
+   - A PRD whose file is not named `PRD-XXXX-slug.md`, or that lives inside the spec directory -- `[WARNING]` (ADR-0036 commitments 2 and 3)
+
 6. **Produce the audit report** using the standard format:
 
    ```

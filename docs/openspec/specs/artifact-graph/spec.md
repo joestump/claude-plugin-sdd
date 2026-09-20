@@ -141,11 +141,30 @@ The `/sdd:graph` skill SHALL support three traversal query verbs that take an ar
 
 | Verb | Behavior |
 |------|----------|
-| `impact <id>` | Returns all artifacts and code files reachable from `<id>` via inverse-edge traversal — everything that depends on `<id>` and would be affected if it changes |
-| `ancestors <id>` | Returns all artifacts reachable from `<id>` via forward-edge traversal — everything `<id>` depends on, transitively |
+| `impact <id>` | Returns all artifacts and code files reachable from `<id>` via **downstream** traversal — everything that depends on `<id>` and would be affected if it changes |
+| `ancestors <id>` | Returns all artifacts reachable from `<id>` via **upstream** traversal — everything `<id>` depends on, transitively |
 | `chain <id>` | Returns the full lineage of `<id>` in both directions: ADR ↔ spec ↔ requirement ↔ code |
 
+Traversal MUST partition edges by **direction**, which is a property of the edge type, not of whether the edge was authored or derived:
+
+- **Downstream** (walked by `impact`): the authored types in `DOWNSTREAM_EDGE_TYPES` (`governs`, `enables`), plus the derived inverses of the upstream types (`implemented-by`, `extended-by`, `depended-on-by`, `superseded-by`).
+- **Upstream** (walked by `ancestors`): the remaining authored types (`implements`, `requires`, `extends`, `supersedes`), plus the derived inverses of the downstream types (`governed-by`, `enabled-by`).
+
+This is the same direction normalization the cycle check has applied since the fix for issue #234, and it MUST be applied consistently: splitting the traversal on the `derived` flag instead makes `impact` climb *upstream* through `governed-by` and `ancestors` descend *downstream* through `governs`. The error is invisible for an artifact whose relationships are authored from both ends, and total for one whose only edge is `governs:` — a PRD (ADR-0036).
+
+Where two same-direction edges connect the same pair of artifacts — the legal dual `governs:`/`implements:` authoring — traversal MUST render the target once, preferring the authored edge. Both edges MUST still appear in `validate` and `--json` output.
+
 Each verb MUST traverse transitively (multi-hop, not just direct neighbors). Each verb MUST clearly distinguish authored edges from derived edges in its output. Each verb MUST handle the case where `<id>` is not a known artifact by reporting an error with available artifact IDs or close matches.
+
+#### Scenario: An artifact that only governs has no ancestors
+
+- **WHEN** `ancestors ADR-XXXX` runs and `ADR-XXXX` authors only `governs:` and `related:`
+- **THEN** the verb SHALL report no declared ancestors, because a governed artifact is downstream of the governing one
+
+#### Scenario: Impact does not climb to a governing artifact
+
+- **WHEN** `impact SPEC-XXXX` runs and `ADR-YYYY` declares `governs: [SPEC-XXXX]`
+- **THEN** `ADR-YYYY` SHALL NOT appear in the impact set, because the spec depends on the ADR rather than the reverse
 
 #### Scenario: Impact of an ADR change
 

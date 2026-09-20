@@ -11,7 +11,7 @@ argument-hint: "[add|update|embed|status|remove] [--module <name>] [--foreground
 
 > **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
 
-Create per-repository [qmd](https://github.com/tobi/qmd) collections so agents and humans can run hybrid search across a repo's ADRs, OpenSpec specs, source code, and tracker issues from a single query plane. Each repository owns four collections (`{repo}-adrs`, `{repo}-specs`, `{repo}-code`, `{repo}-issues`) so searches can be filtered cleanly with `qmd query "..." -c {repo}-adrs`. The issues collection is populated by syncing the configured tracker into `.sdd/issues/{id}.md` files (per ADR-0025 and `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md`). Workspace projects (ADR-0016) get one set of collections per module: `{repo}-{module}-{kind}`.
+Create per-repository [qmd](https://github.com/tobi/qmd) collections so agents and humans can run hybrid search across a repo's ADRs, OpenSpec specs, source code, and tracker issues from a single query plane. Each repository owns four collections (`{repo}-adrs`, `{repo}-specs`, `{repo}-code`, `{repo}-issues`), plus a fifth — `{repo}-prds` — in repositories that have PRDs (ADR-0036), so searches can be filtered cleanly with `qmd query "..." -c {repo}-adrs`. The issues collection is populated by syncing the configured tracker into `.sdd/issues/{id}.md` files (per ADR-0025 and `${CLAUDE_PLUGIN_ROOT}/references/tracker-sync.md`). Workspace projects (ADR-0016) get one set of collections per module: `{repo}-{module}-{kind}`.
 
 ## Process
 
@@ -113,7 +113,7 @@ Before doing anything else, verify the environment. Each check has its own short
    ```
 
 2. Build the collection name set (per ADR-0025 / SPEC-0019, the issues collection is the fourth per-repo collection alongside adrs, specs, and code):
-   - **Single-module project** (no workspace, or `--module` provided): `{repo}-adrs`, `{repo}-specs`, `{repo}-code`, `{repo}-issues`. Where `{repo}` is the slug from step 3.1, plus the module name when `--module` is provided (e.g., `stumpcloud-infra-adrs`).
+   - **Single-module project** (no workspace, or `--module` provided): `{repo}-adrs`, `{repo}-specs`, `{repo}-code`, `{repo}-issues`, and `{repo}-prds` **only when the PRD directory exists and contains at least one `PRD-*.md`**. Where `{repo}` is the slug from step 3.1, plus the module name when `--module` is provided (e.g., `stumpcloud-infra-adrs`). PRDs are optional (ADR-0036): do not create an empty `prds` collection in a repository that has none.
    - **Workspace aggregate mode** (no `--module`, multiple modules detected): one quadruple per module — `{repo}-{module}-adrs`, `{repo}-{module}-specs`, `{repo}-{module}-code`, `{repo}-{module}-issues`. The skill iterates Steps 4–7 once per module.
 
 3. Resolve absolute paths for each collection's source directory:
@@ -138,6 +138,7 @@ For each collection in the name set:
    - ADR collection: `--mask "ADR-*.md"` (matches the MADR filename convention from ADR-0003)
    - Spec collection: `--mask "**/*.md"` (catches both `spec.md` and `design.md`)
    - Issues collection: `--mask "*.md"` (the synced issue files are flat under `.sdd/issues/`, one per issue, named `{id}.md` per ADR-0025 sub-decision 1)
+   - PRD collection: `--mask "PRD-*.md"` over `{prd-dir}` (the same filename-anchored shape as the ADR collection). **PRDs MUST NOT be indexed into the specs collection**: the spec mask is `**/*.md`, so a PRD co-located under the spec directory would be swallowed by it and returned as an engineering contract when an agent searched for one (ADR-0036 commitment 6).
    - Code collection: derive the mask from what is actually in the repo. Rank tracked extensions:
 
      ```bash

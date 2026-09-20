@@ -285,5 +285,305 @@ class CycleValidationTests(unittest.TestCase):
         self.assertIn("cycle", self._error_codes(self._build()))
 
 
+class PrdNodeTests(unittest.TestCase):
+    """PRDs as a first-class graph node type (ADR-0036, SPEC-0037).
+
+    PRDs are optional: a repository with no PRD directory must build the
+    same graph it did before PRDs existed. When present they sit upstream
+    of ADRs and specs, author only `governs:` and `related:`, and are
+    reported by `orphans` only once they reach `approved` or `shipped`.
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _prd(self, id_: str, status: str = "draft", frontmatter: str = "") -> None:
+        extra = f"{frontmatter}\n" if frontmatter else ""
+        _write(
+            self.root,
+            f"docs/prds/{id_}-checkout.md",
+            f"---\nstatus: {status}\ndate: 2026-01-01\n{extra}---\n\n# {id_}: Faster checkout\n",
+        )
+
+    def _adr(self, id_: str, frontmatter: str = "") -> None:
+        extra = f"{frontmatter}\n" if frontmatter else ""
+        _write(
+            self.root,
+            f"docs/adrs/{id_}-test.md",
+            f"---\nstatus: accepted\ndate: 2026-01-01\n{extra}---\n\n# {id_}: A decision\n",
+        )
+
+    def _spec(self, id_: str, slug: str, frontmatter: str = "") -> None:
+        extra = f"{frontmatter}\n" if frontmatter else ""
+        _write(
+            self.root,
+            f"docs/openspec/specs/{slug}/spec.md",
+            f"---\nstatus: approved\ndate: 2026-01-01\n{extra}---\n\n# {id_}: A spec\n",
+        )
+
+    def _build(self) -> graph.Graph:
+        return graph.build_graph(
+            self.root,
+            self.root / "docs" / "adrs",
+            self.root / "docs" / "openspec" / "specs",
+            self.root / "docs" / "prds",
+        )
+
+    def _codes(self, g: graph.Graph, severity: str) -> list[str]:
+        return [d.code for d in g.diagnostics if d.severity == severity]
+
+    # -- discovery ---------------------------------------------------------
+
+    def test_absent_prd_directory_yields_no_prd_nodes(self) -> None:
+        """Optionality: the common case is a repo with no PRDs at all."""
+        self._adr("ADR-0001")
+        g = self._build()
+        self.assertEqual([], [n for n in g.nodes.values() if n.kind == "prd"])
+        self.assertEqual([], self._codes(g, "error"))
+
+    def test_prd_is_discovered_as_its_own_node_kind(self) -> None:
+        self._prd("PRD-0001")
+        g = self._build()
+        self.assertIn("PRD-0001", g.nodes)
+        self.assertEqual("prd", g.nodes["PRD-0001"].kind)
+        self.assertEqual("draft", g.nodes["PRD-0001"].status)
+
+    def test_bare_prd_md_is_not_discovered(self) -> None:
+        """SPEC-0037 requires PRD-XXXX-slug.md, never a bare prd.md."""
+        _write(self.root, "docs/prds/prd.md", "---\nstatus: draft\n---\n\n# Nope\n")
+        self.assertEqual([], [n for n in self._build().nodes.values() if n.kind == "prd"])
+
+    def test_duplicate_prd_id_is_an_error(self) -> None:
+        self._prd("PRD-0001")
+        _write(
+            self.root,
+            "docs/prds/PRD-0001-other.md",
+            "---\nstatus: draft\ndate: 2026-01-01\n---\n\n# PRD-0001: Other\n",
+        )
+        self.assertIn("duplicate-id", self._codes(self._build(), "error"))
+
+    # -- edges -------------------------------------------------------------
+
+    def test_governs_edge_into_adr_and_spec_resolves(self) -> None:
+        self._prd("PRD-0001", "approved", "governs: [ADR-0001, SPEC-0001]")
+        self._adr("ADR-0001")
+        self._spec("SPEC-0001", "one")
+        g = self._build()
+        self.assertEqual([], self._codes(g, "error"))
+        targets = {e.target for e in g.edges if e.source == "PRD-0001" and e.type == "governs"}
+        self.assertEqual({"ADR-0001", "SPEC-0001"}, targets)
+
+    def test_governed_by_inverse_is_derived_not_authored(self) -> None:
+        self._prd("PRD-0001", "approved", "governs: [ADR-0001]")
+        self._adr("ADR-0001")
+        g = self._build()
+        inverse = [
+            e for e in g.edges
+            if e.source == "ADR-0001" and e.target == "PRD-0001" and e.type == "governed-by"
+        ]
+        self.assertEqual(1, len(inverse))
+        self.assertTrue(inverse[0].derived)
+
+    def test_governs_unknown_target_is_an_error(self) -> None:
+        """The defect that failed PR #240's lint: governs a nonexistent ID."""
+        self._prd("PRD-0001", "approved", "governs: [SPEC-9999]")
+        self.assertIn("unresolved-id", self._codes(self._build(), "error"))
+
+    def test_edge_field_outside_the_prd_vocabulary_warns(self) -> None:
+        """A PRD never implements or supersedes anything (ADR-0036)."""
+        self._prd("PRD-0001", "draft", "implements: [ADR-0001]")
+        self._adr("ADR-0001")
+        self.assertIn("schema-misuse", self._codes(self._build(), "warning"))
+
+    def test_authored_reverse_edge_warns(self) -> None:
+        self._prd("PRD-0001", "draft", "governed-by: [ADR-0001]")
+        self._adr("ADR-0001")
+        self.assertIn("authored-derived-edge", self._codes(self._build(), "warning"))
+
+    # -- orphans -----------------------------------------------------------
+
+    def test_draft_prd_governing_nothing_is_not_an_orphan(self) -> None:
+        self._prd("PRD-0001", "draft")
+        self.assertEqual([], graph._orphan_prds(self._build()))
+
+    def test_client_review_prd_governing_nothing_is_not_an_orphan(self) -> None:
+        self._prd("PRD-0001", "client-review")
+        self.assertEqual([], graph._orphan_prds(self._build()))
+
+    def test_approved_prd_governing_nothing_is_an_orphan(self) -> None:
+        self._prd("PRD-0001", "approved")
+        self.assertEqual(["PRD-0001"], graph._orphan_prds(self._build()))
+
+    def test_shipped_prd_governing_nothing_is_an_orphan(self) -> None:
+        self._prd("PRD-0001", "shipped")
+        self.assertEqual(["PRD-0001"], graph._orphan_prds(self._build()))
+
+    def test_approved_prd_with_a_real_governed_artifact_is_not_an_orphan(self) -> None:
+        self._prd("PRD-0001", "approved", "governs: [ADR-0001]")
+        self._adr("ADR-0001")
+        self.assertEqual([], graph._orphan_prds(self._build()))
+
+    def test_orphan_status_match_ignores_case_and_padding(self) -> None:
+        self._prd("PRD-0001", " Approved ")
+        self.assertEqual(["PRD-0001"], graph._orphan_prds(self._build()))
+
+    def test_orphans_markdown_renders_the_prd_section(self) -> None:
+        self._prd("PRD-0001", "approved")
+        out = graph.cmd_orphans(self._build(), self.root)
+        self.assertIn("Approved or shipped PRDs governing no artifact", out)
+        self.assertIn("PRD-0001", out)
+        self.assertIn("Faster checkout", out)
+
+    def test_orphans_omits_the_prd_section_when_none_qualify(self) -> None:
+        self._prd("PRD-0001", "draft")
+        self.assertNotIn(
+            "Approved or shipped PRDs", graph.cmd_orphans(self._build(), self.root)
+        )
+
+    # -- path resolution ---------------------------------------------------
+
+    def test_prd_directory_is_read_from_claude_md(self) -> None:
+        """ADR-0036 commitment 2: the path is declared like the ADR/spec ones."""
+        _write(
+            self.root,
+            "CLAUDE.md",
+            "## Architecture Context\n\n"
+            "- Architecture Decision Records are in `docs/adrs/`\n"
+            "- Specifications are in `docs/openspec/specs/`\n"
+            "- Product Requirements Documents are in `product/prds/`\n",
+        )
+        _, _, prd_dir = graph._read_module_artifact_paths(self.root)
+        self.assertEqual((self.root / "product" / "prds").resolve(), prd_dir)
+
+    def test_prd_directory_defaults_when_undeclared(self) -> None:
+        _write(self.root, "CLAUDE.md", "## Architecture Context\n\nNothing declared.\n")
+        _, _, prd_dir = graph._read_module_artifact_paths(self.root)
+        self.assertEqual(self.root / "docs" / "prds", prd_dir)
+
+
+class TraversalDirectionTests(unittest.TestCase):
+    """`impact` / `ancestors` partition by edge DIRECTION, not by the derived flag.
+
+    `governs` and `enables` point downstream while `implements`, `requires`,
+    `extends` and `supersedes` point upstream — the same split
+    `_validate_no_cycles` has normalized since #237, never applied to the
+    traversal verbs. Splitting on `derived` instead made `impact` climb
+    upstream through `governed-by` and `ancestors` descend through `governs`.
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _adr(self, id_: str, frontmatter: str = "") -> None:
+        extra = f"{frontmatter}\n" if frontmatter else ""
+        _write(
+            self.root,
+            f"docs/adrs/{id_}-test.md",
+            f"---\nstatus: accepted\ndate: 2026-01-01\n{extra}---\n\n# {id_}: A decision\n",
+        )
+
+    def _spec(self, id_: str, slug: str, frontmatter: str = "") -> None:
+        extra = f"{frontmatter}\n" if frontmatter else ""
+        _write(
+            self.root,
+            f"docs/openspec/specs/{slug}/spec.md",
+            f"---\nstatus: approved\ndate: 2026-01-01\n{extra}---\n\n# {id_}: A spec\n",
+        )
+
+    def _build(self) -> graph.Graph:
+        return graph.build_graph(
+            self.root,
+            self.root / "docs" / "adrs",
+            self.root / "docs" / "openspec" / "specs",
+        )
+
+    def _down(self, g: graph.Graph, node: str) -> set[str]:
+        return {t for t, _type, _d in graph._outgoing_downstream(g, node)}
+
+    def _up(self, g: graph.Graph, node: str) -> set[str]:
+        return {t for t, _type, _d in graph._outgoing_upstream(g, node)}
+
+    def test_authored_governs_is_downstream_not_upstream(self) -> None:
+        """An ADR's governed spec depends on it, so it belongs to impact."""
+        self._adr("ADR-0001", "governs: [SPEC-0001]")
+        self._spec("SPEC-0001", "one")
+        g = self._build()
+        self.assertEqual({"SPEC-0001"}, self._down(g, "ADR-0001"))
+        self.assertEqual(set(), self._up(g, "ADR-0001"))
+
+    def test_derived_governed_by_is_upstream_not_downstream(self) -> None:
+        self._adr("ADR-0001", "governs: [SPEC-0001]")
+        self._spec("SPEC-0001", "one")
+        g = self._build()
+        self.assertEqual({"ADR-0001"}, self._up(g, "SPEC-0001"))
+        self.assertEqual(set(), self._down(g, "SPEC-0001"))
+
+    def test_authored_enables_is_downstream(self) -> None:
+        self._adr("ADR-0001", "enables: [ADR-0002]")
+        self._adr("ADR-0002")
+        g = self._build()
+        self.assertEqual({"ADR-0002"}, self._down(g, "ADR-0001"))
+        self.assertEqual({"ADR-0001"}, self._up(g, "ADR-0002"))
+
+    def test_authored_implements_stays_upstream(self) -> None:
+        self._adr("ADR-0001")
+        self._spec("SPEC-0001", "one", "implements: [ADR-0001]")
+        g = self._build()
+        self.assertEqual({"ADR-0001"}, self._up(g, "SPEC-0001"))
+        self.assertEqual({"SPEC-0001"}, self._down(g, "ADR-0001"))
+
+    def test_adr_authoring_only_governs_has_no_ancestors(self) -> None:
+        """Regression: its governed specs used to be reported as its ancestors."""
+        self._adr("ADR-0001", "governs: [SPEC-0001]")
+        self._spec("SPEC-0001", "one")
+        out = graph.render_ancestors(self._build(), "ADR-0001")
+        self.assertIn("has no declared ancestors", out)
+
+    def test_impact_of_a_spec_does_not_climb_to_its_governing_adr(self) -> None:
+        """Regression: impact used to walk upstream through `governed-by`."""
+        self._adr("ADR-0001", "governs: [SPEC-0001]")
+        self._spec("SPEC-0001", "one")
+        out = graph.render_impact(self._build(), "SPEC-0001")
+        self.assertIn("has no impact", out)
+        self.assertNotIn("ADR-0001", out.split("impact SPEC-0001")[1])
+
+    def test_dual_governs_implements_renders_the_target_once(self) -> None:
+        """Parallel same-direction edges collapse instead of printing twice."""
+        self._adr("ADR-0001", "governs: [SPEC-0001]")
+        self._spec("SPEC-0001", "one", "implements: [ADR-0001]")
+        g = self._build()
+        self.assertEqual(1, len(graph._outgoing_downstream(g, "ADR-0001")))
+        self.assertNotIn("already shown", graph.render_impact(g, "ADR-0001"))
+
+    def test_collapse_prefers_the_authored_edge(self) -> None:
+        self._adr("ADR-0001", "governs: [SPEC-0001]")
+        self._spec("SPEC-0001", "one", "implements: [ADR-0001]")
+        g = self._build()
+        (_target, etype, derived) = graph._outgoing_downstream(g, "ADR-0001")[0]
+        self.assertEqual("governs", etype)
+        self.assertFalse(derived)
+
+    def test_prd_impact_reaches_what_it_governs(self) -> None:
+        """SPEC-0037 scenario: impact PRD-XXXX covers its governed closure."""
+        _write(
+            self.root,
+            "docs/prds/PRD-0001-checkout.md",
+            "---\nstatus: approved\ndate: 2026-01-01\ngoverns: [ADR-0001]\n---\n\n# PRD-0001: Checkout\n",
+        )
+        self._adr("ADR-0001", "governs: [SPEC-0001]")
+        self._spec("SPEC-0001", "one")
+        out = graph.render_impact(self._build(), "PRD-0001")
+        self.assertIn("ADR-0001", out)
+        self.assertIn("SPEC-0001", out)
+
+
 if __name__ == "__main__":
     unittest.main()

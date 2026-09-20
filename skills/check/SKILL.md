@@ -15,7 +15,7 @@ You are performing a fast, focused drift check on a specific target. This skill 
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR, spec, and PRD directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}`, spec directory is `{spec-dir}`, and PRD directory is `{prd-dir}` (default `docs/prds/`, per ADR-0036). PRDs are optional: when `{prd-dir}` does not exist, skip every PRD check silently.
 
    <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
 
@@ -69,6 +69,16 @@ You are performing a fast, focused drift check on a specific target. This skill 
    On qmd unreachable / timeout per `qmd-helpers.md` § "Error Handling", surface the error and stop. Per ADR-0024 and SPEC-0019 REQ "qmd Assumption in Consumer Skills", fallback paths were eliminated in v5; the failure mode is "fix qmd, retry" not "scan the entire corpus."
 
 5. **Validate spec artifact pairing**: For each spec directory found under `{spec-dir}`, check that both `spec.md` and `design.md` exist. If a `spec.md` exists without a corresponding `design.md` (or vice versa), report as `[WARNING]` under "Code vs. Spec" with finding: "Unpaired spec artifact: {path} exists but {missing-file} is missing. Per ADR-0003, spec.md and design.md are a paired unit." (Governing: ADR-0003, SPEC-0003)
+
+5a. **Validate PRD status gates and success criteria** (per SPEC-0037; skip entirely when `{prd-dir}` does not exist). PRDs are optional and client-facing-only — **the absence of a PRD is never a finding**, so never report an ADR or spec for lacking one (ADR-0036 commitment 1).
+
+   For each `PRD-*.md` under `{prd-dir}`:
+
+   - **Status enum**: `status:` MUST be exactly one of `draft`, `client-review`, `approved`, `shipped`. Anything else is `[WARNING]`: "PRD {id} declares unknown status `{value}`. Per SPEC-0037 the gates are draft → client-review → approved → shipped."
+   - **EARS-shaped success criteria**: every bullet under `## Success criteria` MUST match an EARS pattern — ubiquitous (`The <system> shall …`), event-driven (`When <trigger>, the <system> shall …`), state-driven (`While <state>, the <system> shall …`), unwanted behaviour (`If <condition>, then the <system> shall …`), optional-feature (`Where <feature is included>, the <system> shall …`), or the complex form combining precondition and trigger. A criterion with no `shall` and no leading EARS keyword is an aspiration, not a gate — report `[WARNING]`: "PRD {id} success criterion is not EARS-shaped: \"{criterion}\". Per SPEC-0037 criteria must be checks an execution agent can run."
+   - **Committed PRDs govern something**: a PRD with status `approved` or `shipped` MUST declare at least one `governs:` target that resolves to an existing ADR or spec. Otherwise `[WARNING]`: "PRD {id} is {status} but governs no existing artifact." A `draft` or `client-review` PRD with an empty `governs:` list is correct — do not report it.
+   - **Open questions block approval**: a PRD with status `approved` or `shipped` MUST NOT have unresolved entries under `## Open questions` (an entry is resolved when it records an owner and a date, or is struck through). Otherwise `[WARNING]`: "PRD {id} is {status} with unresolved open questions."
+   - **Shipped criteria carry evidence**: a PRD with status `shipped` MUST show met evidence (a test, run, or verification reference) or an explicit waiver for every success criterion. Otherwise `[CRITICAL]`: "PRD {id} is shipped but criterion \"{criterion}\" has no met evidence and no waiver."
 
 6. **Security lint scan**: Scan source code files in the target for dangerous patterns that indicate security risks. Use text-based pattern matching (Grep tool with regex), NOT AST analysis. False positives are acceptable — flag patterns for human review.
 
