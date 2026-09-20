@@ -31,7 +31,11 @@ function buildSkillsSidebar(): any[] {
       collapsed: false,
       items: names.map((name) => ({
         type: 'doc',
-        id: `skills/${name}`,
+        // Mirrors pageFileBase() in scripts/transform-skills.js: `index.mdx`
+        // is the hero-tile overview's reserved filename, so the skill named
+        // `index` is emitted as `index-skill.mdx`. Doc IDs follow the file
+        // path, not the slug.
+        id: `skills/${name === 'index' ? 'index-skill' : name}`,
         label: name,
       })),
     });
