@@ -476,6 +476,21 @@ function truncateDescription(description, max = 140) {
 /**
  * Generate the full per-skill MDX content from a parsed SKILL.md.
  */
+/**
+ * Filename stem for a skill's generated page.
+ *
+ * Docusaurus reserves `index.mdx` in a directory for that directory's own
+ * route, and this generator writes the hero-tile overview there. A skill
+ * named `index` therefore cannot own `skills/index.mdx` — it gets a
+ * distinct filename while keeping its `/skills/index` slug, so the sidebar
+ * entry, the hero tile, and the quick-reference guide all resolve.
+ *
+ * Governing: SPEC-0021 REQ "Per-Skill Page Generation"
+ */
+function pageFileBase(name) {
+  return name === 'index' ? 'index-skill' : name;
+}
+
 function generateSkillPage(skill) {
   const { name, frontmatter, sections, preamble, refs } = skill;
 
@@ -784,9 +799,16 @@ function main() {
   for (const names of Object.values(manifest)) {
     for (const name of names) {
       const skill = loadSkill(name);
+
       skillsByName.set(name, skill);
 
-      const destPath = path.join(SKILLS_DEST, `${name}.mdx`);
+      // `index.mdx` is reserved for the hero-tile overview, which is
+      // written after this loop — so a skill literally named `index` had
+      // its page silently overwritten on every build, leaving the sidebar
+      // entry and every hero tile pointing at /skills/index with nothing
+      // served there. The slug stays /skills/{name}; only the filename
+      // moves, so links are unaffected.
+      const destPath = path.join(SKILLS_DEST, `${pageFileBase(name)}.mdx`);
       // Override pin enforcement: matching pin → copy verbatim, do NOT
       // re-run mdx-escape (the author owns the override). Mismatch,
       // missing pin, or orphan → loadOverride throws and aborts the build.

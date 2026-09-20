@@ -4,6 +4,7 @@ This project uses the [SDD plugin](https://github.com/joestump/claude-plugin-sdd
 
 - Architecture Decision Records are in `docs/adrs/`
 - Specifications are in `docs/openspec/specs/`
+- Product Requirements Documents are in `docs/prds/`
 
 ### qmd Dependency
 
@@ -46,13 +47,14 @@ These comments help future sessions (and `/sdd:check`) trace implementation back
 
 ### Workflow
 
-1. **Decide**: `/sdd:adr` — record the architectural decision
-2. **Specify**: `/sdd:spec` — formalize requirements with RFC 2119 language
-3. **Plan**: `/sdd:plan` — break the spec into trackable issues in your tracker
-4. **Enrich**: `/sdd:organize` and `/sdd:enrich` — add projects and branch conventions
-5. **Build**: `/sdd:work` — pick up issues and implement in parallel using git worktrees
-6. **Review**: `/sdd:review` — review and merge PRs with spec-aware code review
-7. **Validate**: `/sdd:check` and `/sdd:audit` to catch drift
+1. **Capture intent** (optional, client-facing capabilities only): `/sdd:prd` — interrogate the request grill-first and produce a client-ready PRD for sign-off. Pure engineering decisions skip this step, and the absence of a PRD is never a finding
+2. **Decide**: `/sdd:adr` — record the architectural decision
+3. **Specify**: `/sdd:spec` — formalize requirements with RFC 2119 language
+4. **Plan**: `/sdd:plan` — break the spec into trackable issues in your tracker
+5. **Enrich**: `/sdd:organize` and `/sdd:enrich` — add projects and branch conventions
+6. **Build**: `/sdd:work` — pick up issues and implement in parallel using git worktrees
+7. **Review**: `/sdd:review` — review and merge PRs with spec-aware code review
+8. **Validate**: `/sdd:check` and `/sdd:audit` to catch drift
 
 ### Session Coordination
 
