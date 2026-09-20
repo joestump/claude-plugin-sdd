@@ -2,7 +2,7 @@ import type {ReactNode} from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import Heading from '@theme/Heading';
-import {FileText, ScrollText, SearchCheck, ListTodo} from 'lucide-react';
+import {FileText, ScrollText, SearchCheck, ListTodo, ClipboardList, Network} from 'lucide-react';
 import styles from './styles.module.css';
 
 type FeatureItem = {
@@ -13,6 +13,18 @@ type FeatureItem = {
 };
 
 const FeatureList: FeatureItem[] = [
+  {
+    title: 'Product Requirements',
+    Icon: ClipboardList,
+    link: '/skills/prd',
+    description: (
+      <>
+        Optional, client-facing PRDs that precede the ADR. Produced
+        grill-first, with EARS-shaped success criteria an agent can
+        actually check and a blast radius confirmed against the code.
+      </>
+    ),
+  },
   {
     title: 'Architecture Decisions',
     Icon: FileText,
@@ -50,6 +62,18 @@ const FeatureList: FeatureItem[] = [
     ),
   },
   {
+    title: 'Artifact Graph',
+    Icon: Network,
+    link: '/skills/graph',
+    description: (
+      <>
+        Every artifact is a node and every frontmatter edge a link, so
+        you can ask what a change breaks, what a spec descends from, and
+        what nothing implements — before you touch the code.
+      </>
+    ),
+  },
+  {
     title: 'Drift Detection',
     Icon: SearchCheck,
     link: '/skills/',
@@ -65,7 +89,7 @@ const FeatureList: FeatureItem[] = [
 
 function Feature({title, Icon, description, link}: FeatureItem) {
   return (
-    <div className={clsx('col col--3')}>
+    <div className={clsx('col col--4')}>
       <Link to={link} className={styles.featureLink}>
         <div className="text--center">
           <Icon size={64} strokeWidth={1.5} className={styles.featureIcon} />

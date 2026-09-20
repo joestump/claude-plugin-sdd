@@ -6,6 +6,8 @@ import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import Heading from '@theme/Heading';
 
+import skillManifest from '@site/../skills/_index.json';
+
 import styles from './index.module.css';
 
 function HomepageHeader() {
@@ -29,26 +31,54 @@ function HomepageHeader() {
   );
 }
 
-const SKILLS: { name: string; description: string }[] = [
-  { name: 'adr',            description: 'Create a new Architecture Decision Record' },
-  { name: 'spec',           description: 'Create a new specification' },
-  { name: 'plan',           description: 'Break specs into sprint issues' },
-  { name: 'organize',       description: 'Group issues into tracker projects' },
-  { name: 'enrich',         description: 'Add branch/PR conventions to issues' },
-  { name: 'work',           description: 'Implement issues in parallel worktrees' },
-  { name: 'review',         description: 'Review and merge PRs with spec-aware pairs' },
-  { name: 'check',          description: 'Quick-check code for drift' },
-  { name: 'audit',          description: 'Comprehensive alignment audit' },
-  { name: 'discover',       description: 'Discover implicit architecture' },
-  { name: 'search',         description: 'Search ADRs and specs with hybrid retrieval' },
-  { name: 'docs',           description: 'Generate this documentation site' },
-  { name: 'graph',          description: 'Build and query the artifact graph' },
-  { name: 'init',           description: 'Set up CLAUDE.md for the plugin' },
-  { name: 'prime',          description: 'Load architecture context into session' },
-  { name: 'list',           description: 'List all ADRs and specs with status' },
-  { name: 'status',         description: 'Update the status of an ADR or spec' },
-  { name: 'report-friction', description: 'File feedback when a skill causes churn' },
-];
+/**
+ * One-line blurbs for the skill grid.
+ *
+ * The ORDER and MEMBERSHIP of the grid come from `skills/_index.json`, not
+ * from this map — it supplies wording only. That split is deliberate: this
+ * page used to carry its own hardcoded array of skills, and it silently fell
+ * three behind (`index`, `respond`, and `prd` all shipped without ever
+ * appearing on the homepage). A skill missing from this map now renders with
+ * its name alone rather than disappearing, and `make lint` fails on the gap.
+ */
+const SKILL_BLURBS: Record<string, string> = {
+  prd:               'Capture client-facing product intent before the ADR',
+  adr:               'Create a new Architecture Decision Record',
+  spec:              'Create a new specification',
+  plan:              'Break specs into sprint issues',
+  organize:          'Group issues into tracker projects',
+  enrich:            'Add branch/PR conventions to issues',
+  work:              'Implement issues in parallel worktrees',
+  review:            'Review and merge PRs with spec-aware pairs',
+  respond:           'Address review feedback on a PR and reply',
+  check:             'Quick-check code for drift',
+  audit:             'Comprehensive alignment audit',
+  discover:          'Discover implicit architecture',
+  search:            'Search ADRs and specs with hybrid retrieval',
+  docs:              'Generate this documentation site',
+  graph:             'Build and query the artifact graph',
+  index:             'Index artifacts and code into qmd collections',
+  init:              'Set up CLAUDE.md for the plugin',
+  prime:             'Load architecture context into session',
+  list:              'List all PRDs, ADRs, and specs with status',
+  status:            'Update the status of a PRD, ADR, or spec',
+  'report-friction': 'File feedback when a skill causes churn',
+};
+
+/**
+ * `index.mdx` is the skills overview's reserved filename, so the skill named
+ * `index` is served from `/skills/index-skill`. Mirrors pageFileBase() in
+ * scripts/transform-skills.js — see that file for why the route moved.
+ */
+function skillHref(name: string): string {
+  return `/skills/${name === 'index' ? 'index-skill' : name}`;
+}
+
+const SKILLS: { name: string; description: string }[] = Object.values(
+  skillManifest as Record<string, string[]>,
+)
+  .flat()
+  .map((name) => ({ name, description: SKILL_BLURBS[name] ?? '' }));
 
 function SkillsSection() {
   return (
@@ -62,9 +92,9 @@ function SkillsSection() {
         </p>
         <div className={styles.skillGrid}>
           {SKILLS.map(({ name, description }) => (
-            <Link key={name} to={`/skills/${name}`} className={styles.skillCard}>
+            <Link key={name} to={skillHref(name)} className={styles.skillCard}>
               <code>/sdd:{name}</code>
-              <span>{description}</span>
+              {description && <span>{description}</span>}
             </Link>
           ))}
         </div>

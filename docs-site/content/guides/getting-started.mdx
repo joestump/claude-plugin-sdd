@@ -6,7 +6,7 @@ sidebar_position: 0
 
 # Getting Started
 
-The SDD plugin brings architecture governance to Claude Code. It lets you record decisions as ADRs, formalize them into specifications, plan sprints, implement issues in parallel, and validate that your code stays aligned with your architecture -- all without leaving the CLI.
+The SDD plugin brings architecture governance to Claude Code. It lets you capture client-facing product intent as PRDs, record decisions as ADRs, formalize them into specifications, plan sprints, implement issues in parallel, and validate that your code stays aligned with your architecture -- all without leaving the CLI.
 
 ## Prerequisites
 
@@ -44,7 +44,7 @@ Add the plugin to your project's `.claude/settings.json`:
 }
 ```
 
-Then restart Claude Code. All 15 skills will be available as `/sdd:*` commands.
+Then restart Claude Code. All 21 skills will be available as `/sdd:*` commands.
 
 ## Quick Start
 
@@ -56,9 +56,26 @@ Walk through the simplest useful workflow: create an ADR, then a spec, plan a sp
 /sdd:init
 ```
 
-This sets up your project's `CLAUDE.md` with an Architecture Context section that references `docs/adrs/` and `docs/openspec/specs/`. It also adds a skills reference table so future sessions know what commands are available. Safe to re-run -- it won't duplicate content.
+This sets up your project's `CLAUDE.md` with an Architecture Context section that references `docs/adrs/`, `docs/openspec/specs/`, and `docs/prds/`. (Declaring the PRD path costs nothing and is what lets `/sdd:graph` and `/sdd:index` find PRDs later; the directory itself is not created, because PRDs are optional.) It also adds a skills reference table so future sessions know what commands are available. Safe to re-run -- it won't duplicate content.
 
-### 2. Record your first decision
+### 2. Capture product intent (client-facing work only)
+
+```
+/sdd:prd Client approval portal
+```
+
+**Skip this step unless the work is client-facing.** A PRD captures what a
+client asked for, in their language, with a sign-off boundary and success
+criteria written in [EARS](https://alistairmavin.com/ears/) syntax so an
+agent can check them. The skill interrogates you first — mapping the request
+as a design tree and working the open questions in rounds — and refuses to
+draft until that converges.
+
+Most projects never write one, and nothing reports its absence: a namespace
+rename or a caching strategy has no product intent upstream. See the
+[Workflow guide](./workflow) for when it earns its keep.
+
+### 3. Record your first decision
 
 ```
 /sdd:adr We need to choose between REST and GraphQL for our API
@@ -66,7 +83,7 @@ This sets up your project's `CLAUDE.md` with an Architecture Context section tha
 
 This creates an ADR in `docs/adrs/` using [MADR](https://adr.github.io/madr/) format. The ADR captures the context, options considered, decision outcome, and consequences. It includes a Mermaid architecture diagram and uses sequential numbering (`ADR-0001`, `ADR-0002`, etc.).
 
-### 3. Formalize into a specification
+### 4. Formalize into a specification
 
 ```
 /sdd:spec api-layer
@@ -74,7 +91,7 @@ This creates an ADR in `docs/adrs/` using [MADR](https://adr.github.io/madr/) fo
 
 This creates a paired `spec.md` and `design.md` in `docs/openspec/specs/api-layer/`. The spec uses [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) language (MUST, SHALL, MAY) to define requirements, while the design document captures architecture diagrams and implementation details. These two files are always kept in sync -- when one changes, the other is reviewed for alignment.
 
-### 4. Plan your sprint
+### 5. Plan your sprint
 
 ```
 /sdd:plan SPEC-0001
@@ -82,7 +99,7 @@ This creates a paired `spec.md` and `design.md` in `docs/openspec/specs/api-laye
 
 This breaks your spec into trackable issues in your issue tracker (GitHub, GitLab, Gitea, Jira, Linear, or Beads). It creates an epic for the spec with story-sized issues grouped by functional area, each with acceptance criteria that reference specific spec requirements. Branch naming conventions and PR templates are added to each issue automatically.
 
-### 5. Implement and validate
+### 6. Implement and validate
 
 ```
 /sdd:work SPEC-0001
@@ -94,7 +111,7 @@ This breaks your spec into trackable issues in your issue tracker (GitHub, GitLa
 
 ## What's Next
 
-- [Workflow Guide](./workflow) -- understand the full Decide, Specify, Plan, Build lifecycle
+- [Workflow Guide](./workflow) -- understand the full Capture Intent, Decide, Specify, Plan, Build lifecycle
 - [Skills Reference](/skills/) -- all skills with usage and examples
 - [Sprint Planning](./sprint-planning) -- deep dive into standard and scrum planning modes
 - [Best Practices](./best-practices) -- tips for getting the most out of the plugin
