@@ -16,6 +16,14 @@ Claude doesn't remember your architecture between sessions. Every fresh conversa
 
 Make it a habit. Prime before you ask anything else.
 
+## Write a PRD Only When Someone Is Signing Off
+
+`/sdd:prd` exists for client-facing capabilities — work where a person outside the codebase has to read what you intend to build and agree to it. It captures the request in their language, with a blast radius confirmed against the code and success criteria in EARS syntax that an agent can actually check.
+
+The rule that keeps it useful is the one about *not* using it. Most decisions are pure engineering and have no product intent upstream, so the plugin never reports a missing PRD — no skill flags an ADR or spec for lacking one. Writing PRDs for internal work produces ceremony that nobody signs and nobody reads, and it dilutes the signal for the documents that are genuinely client-facing.
+
+If you cannot name the person who will approve it, you do not need one.
+
 ## Record Decisions Before They Become Implicit
 
 The biggest risk isn't making bad decisions — it's making decisions nobody documents. If you catch yourself saying "we decided to..." in a PR review, that's an ADR waiting to happen. If a teammate asks "why did we use X instead of Y?" and the answer lives only in someone's head, you've already lost.
@@ -86,6 +94,7 @@ Take the time to configure it properly on the first run. You can customize branc
 
 | I want to... | Use |
 |---|---|
+| Capture what a client asked for | `/sdd:prd` |
 | Document a decision | `/sdd:adr` |
 | Formalize requirements | `/sdd:spec` |
 | Break a spec into issues | `/sdd:plan` |
@@ -99,6 +108,8 @@ Take the time to configure it properly on the first run. You can customize branc
 | Generate a docs site | `/sdd:docs` |
 | Set up a new project | `/sdd:init` |
 | Load context at session start | `/sdd:prime` |
+| Review and respond to PR feedback | `/sdd:respond` |
+| Index artifacts for semantic search | `/sdd:index` |
 | See what exists | `/sdd:list` |
 | Update artifact status | `/sdd:status` |
 
@@ -108,6 +119,7 @@ Take the time to configure it properly on the first run. You can customize branc
 
 ```
 /sdd:init
+/sdd:prd [client-facing capability]   # only if someone is signing off
 /sdd:adr [first major decision] --review
 /sdd:spec [first capability] --review
 /sdd:plan SPEC-0001 --scrum

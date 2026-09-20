@@ -11,6 +11,66 @@ The SDD plugin follows a deliberate, four-phase workflow:
 inform the next, creating a traceable path from architectural
 intent to working code — with agents handling the heavy lifting at every step.
 
+Client-facing work gets an optional phase in front of it: **Capture Intent**,
+which produces a PRD. Most projects never use it, and that is the intended
+outcome — see below.
+
+## Phase 0: Capture Intent (PRD) — optional
+
+Client-facing requests arrive vague. "Add a dashboard." "Support SSO." The
+gap between that ask and a rigorous spec is the interrogation that precedes
+it, and a PRD is where that interrogation is recorded in the client's own
+language, with a sign-off boundary.
+
+```
+/sdd:prd Client portal approvals
+```
+
+**Skip this phase for pure engineering decisions.** A namespace rename or a
+caching strategy has no product intent upstream, and the plugin treats the
+absence of a PRD as normal — `/sdd:check` and `/sdd:audit` will never report
+an ADR or spec for not having one. Reach for a PRD only when the requester
+wants a client-ready document, or when the requirements have to be
+interrogated out of a stakeholder before engineering can start.
+
+What makes it more than a template:
+
+- **Grill-first.** The skill maps the request as a design tree and works the
+  question frontier in rounds before drafting a line — exploring facts from
+  the repository itself and putting only *decisions* to you. The Q&A rounds
+  become the PRD's clarification log, which for client work is the visible
+  evidence of the thinking behind the document.
+- **Success criteria in [EARS](https://alistairmavin.com/ears/) syntax.**
+  "While the approval is pending, when the SLA window elapses without a human
+  response, the system shall escalate to the next approver" is a check an
+  execution agent can run. "Approvals should be timely" is not. The syntax is
+  validated, so the difference stops depending on discipline.
+- **A blast radius confirmed against the code.** Every existing surface the
+  capability touches, each framed as a collision question and grepped rather
+  than assumed.
+
+PRDs live in `docs/prds/` with sequential `PRD-XXXX` IDs and move through
+`draft → client-review → approved → shipped`. Those gates are enforced, not
+decorative: an `approved` PRD that governs no ADR or spec is a finding, and a
+`shipped` one whose success criteria carry no evidence is a critical one.
+
+The lineage is **PRD → ADR → spec pair → plan → work**, and the handoff into
+the next phase is mechanical:
+
+| PRD section | Becomes |
+|---|---|
+| User stories | The spec's requirements |
+| Success criteria (EARS) | The spec's WHEN/THEN scenarios |
+| Blast radius / touch points | The impact analysis |
+| Decision log | The ADRs the spec's design section cites |
+
+:::tip One PRD, several specs
+A PRD often spans more than one capability, which is why PRDs live in their
+own directory rather than beside a spec. It declares `governs:` edges into
+every ADR and spec it produces, so `/sdd:graph impact PRD-0001` answers
+"what does this client request actually touch?" across all of them.
+:::
+
 ## Phase 1: Decide (ADR)
 
 Every significant choice starts with an Architecture Decision Record.
@@ -318,6 +378,10 @@ The workflow is not strictly linear. As you build, you'll discover:
   needs updating. Re-run: `/sdd:plan SPEC-0003`
 - **Stale artifacts** — decisions that no longer apply as the system evolved.
   Update their status: `/sdd:status ADR-0003 deprecated`
+- **Scope drift on client work** — what shipped no longer matches what was
+  signed off. The PRD's success criteria are the check: `/sdd:audit` reports
+  a `shipped` PRD whose criteria have no met evidence, which is the earliest
+  point at which "we built something else" becomes visible.
 
 The SDD plugin's drift detection skills (`/sdd:check` and
 `/sdd:audit`) close this loop by surfacing misalignment before it

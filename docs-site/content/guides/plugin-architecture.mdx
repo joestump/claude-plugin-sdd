@@ -14,7 +14,7 @@ How the SDD plugin is structured internally, and the conventions it follows.
 claude-plugin-sdd/
 ├── .claude-plugin/
 │   └── plugin.json          # Plugin metadata and version
-├── skills/                   # All 15 skills
+├── skills/                   # All 21 skills
 │   ├── adr/SKILL.md
 │   ├── spec/SKILL.md
 │   ├── plan/SKILL.md
@@ -32,6 +32,7 @@ claude-plugin-sdd/
 │   ├── docusaurus/           # Standalone scaffold templates
 │   └── integration/          # Plugin for existing Docusaurus sites
 └── docs/                     # This plugin's own design artifacts
+    ├── prds/                 # Product Requirements Documents (optional)
     ├── adrs/                 # Architecture Decision Records
     └── openspec/specs/       # Specifications
 ```
@@ -113,10 +114,10 @@ All keys are optional and backward-compatible. When writing, skills merge into t
 
 The template in `references/claude-md-template.md` is what `/sdd:init` injects into a project's `CLAUDE.md` file. It gives Claude architecture awareness in every session by documenting:
 
-- Where ADRs and specs live
+- Where PRDs, ADRs, and specs live
 - The full skill table with descriptions
 - The governing comment convention
-- The recommended workflow (Decide, Specify, Plan, Enrich, Build, Validate)
+- The recommended workflow (Capture Intent, Decide, Specify, Plan, Enrich, Build, Validate)
 
 This matters because `CLAUDE.md` is loaded at the start of every Claude Code session. Without it, Claude would not know that architecture artifacts exist or how to interact with them.
 
@@ -136,13 +137,14 @@ The `templates/` directory contains source files that get copied into the user's
 
 ## Design Artifacts
 
-The plugin dogfoods its own architecture governance. The `docs/adrs/` and `docs/openspec/specs/` directories contain the ADRs and specifications that govern the plugin's own development. At the time of writing, the plugin has 14 ADRs and 13 specs.
+The plugin dogfoods its own architecture governance. The `docs/adrs/` and `docs/openspec/specs/` directories contain the ADRs and specifications that govern the plugin's own development. At the time of writing, the plugin has 36 ADRs and 25 specs — and no PRDs, which is the optionality rule applied to the plugin itself: its own work is engineering, with no client signing off on it.
 
 For example, ADR-0011 and SPEC-0010 govern how `/sdd:plan` decomposes specs into issues, and ADR-0013 and SPEC-0012 define the `--scrum` ceremony mode. Changes to the plugin go through the same Decide-Specify-Build cycle that users follow in their own projects.
 
 ## Conventions
 
 - **Skill naming**: kebab-case directory name matches the slash command (e.g., `skills/plan/SKILL.md` maps to `/sdd:plan`)
+- **PRD numbering**: `PRD-XXXX` (zero-padded, sequential) — optional artifact, client-facing capabilities only
 - **ADR numbering**: `ADR-XXXX` (zero-padded, sequential)
 - **Spec numbering**: `SPEC-XXXX` (zero-padded, sequential)
 - **Paired artifacts**: Every spec has both `spec.md` (requirements) and `design.md` (architecture) — when either changes, the other must be reviewed for alignment
