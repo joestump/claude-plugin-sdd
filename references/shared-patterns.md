@@ -822,13 +822,15 @@ Before drafting an ADR or spec, stress-test the request with a systematic interr
 
 1. **Map the request as a design tree.** Every decision branches into dependent decisions. Draw the tree mentally or as a sketch; the frontier is what remains unsettled.
 
-2. **Work the question frontier in rounds.** The frontier is every question whose prerequisites are already settled. Ask the whole frontier in one round:
+2. **Work the question frontier in rounds.** The frontier is every question whose prerequisites are already settled — the questions you can ask *now* without guessing at answers you have not heard yet. Ask the whole frontier in one round:
    - Each question numbered, with your **recommended answer**
    - Wait for user responses before computing the next frontier
    - A question that depends on an unanswered one belongs to a later round
+   - Each round's answers reshape the tree: settled decisions push the frontier outward and unblock the questions that depended on them. Recompute, then ask the next round
 
 3. **Facts are yours; decisions are theirs.** When a frontier question needs a fact (codebase behavior, existing surface, prior decisions):
    - Explore the repository or dispatch a sub-agent — **never ask the user** for something you can look up
+   - Do not block on it. A running exploration is an unsettled prerequisite, so only the questions downstream of it wait; ask the rest of the frontier now
    - Only the *decisions* go to the user
    - Show the fact-finding: cite files, quote governing comments, name the existing surface
 
@@ -838,6 +840,35 @@ Before drafting an ADR or spec, stress-test the request with a systematic interr
    - The blast radius has been confirmed against the actual codebase (grep the surfaces, don't assume)
 
 5. **The Q&A trail is deliverable.** Record the rounds as a clarification log inside the artifact. For client-facing work, the questions demonstrate the thoroughness the client is paying for.
+
+### Format a round like so
+
+```
+❓ **Q1** — **<question title>**: <question body, which may run to several
+   paragraphs and may offer multiple choices>
+
+➡️ <your recommended answer>
+
+---
+
+❓ **Q2** — **<question title>**: <question body>
+
+➡️ <your recommended answer>
+```
+
+Numbering every question and attaching a recommendation is what makes a round
+answerable in one pass: the user can reply "1, 3 yes; 2 use the other option"
+instead of reconstructing which question was which.
+
+### Anti-pattern: asking the user for facts
+
+If you find yourself asking "what database does this use?" or "what port does
+the server listen on?" — stop, and look it up. Every such question spends the
+user's attention on something the repository already answers, and it makes the
+interrogation look like an interview rather than an investigation.
+
+Ask only about **intent**, **preference**, and **tradeoff tolerance**. Those
+are the things no amount of grepping will tell you.
 
 ### Cites
 
