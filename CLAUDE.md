@@ -3,12 +3,14 @@
 This project uses the [SDD plugin](https://github.com/joestump/claude-plugin-sdd) for architecture governance.
 
 - Architecture Decision Records are in `docs/adrs/`
+- Product Requirements Documents are in `docs/prds/`
 - Specifications are in `docs/openspec/specs/`
 
 ### SDD Skills
 
 | Skill | Purpose |
 |-------|---------|
+| `/sdd:prd` | Create a Product Requirements Document for a client-facing capability |
 | `/sdd:adr` | Create a new Architecture Decision Record |
 | `/sdd:spec` | Create a new specification |
 | `/sdd:list` | List all ADRs and specs with status |
@@ -43,14 +45,15 @@ These comments help future sessions (and `/sdd:check`) trace implementation back
 
 ### Workflow
 
-1. **Decide**: `/sdd:adr` — record the architectural decision
-2. **Specify**: `/sdd:spec` — formalize requirements with RFC 2119 language
-3. **Plan**: `/sdd:plan` — break the spec into trackable issues in your tracker
-4. **Enrich**: `/sdd:organize` and `/sdd:enrich` — add projects and branch conventions
-5. **Build**: `/sdd:work` — pick up issues and implement in parallel using git worktrees
-6. **Review**: `/sdd:review` — review and merge PRs with spec-aware code review
-7. **Respond**: `/sdd:respond` — address review feedback on a PR (fix, push, reply); the author-side counterpart to `/sdd:review`
-8. **Validate**: `/sdd:check` and `/sdd:audit` to catch drift
+1. **Capture intent** (optional, client-facing only): `/sdd:prd` — interrogate the request grill-first and produce a client-ready PRD for sign-off. Pure engineering decisions skip this; the absence of a PRD is never a finding
+2. **Decide**: `/sdd:adr` — record the architectural decision
+3. **Specify**: `/sdd:spec` — formalize requirements with RFC 2119 language
+4. **Plan**: `/sdd:plan` — break the spec into trackable issues in your tracker
+5. **Enrich**: `/sdd:organize` and `/sdd:enrich` — add projects and branch conventions
+6. **Build**: `/sdd:work` — pick up issues and implement in parallel using git worktrees
+7. **Review**: `/sdd:review` — review and merge PRs with spec-aware code review
+8. **Respond**: `/sdd:respond` — address review feedback on a PR (fix, push, reply); the author-side counterpart to `/sdd:review`
+9. **Validate**: `/sdd:check` and `/sdd:audit` to catch drift
 
 ### Session Coordination
 

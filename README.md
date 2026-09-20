@@ -8,6 +8,7 @@ The skills are written in the open Agent Skills format and are harness-portable:
 
 | Skill | Invoke | Description |
 |-------|--------|-------------|
+| **PRD** | `/sdd:prd [capability or client]` | Create a Product Requirements Document for a client-facing capability, produced grill-first (optional; precedes the ADR) |
 | **ADR** | `/sdd:adr [description] [--quick] [--review]` | Create an ADR using MADR format with Mermaid diagrams; `--quick` for single-option decisions |
 | **Spec** | `/sdd:spec [capability] [--review]` | Create spec.md + design.md with RFC 2119 requirements and Mermaid diagrams |
 | **Init** | `/sdd:init` | Set up CLAUDE.md with architecture context for design-aware sessions |
@@ -15,7 +16,7 @@ The skills are written in the open Agent Skills format and are harness-portable:
 | **Check** | `/sdd:check [target]` | Quick-check code against ADRs and specs for drift |
 | **Audit** | `/sdd:audit [scope] [--review] [--scrum]` | Comprehensive drift audit; use `--scrum` for team-triaged findings grouped into prioritized remediation themes |
 | **Docs** | `/sdd:docs [project name]` | Generate docs with scaffold/integration modes and manifest-based upgrades |
-| **List** | `/sdd:list [adr\|spec\|all]` | List all ADRs and specs with their status |
+| **List** | `/sdd:list [prd\|adr\|spec\|all]` | List all PRDs, ADRs, and specs with their status |
 | **Discover** | `/sdd:discover [scope]` | Discover implicit architecture from an existing codebase |
 | **Plan** | `/sdd:plan [spec-name or SPEC-XXXX] [--scrum] [--review] [--project <name>] [--no-projects] [--branch-prefix <prefix>] [--no-branches]` | Break a spec into trackable issues; use `--scrum` for a full team-groomed ceremony with spec audit, multi-agent grooming, and automatic organize + enrich |
 | **Organize** | `/sdd:organize [SPEC-XXXX or spec-name] [--project <name>] [--dry-run]` | Retroactively group existing issues into tracker-native projects |
@@ -46,7 +47,7 @@ Add to your project's `.claude/settings.json`:
 }
 ```
 
-Then restart Claude Code. The plugin's skills will be available as `/sdd:init`, `/sdd:prime`, `/sdd:adr`, `/sdd:spec`, `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:work`, `/sdd:review`, `/sdd:respond`, `/sdd:check`, `/sdd:audit`, `/sdd:discover`, `/sdd:docs`, `/sdd:list`, `/sdd:status`, `/sdd:graph`, `/sdd:index`, `/sdd:search`, and `/sdd:report-friction`.
+Then restart Claude Code. The plugin's skills will be available as `/sdd:init`, `/sdd:prime`, `/sdd:prd`, `/sdd:adr`, `/sdd:spec`, `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:work`, `/sdd:review`, `/sdd:respond`, `/sdd:check`, `/sdd:audit`, `/sdd:discover`, `/sdd:docs`, `/sdd:list`, `/sdd:status`, `/sdd:graph`, `/sdd:index`, `/sdd:search`, and `/sdd:report-friction`.
 
 ## Configuration
 
@@ -144,6 +145,20 @@ The skill evals themselves are graded by an LLM and run only in CI ([`skill-eval
 [`ci.yml`](.github/workflows/ci.yml) runs `make lint`, `make test`, and `make scan` as separately-named jobs on every pull request and on pushes to `main`, so local and CI cannot drift. Keep new checks in the `Makefile` rather than inlining them into the workflow.
 
 ## What It Does
+
+### `/sdd:prd` -- Product Requirements Documents
+
+Captures product intent for a **client-facing** capability, before any engineering decision is made (per [ADR-0036](docs/adrs/ADR-0036-prd-as-optional-pre-adr-product-intent.md) / SPEC-0037):
+
+- Sequential numbering: `PRD-0001`, `PRD-0002`, etc.
+- Stored in `docs/prds/` — its own directory, because one PRD often governs several specs
+- **Grill-first**: the skill maps the request as a design tree and works the question frontier in rounds before drafting a line, exploring facts from the repository and reserving only decisions for you. The Q&A trail becomes the PRD's clarification log — for client work, the visible evidence of the interrogation behind the document
+- **Success criteria in [EARS](https://alistairmavin.com/ears/) syntax**, so each one is a check an execution agent can run rather than an aspiration
+- **Blast radius / touch points**: every existing surface the capability touches, each framed as a collision question and confirmed against the codebase
+- Status gates `draft → client-review → approved → shipped`, **enforced** by `/sdd:check` and `/sdd:audit`
+- `governs:` edges into the ADRs and specs it produces, so `/sdd:graph` walks PRD → ADR → spec → code
+
+**PRDs are optional and client-facing-only.** Most ADRs are pure engineering decisions with no product intent upstream, and the absence of a PRD is never reported as a finding.
 
 ### `/sdd:adr` -- Architecture Decision Records
 
@@ -278,7 +293,7 @@ Works through review feedback that already exists on a PR — the author-driven 
 
 Sets up your project's `CLAUDE.md` with architecture context and configures permissions:
 - Creates `CLAUDE.md` if it doesn't exist, or updates the existing one
-- Adds an `## Architecture Context` section with references to `docs/adrs/` and `docs/openspec/specs/`
+- Adds an `## Architecture Context` section with references to `docs/adrs/`, `docs/openspec/specs/`, and `docs/prds/`
 - Adds a `### SDD Configuration` section for CLAUDE.md-native configuration (tracker, branches, worktrees, review settings)
 - **Permission auto-configuration**: Updates `.claude/settings.json` to allowlist the tools needed by each skill (Bash, Read, Write, Edit, etc.) so permission prompts don't interrupt automated workflows
 - Detects workspace mode (multi-module projects, git submodules) and configures module declarations
@@ -366,6 +381,8 @@ Changes the status of an ADR or spec. Valid statuses:
 your-project/
 ├── .sdd-docs.json            # Upgrade manifest (version, checksums)
 ├── docs/
+│   ├── prds/                    # PRDs (created by /sdd:prd; optional)
+│   │   └── PRD-0001-short-title.md
 │   ├── adrs/                    # ADRs (created by /sdd:adr)
 │   │   ├── ADR-0001-short-title.md
 │   │   └── ADR-0002-short-title.md
@@ -425,16 +442,17 @@ your-project/
 1. **Setup**: `/sdd:init` to configure CLAUDE.md with architecture context
 2. **Discover**: `/sdd:discover` to find implicit decisions in an existing codebase
 3. **Prime**: `/sdd:prime` at the start of each session (or `/sdd:prime security` for a focused topic)
-4. **Decide**: `/sdd:adr We need to choose a web framework for the admin dashboard`
-5. **Review**: `/sdd:list adr` to see all decisions, `/sdd:status ADR-0001 accepted` to approve
-6. **Specify**: `/sdd:spec Convert ADR-0001 to a spec` — the agent writes requirements and offers to plan a sprint
-7. **Plan**: `/sdd:plan SPEC-0001` — break the spec into epics, tasks, and sub-tasks in Beads, GitHub, GitLab, Gitea, Jira, or Linear with acceptance criteria referencing spec/requirement numbers
-8. **Organize & Enrich** (retroactive): `/sdd:organize SPEC-0001` to group issues into projects, `/sdd:enrich SPEC-0001` to add branch and PR conventions
-9. **Build**: `/sdd:work SPEC-0001` (spec-scoped) or `/sdd:work` (propose from backlog) to implement issues in parallel using git worktrees, or `/sdd:prime` then manually work through issues
-10. **Review**: `/sdd:review SPEC-0001` to review and merge PRs with spec-aware feedback, or `--no-merge` for review-only
-11. **Check**: `/sdd:check src/auth/` to quick-check for drift while coding
-12. **Audit**: `/sdd:audit --review` for a comprehensive design review
-13. **Document**: `/sdd:docs` to generate or upgrade the docs site
+4. **Capture intent** (client-facing work only): `/sdd:prd Client portal approvals` — the agent grills you to convergence, then writes a PRD you can send for sign-off. Skip this for pure engineering decisions
+5. **Decide**: `/sdd:adr We need to choose a web framework for the admin dashboard`
+6. **Review**: `/sdd:list adr` to see all decisions, `/sdd:status ADR-0001 accepted` to approve
+7. **Specify**: `/sdd:spec Convert ADR-0001 to a spec` — the agent writes requirements and offers to plan a sprint
+8. **Plan**: `/sdd:plan SPEC-0001` — break the spec into epics, tasks, and sub-tasks in Beads, GitHub, GitLab, Gitea, Jira, or Linear with acceptance criteria referencing spec/requirement numbers
+9. **Organize & Enrich** (retroactive): `/sdd:organize SPEC-0001` to group issues into projects, `/sdd:enrich SPEC-0001` to add branch and PR conventions
+10. **Build**: `/sdd:work SPEC-0001` (spec-scoped) or `/sdd:work` (propose from backlog) to implement issues in parallel using git worktrees, or `/sdd:prime` then manually work through issues
+11. **Review**: `/sdd:review SPEC-0001` to review and merge PRs with spec-aware feedback, or `--no-merge` for review-only
+12. **Check**: `/sdd:check src/auth/` to quick-check for drift while coding
+13. **Audit**: `/sdd:audit --review` for a comprehensive design review
+14. **Document**: `/sdd:docs` to generate or upgrade the docs site
 
 For thorough team review on critical decisions, add `--review`:
 - `/sdd:adr Choose a database --review`
@@ -443,12 +461,13 @@ For thorough team review on critical decisions, add `--review`:
 
 ## CLAUDE.md Integration
 
-Run `/sdd:init` to set up your project's CLAUDE.md with architecture context. This adds references to `docs/adrs/` and `docs/openspec/specs/`, a plugin skills table, and a note about `/sdd:prime`:
+Run `/sdd:init` to set up your project's CLAUDE.md with architecture context. This adds references to `docs/adrs/`, `docs/openspec/specs/`, and `docs/prds/`, a plugin skills table, and a note about `/sdd:prime`:
 
 ```markdown
 ## Architecture Context
 - Architecture Decision Records are in `docs/adrs/`
 - Specifications are in `docs/openspec/specs/`
+- Product Requirements Documents are in `docs/prds/`
 ```
 
 ## License

@@ -124,7 +124,9 @@ If `.claude-plugin-design.json` exists:
 
 **If CLAUDE.md exists**, perform section-level convergence. Each sub-check below runs independently:
 
-a. **Path references**: If `docs/adrs/` or `docs/openspec/specs/` are missing from the `## Architecture Context` section, add them. If a DIFFERENT path exists (e.g., `docs/decisions/`), use `AskUserQuestion` to resolve — this is a genuine ambiguity that requires user input.
+a. **Path references**: If `docs/adrs/`, `docs/openspec/specs/`, or `docs/prds/` are missing from the `## Architecture Context` section, add them. If a DIFFERENT path exists (e.g., `docs/decisions/`), use `AskUserQuestion` to resolve — this is a genuine ambiguity that requires user input.
+
+   The PRD line is `- Product Requirements Documents are in {path}` (ADR-0036). Add it whether or not the project has any PRDs — declaring the path costs nothing and is what lets `/sdd:graph` and `/sdd:index` find them later. Do NOT create the directory: PRDs are optional, and an empty `docs/prds/` implies a gap that is not there.
 
 b. **Skills table**: Generate the canonical skills table dynamically by enumerating `skills/*/SKILL.md` in the plugin directory (the directory containing this `init/` skill — typically `${CLAUDE_PLUGIN_ROOT}/skills/` when the plugin is installed). Follow the procedure in **Skills Table Generation** below. For each plugin-owned skill row that is NOT present in the current CLAUDE.md's skills table (match by skill name in the first column, e.g., `/sdd:review`), insert it. Do NOT remove existing rows — the user may have added custom entries for third-party plugins or local skills, and those MUST be preserved (additive-only, per the Idempotency Rules below).
 
@@ -155,7 +157,7 @@ This is the canonical algorithm for building the plugin-owned portion of the `##
    Canonical lifecycle order (decide → specify → list/status → docs → init/prime → check/audit/discover → plan/organize/enrich → build/review → introspect → other):
 
    ```
-   adr, spec, list, status, docs, init, prime, check, audit, discover,
+   prd, adr, spec, list, status, docs, init, prime, check, audit, discover,
    plan, organize, enrich, work, review, graph, index, report-friction
    ```
 

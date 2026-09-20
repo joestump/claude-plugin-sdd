@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-19
 decision-makers: Joe Stump
 related: [ADR-0003, ADR-0023, ADR-0025]
@@ -56,6 +56,8 @@ Chosen option: **Option A — first-class optional PRD artifact**. A client-deli
 ### Confirmation
 
 This ADR settles the shape decided in the PR #238 review (owner review 2026-09-08, second review 2026-09-16). The template content itself originated in that PR; the `/sdd:prd` implementation credits the contributor.
+
+Accepted 2026-09-20, when every commitment above became enforceable rather than asserted: `/sdd:prd` ships (#245), and `/sdd:graph` scans PRDs as their own node type while `/sdd:check` and `/sdd:audit` validate the status gates and EARS-shaped criteria (#249). Commitment 1 — that the absence of a PRD is never a finding — is carried by every skill that resolves the PRD directory, each of which treats an absent `docs/prds/` as the normal case.
 
 ## Pros and Cons of the Options
 
