@@ -4,6 +4,11 @@ All notable changes to the SDD plugin (`claude-plugin-sdd`) are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The `/sdd:index` page was published but still unreachable by URL** ([#252](https://github.com/joestump/claude-plugin-sdd/pull/252)): [#251](https://github.com/joestump/claude-plugin-sdd/pull/251) moved the skill's page off the reserved `index.mdx` filename, which published it and cleared the broken-link warnings — but it kept the `/skills/index` slug, and that is the half that could not work. Docusaurus emits `<slug>/index.html`, so the page built to `skills/index/index.html` while the hero-tile overview (slug `/skills/`) owns the *file* `skills/index.html`. A static host matches the file before the directory, so a cold request for `/skills/index` served the overview — exactly the symptom #251 set out to fix, surviving in a form where the build had stopped reporting it. In-app navigation worked, which is what made it easy to call done. The skill is now served at `/skills/index-skill`, and the quick-reference tiles are rewritten to match in `generate-commands.js` — the upstream renderer derives `/skills/{name}` with no knowledge of this site's collision, and its rewrite throws rather than silently no-opping if that format ever changes.
+
+
 ## [5.4.0] — 2026-09-20
 
 PRDs become a fourth authored artifact type — optional, client-facing-only, and enforced rather than asserted — plus the traversal-direction fix that adding them exposed, and a docs-site page that had never been published.

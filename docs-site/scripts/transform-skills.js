@@ -491,6 +491,25 @@ function pageFileBase(name) {
   return name === 'index' ? 'index-skill' : name;
 }
 
+/**
+ * Public route for a skill's generated page.
+ *
+ * Moving the FILE off `index.mdx` is necessary but not sufficient. Docusaurus
+ * emits `<slug>/index.html`, so a page slugged `/skills/index` builds to
+ * `skills/index/index.html` — while the hero-tile overview, slugged
+ * `/skills/`, builds to `skills/index.html`. A static host resolving a bare
+ * request for `/skills/index` matches the FILE before the directory, so the
+ * tile and the sidebar both land on the overview on a cold load. In-app
+ * navigation works, which is exactly what makes it easy to miss.
+ *
+ * So the colliding skill gets a distinct route as well as a distinct file.
+ *
+ * Governing: SPEC-0021 REQ "Per-Skill Page Generation"
+ */
+function pageSlug(name) {
+  return `/skills/${pageFileBase(name)}`;
+}
+
 function generateSkillPage(skill) {
   const { name, frontmatter, sections, preamble, refs } = skill;
 
@@ -503,7 +522,7 @@ function generateSkillPage(skill) {
     '---',
     `title: "${title.replace(/"/g, '\\"')}"`,
     `sidebar_label: "${name.replace(/"/g, '\\"')}"`,
-    `slug: /skills/${name}`,
+    `slug: ${pageSlug(name)}`,
     `description: ${JSON.stringify(description)}`,
     '---',
     '',
@@ -620,7 +639,7 @@ function generateIndexPage(manifest, skillsByName) {
       const safeName = `{${JSON.stringify(name)}}`;
       const safeDesc = `{${JSON.stringify(truncated)}}`;
       const safeHint = `{${JSON.stringify(argHint)}}`;
-      const safeHref = `{${JSON.stringify(`/skills/${name}`)}}`;
+      const safeHref = `{${JSON.stringify(pageSlug(name))}}`;
       parts.push(
         `  <SkillTile name=${safeName} description=${safeDesc} argumentHint=${safeHint} href=${safeHref} />`,
       );
