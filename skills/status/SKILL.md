@@ -1,6 +1,6 @@
 ---
 name: status
-description: Change the status of an ADR or spec (e.g., proposed to accepted, draft to review), or backfill YAML frontmatter onto legacy artifacts that carry status as inline bullets. Use when the user says "accept ADR", "approve the spec", "mark as accepted", "backfill frontmatter", or "migrate legacy status lines".
+description: Change the status of a PRD, ADR, or spec (e.g., proposed to accepted, draft to review, client-review to approved), or backfill YAML frontmatter onto legacy artifacts that carry status as inline bullets. Use when the user says "accept ADR", "approve the spec", "approve the PRD", "mark as accepted", "backfill frontmatter", or "migrate legacy status lines".
 allowed-tools: Read, Write, Edit, Glob, Grep, AskUserQuestion, Bash
 argument-hint: "[ADR-XXXX or SPEC-XXXX] [new status] [--module <name>] [--keep-refinement] | backfill [--dry-run] [--module <name>]"
 disable-model-invocation: true
@@ -16,7 +16,7 @@ Update the status of an ADR or spec, **preserving the file's existing status for
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR, spec, and PRD directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}`, spec directory is `{spec-dir}`, and PRD directory is `{prd-dir}` (default `docs/prds/`, per ADR-0036).
 
 1. **Parse arguments**: Extract the identifier and new status from `$ARGUMENTS`.
    - Identifier: `ADR-XXXX` or `SPEC-XXXX` (or a capability name for specs)
@@ -27,9 +27,11 @@ Update the status of an ADR or spec, **preserving the file's existing status for
 3. **If status is missing**: Show the current status and use `AskUserQuestion` to ask what to change it to. Show valid options:
    - ADR statuses: `proposed`, `accepted`, `deprecated`, `superseded`
    - Spec statuses: `draft`, `review`, `approved`, `implemented`, `deprecated`
+   - PRD statuses: `draft`, `client-review`, `approved`, `shipped` (per ADR-0036 / SPEC-0037). Moving a PRD to `approved` or `shipped` is gated: refuse the transition and say why when the PRD governs no existing ADR or spec, or when `## Open questions` still holds unresolved entries. A `shipped` PRD additionally needs met evidence or a recorded waiver on every success criterion — `/sdd:audit` reports that as `[CRITICAL]`, so warn before writing the transition rather than after.
 
 4. **Locate the file**:
    - For ADRs: Glob `{adr-dir}/ADR-{number}-*.md` to find the matching file
+   - For PRDs: Glob `{prd-dir}/PRD-{number}-*.md` to find the matching file
    - For SPECs: Glob `{spec-dir}/*/spec.md` and search for the matching SPEC number in the heading
 
 4a. **Format Detection algorithm** (read-only — no mutation in this step). Inspect the located file to determine which format owns the status field:

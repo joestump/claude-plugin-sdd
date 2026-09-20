@@ -44,7 +44,18 @@ from pathlib import Path
 
 ADR_EDGE_FIELDS: tuple[str, ...] = ("supersedes", "extends", "enables", "governs", "related")
 SPEC_EDGE_FIELDS: tuple[str, ...] = ("implements", "requires", "extends", "supersedes")
-ALL_EDGE_FIELDS: frozenset[str] = frozenset(ADR_EDGE_FIELDS) | frozenset(SPEC_EDGE_FIELDS)
+# PRDs sit upstream of ADRs and specs (ADR-0036). They author only `governs:`
+# into those artifacts, plus the symmetric `related:` — a PRD never supersedes,
+# extends, enables, implements, or requires anything.
+PRD_EDGE_FIELDS: tuple[str, ...] = ("governs", "related")
+ALL_EDGE_FIELDS: frozenset[str] = (
+    frozenset(ADR_EDGE_FIELDS) | frozenset(SPEC_EDGE_FIELDS) | frozenset(PRD_EDGE_FIELDS)
+)
+
+# PRD statuses that make a missing downstream artifact a real finding
+# (SPEC-0037 REQ "Graph Edges and Node Visibility"). A `draft` or
+# `client-review` PRD governing nothing is expected, not an orphan.
+PRD_COMMITTED_STATUSES: frozenset[str] = frozenset({"approved", "shipped"})
 
 # Forward → derived inverse (SPEC-0018 REQ "Inverse Edge Derivation").
 INVERSE_OF: dict[str, str] = {
@@ -73,6 +84,19 @@ ACYCLIC_EDGE_TYPES: frozenset[str] = frozenset(
 # `extends` between the same two artifacts is not misread as a cycle
 # (issue #234).
 DOWNSTREAM_EDGE_TYPES: frozenset[str] = frozenset({"enables", "governs"})
+
+# The derived inverses of the downstream types therefore point UPSTREAM. The
+# traversal verbs need this split for the same reason `_validate_no_cycles`
+# does: "authored" and "downstream" are not synonyms. A spec authors
+# `implements:` at the ADR it depends on (upstream), but a PRD authors
+# `governs:` at the ADR that depends on IT (downstream). Partitioning the
+# traversal by the `derived` flag instead of by direction makes `impact` walk
+# upstream through `governed-by`, and `ancestors` walk downstream through
+# `governs` — wrong for the 14 ADRs here that author `governs:`, and total
+# for a PRD, whose only edge is `governs:` (SPEC-0037).
+DERIVED_UPSTREAM_EDGE_TYPES: frozenset[str] = frozenset(
+    INVERSE_OF[t] for t in DOWNSTREAM_EDGE_TYPES
+)
 
 ADR_STATUSES = frozenset({"proposed", "accepted", "deprecated", "superseded"})
 SPEC_STATUSES = frozenset({"draft", "review", "approved", "implemented", "deprecated"})
@@ -212,8 +236,8 @@ def _unquote(value: str) -> str:
 
 @dataclass
 class Node:
-    id: str  # canonical ID (ADR-0001, SPEC-0001) or relative file path for code nodes
-    kind: str  # "adr" | "spec" | "code"
+    id: str  # canonical ID (ADR-0001, SPEC-0001, PRD-0001) or relative file path for code nodes
+    kind: str  # "adr" | "spec" | "prd" | "code"
     path: str  # absolute filesystem path
     status: str | None = None
     date: str | None = None
@@ -259,6 +283,7 @@ class Graph:
 _TITLE_RE = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
 _ID_FROM_TITLE_RE = re.compile(r"^(ADR|SPEC)-(\d{4})\b")
 _ADR_FILE_RE = re.compile(r"^ADR-(\d{4})-")
+_PRD_FILE_RE = re.compile(r"^PRD-(\d{4})-")
 
 
 def discover_adrs(adr_dir: Path) -> list[tuple[str, Path, dict]]:
@@ -273,6 +298,26 @@ def discover_adrs(adr_dir: Path) -> list[tuple[str, Path, dict]]:
         adr_id = f"ADR-{m.group(1)}"
         text = _read_text(path)
         out.append((adr_id, path, parse_frontmatter(text)))
+    return out
+
+
+def discover_prds(prd_dir: Path) -> list[tuple[str, Path, dict]]:
+    """Return (id, path, frontmatter) tuples for every PRD found.
+
+    PRDs are single files named `PRD-XXXX-slug.md` (ADR-0036), not the
+    two-file pair specs use, so discovery mirrors `discover_adrs` rather
+    than `discover_specs`.
+    """
+    out: list[tuple[str, Path, dict]] = []
+    if not prd_dir.is_dir():
+        return out
+    for path in sorted(prd_dir.glob("PRD-*.md")):
+        m = _PRD_FILE_RE.match(path.name)
+        if not m:
+            continue
+        prd_id = f"PRD-{m.group(1)}"
+        text = _read_text(path)
+        out.append((prd_id, path, parse_frontmatter(text)))
     return out
 
 
@@ -481,6 +526,7 @@ class Module:
     root: Path
     adr_dir: Path
     spec_dir: Path
+    prd_dir: Path
     source: str  # "gitmodules" | "claude-md" | "single"
 
 
@@ -558,8 +604,15 @@ def _parse_workspace_table(project_root: Path) -> list[tuple[str, str]]:
 def _resolve_module(project_root: Path, name: str, path: str, source: str) -> Module:
     """Resolve a module's ADR/spec dirs via Artifact Path Resolution."""
     module_root = (project_root / path).resolve()
-    adr_dir, spec_dir = _read_module_artifact_paths(module_root)
-    return Module(name=name, root=module_root, adr_dir=adr_dir, spec_dir=spec_dir, source=source)
+    adr_dir, spec_dir, prd_dir = _read_module_artifact_paths(module_root)
+    return Module(
+        name=name,
+        root=module_root,
+        adr_dir=adr_dir,
+        spec_dir=spec_dir,
+        prd_dir=prd_dir,
+        source=source,
+    )
 
 
 _ADR_DIR_DECL_RE = re.compile(
@@ -568,21 +621,29 @@ _ADR_DIR_DECL_RE = re.compile(
 _SPEC_DIR_DECL_RE = re.compile(
     r"Specifications are in\s+`?([^`\n]+?)`?\s*(?:[.\n]|$)"
 )
+# ADR-0036 § commitment 2: the PRD directory is declared alongside the ADR and
+# spec paths in CLAUDE.md § Architecture Context, defaulting to docs/prds/.
+_PRD_DIR_DECL_RE = re.compile(
+    r"Product Requirements Documents are in\s+`?([^`\n]+?)`?\s*(?:[.\n]|$)"
+)
 
 
-def _read_module_artifact_paths(module_root: Path) -> tuple[Path, Path]:
+def _read_module_artifact_paths(module_root: Path) -> tuple[Path, Path, Path]:
     """Read module CLAUDE.md for artifact-path declarations; fall back to defaults."""
     adr_default = module_root / "docs" / "adrs"
     spec_default = module_root / "docs" / "openspec" / "specs"
+    prd_default = module_root / "docs" / "prds"
     claude_md = module_root / "CLAUDE.md"
     if not claude_md.is_file():
-        return adr_default, spec_default
+        return adr_default, spec_default, prd_default
     text = claude_md.read_text(encoding="utf-8", errors="ignore")
     adr_match = _ADR_DIR_DECL_RE.search(text)
     spec_match = _SPEC_DIR_DECL_RE.search(text)
+    prd_match = _PRD_DIR_DECL_RE.search(text)
     adr_dir = (module_root / adr_match.group(1).strip()).resolve() if adr_match else adr_default
     spec_dir = (module_root / spec_match.group(1).strip()).resolve() if spec_match else spec_default
-    return adr_dir, spec_dir
+    prd_dir = (module_root / prd_match.group(1).strip()).resolve() if prd_match else prd_default
+    return adr_dir, spec_dir, prd_dir
 
 
 # ---------------------------------------------------------------------------
@@ -594,12 +655,18 @@ def build_graph(
     root: Path,
     adr_dir: Path,
     spec_dir: Path,
+    prd_dir: Path | None = None,
     module_name: str | None = None,
 ) -> Graph:
     """Build the graph for a single module rooted at `root`.
 
-    Discovers ADRs, specs, and governed code files; constructs nodes; reads
-    forward edges from frontmatter; derives inverse edges; runs validation.
+    Discovers PRDs, ADRs, specs, and governed code files; constructs nodes;
+    reads forward edges from frontmatter; derives inverse edges; runs
+    validation.
+
+    `prd_dir` is optional and defaults to `<root>/docs/prds`. PRDs are an
+    optional artifact type (ADR-0036) — a repository with no PRD directory
+    produces an identical graph to one built before PRDs existed.
 
     When `module_name` is provided, every node ID is prefixed with
     `[module_name]/` (per SPEC-0018 § Workspace Mode Aggregation), and
@@ -609,6 +676,33 @@ def build_graph(
     """
     g = Graph()
     prefix = f"[{module_name}]/" if module_name else ""
+    if prd_dir is None:
+        prd_dir = root / "docs" / "prds"
+
+    # 0. PRD nodes + forward edges. PRDs sit upstream of ADRs (ADR-0036), so
+    # they are ingested first; the directory is usually absent, in which case
+    # discover_prds returns nothing and the graph is unchanged.
+    for prd_id, path, fm in discover_prds(prd_dir):
+        _emit_yaml_errors(g, full_id=prefix + prd_id, fm=fm)
+        full_id = prefix + prd_id
+        if full_id in g.nodes:
+            g.add_diagnostic(
+                severity="error",
+                code="duplicate-id",
+                message=f"{full_id} declared by multiple files",
+                source_id=full_id,
+            )
+            continue
+        g.nodes[full_id] = Node(
+            id=full_id,
+            kind="prd",
+            path=str(path),
+            status=_str_or_none(fm.get("status")),
+            date=_str_or_none(fm.get("date")),
+            title=_extract_title(_read_text(path)) or prd_id,
+            module=module_name,
+        )
+        _ingest_edges(g, full_id, fm, PRD_EDGE_FIELDS, prefix)
 
     # 1. ADR nodes + forward edges.
     for adr_id, path, fm in discover_adrs(adr_dir):
@@ -747,7 +841,7 @@ def build_aggregate_graph(project_root: Path, modules: list[Module]) -> Graph:
         {"unresolved-id", "cycle", "status-inconsistent"}
     )
     for mod in modules:
-        sub = build_graph(mod.root, mod.adr_dir, mod.spec_dir, module_name=mod.name)
+        sub = build_graph(mod.root, mod.adr_dir, mod.spec_dir, mod.prd_dir, module_name=mod.name)
         sub_authored_edges = [e for e in sub.edges if not e.derived]
         for nid, node in sub.nodes.items():
             agg.nodes[nid] = node
@@ -1031,7 +1125,7 @@ def print_validation(g: Graph) -> None:
 
     print(f"# /sdd:graph validate")
     print()
-    print(f"- Nodes: {n_nodes} (ADRs + specs + governed code files)")
+    print(f"- Nodes: {n_nodes} (PRDs + ADRs + specs + governed code files)")
     print(f"- Authored edges: {n_edges_authored}")
     print(f"- Derived edges: {n_edges_derived}")
     print(f"- Errors: {len(errors)}")
@@ -1070,6 +1164,10 @@ _DEFAULT_LABEL_RULES: dict[tuple[str, str], str] = {
     ("adr", "spec"): "governs",
     ("spec", "spec"): "requires",
     ("adr", "adr"): "extends",
+    # A PRD's only structural edge into either downstream kind is `governs`
+    # (ADR-0036), so labelling it inline adds noise to every PRD lineage.
+    ("prd", "adr"): "governs",
+    ("prd", "spec"): "governs",
 }
 
 _TITLE_TRUNCATE = 60
@@ -1080,8 +1178,9 @@ def _title_for(node: Node) -> str:
     if node.kind == "code":
         return node.id
     title = re.sub(r"\s+", " ", node.title).strip()
-    # Strip leading "ADR-XXXX: " / "SPEC-XXXX: " — we render the ID separately.
-    title = re.sub(r"^(ADR|SPEC)-\d{4}:\s*", "", title)
+    # Strip leading "ADR-XXXX: " / "SPEC-XXXX: " / "PRD-XXXX: " — we render
+    # the ID separately.
+    title = re.sub(r"^(ADR|SPEC|PRD)-\d{4}:\s*", "", title)
     if len(title) > _TITLE_TRUNCATE:
         title = title[: _TITLE_TRUNCATE - 1] + "…"
     return f"{node.id}: {title}" if title else node.id
@@ -1113,8 +1212,42 @@ def _edge_label(
     return f" [{', '.join(parts)}]" if parts else ""
 
 
-def _outgoing_authored(graph: Graph, node_id: str) -> list[tuple[str, str]]:
-    """Authored outgoing edges (forward direction). Sorted by (target, type).
+def _points_upstream(edge: Edge) -> bool:
+    """True when `edge` points from a dependent toward what it depends on.
+
+    Direction is a property of the edge TYPE, not of whether it was
+    authored: `governs`/`enables` point downstream even though they are
+    authored, and their derived inverses point upstream even though they
+    are derived.
+    """
+    if edge.derived:
+        return edge.type in DERIVED_UPSTREAM_EDGE_TYPES
+    return edge.type not in DOWNSTREAM_EDGE_TYPES
+
+
+def _collapse_parallel(
+    edges: list[tuple[str, str, bool]],
+) -> list[tuple[str, str, bool]]:
+    """Keep one edge per target, preferring the authored one.
+
+    Dual `governs:`/`implements:` authoring puts two same-direction edges
+    between the same pair of artifacts. Both are legal and both survive
+    into `validate` and `--json`; rendering both in a tree would print the
+    target twice, once as "(already shown)". The authored edge wins because
+    it names a relationship a human wrote down.
+    """
+    best: dict[str, tuple[str, str, bool]] = {}
+    for target, etype, derived in edges:
+        current = best.get(target)
+        if current is None or (current[2] and not derived):
+            best[target] = (target, etype, derived)
+    return sorted(best.values())
+
+
+def _outgoing_upstream(graph: Graph, node_id: str) -> list[tuple[str, str, bool]]:
+    """Edges toward what `node_id` depends on. Sorted by (target, type, derived).
+
+    Walked by `ancestors` and by `chain`'s upper half.
 
     Excludes `related` (weak association) — this edge type carries no
     dependency semantics, so propagating through it during transitive
@@ -1125,28 +1258,28 @@ def _outgoing_authored(graph: Graph, node_id: str) -> list[tuple[str, str]]:
     src = graph.nodes.get(node_id)
     if src is not None and src.kind == "code":
         return []  # code nodes have only their governing edges, treated separately
-    out = [
-        (e.target, e.type) for e in graph.edges
-        if e.source == node_id and not e.derived and e.type != "related"
-    ]
-    return sorted(out)
+    return _collapse_parallel([
+        (e.target, e.type, e.derived) for e in graph.edges
+        if e.source == node_id and e.type != "related" and _points_upstream(e)
+    ])
 
 
-def _outgoing_derived(graph: Graph, node_id: str) -> list[tuple[str, str]]:
-    """Derived outgoing edges (inverse direction). Sorted by (target, type).
+def _outgoing_downstream(graph: Graph, node_id: str) -> list[tuple[str, str, bool]]:
+    """Edges toward what depends on `node_id`. Sorted by (target, type, derived).
 
-    Excludes the symmetric `related` derived inverse for the same reason
-    as `_outgoing_authored`: weak associations don't carry dependency
+    Walked by `impact` and by `chain`'s lower half.
+
+    Excludes the symmetric `related` inverse for the same reason as
+    `_outgoing_upstream`: weak associations don't carry dependency
     semantics worth transitive traversal.
     """
-    out = [
-        (e.target, e.type) for e in graph.edges
-        if e.source == node_id and e.derived and e.type != "related"
-    ]
-    return sorted(out)
+    return _collapse_parallel([
+        (e.target, e.type, e.derived) for e in graph.edges
+        if e.source == node_id and e.type != "related" and not _points_upstream(e)
+    ])
 
 
-_ID_NUMBER_RE = re.compile(r"^(ADR|SPEC)-(\d+)$", re.IGNORECASE)
+_ID_NUMBER_RE = re.compile(r"^(ADR|SPEC|PRD)-(\d+)$", re.IGNORECASE)
 
 
 def _normalize_id(query: str) -> str:
@@ -1225,18 +1358,17 @@ def _continuation(is_last: bool) -> str:
 def _render_subtree(
     graph: Graph,
     node_id: str,
-    follow: str,  # "authored" or "derived"
+    follow: str,  # "upstream" or "downstream"
     prefix: str,
     out: list[str],
     visited: set[str],
 ) -> None:
-    if follow == "authored":
-        children = _outgoing_authored(graph, node_id)
+    if follow == "upstream":
+        children = _outgoing_upstream(graph, node_id)
     else:
-        children = _outgoing_derived(graph, node_id)
-    for i, (child_id, edge_type) in enumerate(children):
+        children = _outgoing_downstream(graph, node_id)
+    for i, (child_id, edge_type, derived) in enumerate(children):
         is_last = i == len(children) - 1
-        derived = follow == "derived"
         connector = _connector(is_last, derived)
         label = _edge_label(graph, node_id, child_id, edge_type, derived)
         child_node = graph.nodes.get(child_id)
@@ -1252,14 +1384,14 @@ def _render_subtree(
 def render_impact(graph: Graph, target_id: str) -> str:
     """Render top-down tree: target at top, dependents below (SPEC-0018)."""
     target = graph.nodes[target_id]
-    if not _outgoing_derived(graph, target_id):
+    if not _outgoing_downstream(graph, target_id):
         return (
             f"# /sdd:graph impact {target_id}\n\n"
             f"{_title_for(target)} has no impact — nothing in the graph depends on it.\n"
         )
     out = [f"# /sdd:graph impact {target_id}", "", _title_for(target)]
     visited: set[str] = {target_id}
-    _render_subtree(graph, target_id, follow="derived", prefix="", out=out, visited=visited)
+    _render_subtree(graph, target_id, follow="downstream", prefix="", out=out, visited=visited)
     out.append("")
     return "\n".join(out)
 
@@ -1315,14 +1447,14 @@ def _enumerate_ancestor_paths(
     raw_paths: list[list[tuple[str, str, bool]]] = []
 
     def dfs(node: str, path: list[tuple[str, str, bool]]) -> None:
-        children = _outgoing_authored(graph, node)
+        children = _outgoing_upstream(graph, node)
         if not children or len(path) >= max_depth:
             raw_paths.append(list(path))
             return
-        for child_id, edge_type in children:
+        for child_id, edge_type, derived in children:
             if any(step[0] == child_id for step in path):
                 continue
-            path.append((child_id, edge_type, False))
+            path.append((child_id, edge_type, derived))
             dfs(child_id, path)
             path.pop()
 
@@ -1409,8 +1541,8 @@ def render_chain(graph: Graph, target_id: str) -> str:
         {impact tree top-down}
     """
     target = graph.nodes[target_id]
-    has_ancestors = bool(_outgoing_authored(graph, target_id))
-    has_impact = bool(_outgoing_derived(graph, target_id))
+    has_ancestors = bool(_outgoing_upstream(graph, target_id))
+    has_impact = bool(_outgoing_downstream(graph, target_id))
 
     out: list[str] = [f"# /sdd:graph chain {target_id}", ""]
 
@@ -1428,7 +1560,7 @@ def render_chain(graph: Graph, target_id: str) -> str:
         out.append("│")
         body: list[str] = []
         visited: set[str] = {target_id}
-        _render_subtree(graph, target_id, follow="derived", prefix="", out=body, visited=visited)
+        _render_subtree(graph, target_id, follow="downstream", prefix="", out=body, visited=visited)
         out.extend(body)
 
     out.append("")
@@ -1538,21 +1670,21 @@ def _traversal_visit(
     """
     visited: set[str] = set()
 
-    def walk(node_id: str, derived: bool) -> None:
-        if derived:
-            children = _outgoing_derived(graph, node_id)
+    def walk(node_id: str, downstream: bool) -> None:
+        if downstream:
+            children = _outgoing_downstream(graph, node_id)
         else:
-            children = _outgoing_authored(graph, node_id)
-        for child_id, _edge_type in children:
+            children = _outgoing_upstream(graph, node_id)
+        for child_id, _edge_type, _derived in children:
             if child_id == target_id or child_id in visited:
                 continue
             visited.add(child_id)
-            walk(child_id, derived)
+            walk(child_id, downstream)
 
     if verb in ("impact", "chain"):
-        walk(target_id, derived=True)
+        walk(target_id, downstream=True)
     if verb in ("ancestors", "chain"):
-        walk(target_id, derived=False)
+        walk(target_id, downstream=False)
 
     in_subgraph = visited | {target_id}
     out: list[tuple[str, list[Edge]]] = []
@@ -1576,7 +1708,7 @@ def _traversal_json(graph: Graph, verb: str, target_id: str) -> str:
         "results": [
           {
             "id": <str>,
-            "type": "adr"|"spec"|"code",
+            "type": "adr"|"spec"|"prd"|"code",
             "module": <str|null>,
             "title": <str>,
             "edges": [
@@ -1796,6 +1928,11 @@ def cmd_orphans(graph: Graph, root: Path, scope: str | None = None) -> str:
          file's governing comment references.
       c. ADRs with no implementing spec — ADRs that no spec declares
          `implements:` against.
+      d. PRDs with status `approved` or `shipped` that govern no ADR or
+         spec (SPEC-0037). `draft` and `client-review` PRDs are never
+         flagged — an empty `governs:` list is expected while the document
+         is still being interrogated, and the absence of a PRD entirely is
+         never a finding (ADR-0036).
 
     A spec-or-ADR is flagged whenever no `Governing:` comment in source
     code references it; comment-less code is invisible by design (per
@@ -1812,8 +1949,9 @@ def cmd_orphans(graph: Graph, root: Path, scope: str | None = None) -> str:
     code_unrecognized = _unrecognized_code(graph, root, scope)
     spec_orphans = _orphan_specs(graph)
     adr_orphans = _orphan_adrs(graph)
+    prd_orphans = _orphan_prds(graph)
 
-    if not (code_orphans or code_unrecognized or spec_orphans or adr_orphans):
+    if not (code_orphans or code_unrecognized or spec_orphans or adr_orphans or prd_orphans):
         out.append("No orphans detected.")
         out.append("")
         return "\n".join(out)
@@ -1864,6 +2002,19 @@ def cmd_orphans(graph: Graph, root: Path, scope: str | None = None) -> str:
         for adr_id in adr_orphans:
             node = graph.nodes[adr_id]
             out.append(f"| {adr_id} | {_md_escape(_node_title_only(node))} |")
+        out.append("")
+
+    if prd_orphans:
+        out.append("## Approved or shipped PRDs governing no artifact")
+        out.append("")
+        out.append("| PRD | Status | Title |")
+        out.append("|-----|--------|-------|")
+        for prd_id in prd_orphans:
+            node = graph.nodes[prd_id]
+            status = node.status or "-"
+            out.append(
+                f"| {prd_id} | {_md_escape(status)} | {_md_escape(_node_title_only(node))} |"
+            )
         out.append("")
 
     return "\n".join(out)
@@ -1968,6 +2119,34 @@ def _orphan_adrs(graph: Graph) -> list[str]:
     return orphans
 
 
+def _orphan_prds(graph: Graph) -> list[str]:
+    """PRDs that have committed to a downstream artifact but govern none.
+
+    Per SPEC-0037, only `approved` and `shipped` PRDs qualify: a `draft` or
+    `client-review` PRD with an empty `governs:` list is the normal state of
+    a document still being interrogated, not a defect. A PRD whose `governs:`
+    targets do not resolve to real nodes counts as governing nothing — the
+    unresolved IDs are already reported separately by validate.
+    """
+    orphans: list[str] = []
+    for node_id, node in sorted(graph.nodes.items()):
+        if node.kind != "prd":
+            continue
+        if (node.status or "").strip().lower() not in PRD_COMMITTED_STATUSES:
+            continue
+        governs_real = any(
+            e.source == node_id
+            and e.type == "governs"
+            and not e.derived
+            and graph.nodes.get(e.target) is not None
+            and graph.nodes[e.target].kind in ("adr", "spec")
+            for e in graph.edges
+        )
+        if not governs_real:
+            orphans.append(node_id)
+    return orphans
+
+
 def cmd_cycles(graph: Graph) -> str:
     """List any cycles detected during validation.
 
@@ -2014,7 +2193,7 @@ _BACKFILL_SECTIONS = (
     "Consequences",
 )
 _SECTION_HEADING_RE = re.compile(r"^##+\s+(.+?)\s*$", re.MULTILINE)
-_ARTIFACT_REF_RE = re.compile(r"\b(ADR|SPEC)-(\d{4})\b")
+_ARTIFACT_REF_RE = re.compile(r"\b(ADR|SPEC|PRD)-(\d{4})\b")
 # Verbs that hint at a stronger relationship than `related`. Priority order
 # is fixed by check order in _propose_edges_from_prose: supersedes > extends > enables.
 _EXTENDS_HINT_RE = re.compile(
@@ -2045,6 +2224,8 @@ _FIELD_TARGET_KINDS: dict[tuple[str, str], frozenset[str]] = {
     ("spec", "requires"): frozenset({"SPEC"}),
     ("spec", "extends"): frozenset({"SPEC"}),
     ("spec", "supersedes"): frozenset({"SPEC"}),
+    ("prd", "governs"): frozenset({"ADR", "SPEC"}),
+    ("prd", "related"): frozenset({"ADR", "SPEC", "PRD"}),
 }
 
 # Field-strength order for de-duplicating same-target proposals: a stronger
@@ -2188,6 +2369,10 @@ def _propose_edges_from_prose(
                             field = "implements"
                         else:
                             field = "requires"
+                elif kind == "prd":
+                    # A PRD's only downstream edge is `governs` (ADR-0036);
+                    # a reference to another PRD can only be `related`.
+                    field = "related" if ref_kind == "PRD" else "governs"
             if field is None:
                 continue
 
@@ -2197,6 +2382,8 @@ def _propose_edges_from_prose(
             if kind == "adr" and field not in ADR_EDGE_FIELDS:
                 continue
             if kind == "spec" and field not in SPEC_EDGE_FIELDS:
+                continue
+            if kind == "prd" and field not in PRD_EDGE_FIELDS:
                 continue
             allowed_target_kinds = _FIELD_TARGET_KINDS.get((kind, field))
             if allowed_target_kinds is not None and ref_kind not in allowed_target_kinds:
@@ -2250,7 +2437,7 @@ def _gather_proposals(graph: Graph, root: Path) -> list[BackfillProposal]:
         (e.source, e.type, e.target) for e in graph.edges if not e.derived
     }
     for node_id, node in sorted(graph.nodes.items()):
-        if node.kind not in ("adr", "spec"):
+        if node.kind not in ("adr", "spec", "prd"):
             continue
         text = _read_text(Path(node.path))
         edges, rationale = _propose_edges_from_prose(text, node_id, node.kind)
@@ -2461,6 +2648,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", default=".", help="project root (default: cwd)")
     parser.add_argument("--adr-dir", help="ADR directory (default: <root>/docs/adrs)")
     parser.add_argument("--spec-dir", help="spec directory (default: <root>/docs/openspec/specs)")
+    parser.add_argument("--prd-dir", help="PRD directory (default: <root>/docs/prds)")
     parser.add_argument("--scope", help="restrict orphan code-file detection to a subtree")
     parser.add_argument(
         "--module",
@@ -2521,7 +2709,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Workspace mode (Story 5): detect modules; choose build strategy.
     modules = detect_workspace(root)
-    explicit_paths = bool(args.adr_dir or args.spec_dir)
+    explicit_paths = bool(args.adr_dir or args.spec_dir or args.prd_dir)
 
     if args.module:
         # --module scopes to a single module with unprefixed IDs.
@@ -2532,7 +2720,8 @@ def main(argv: list[str] | None = None) -> int:
             # Silently fall through to single-module mode.
             adr_dir = Path(args.adr_dir).resolve() if args.adr_dir else root / "docs" / "adrs"
             spec_dir = Path(args.spec_dir).resolve() if args.spec_dir else root / "docs" / "openspec" / "specs"
-            g = build_graph(root, adr_dir, spec_dir)
+            prd_dir = Path(args.prd_dir).resolve() if args.prd_dir else root / "docs" / "prds"
+            g = build_graph(root, adr_dir, spec_dir, prd_dir)
         else:
             chosen = next((m for m in modules if m.name == args.module), None)
             if chosen is None:
@@ -2544,7 +2733,8 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             adr_dir = Path(args.adr_dir).resolve() if args.adr_dir else chosen.adr_dir
             spec_dir = Path(args.spec_dir).resolve() if args.spec_dir else chosen.spec_dir
-            g = build_graph(chosen.root, adr_dir, spec_dir)
+            prd_dir = Path(args.prd_dir).resolve() if args.prd_dir else chosen.prd_dir
+            g = build_graph(chosen.root, adr_dir, spec_dir, prd_dir)
     elif modules and not explicit_paths:
         # Aggregate mode: build per-module and merge with [module]/ID prefixes.
         g = build_aggregate_graph(root, modules)
@@ -2552,7 +2742,8 @@ def main(argv: list[str] | None = None) -> int:
         # Single-module: explicit paths or no workspace detected.
         adr_dir = Path(args.adr_dir).resolve() if args.adr_dir else root / "docs" / "adrs"
         spec_dir = Path(args.spec_dir).resolve() if args.spec_dir else root / "docs" / "openspec" / "specs"
-        g = build_graph(root, adr_dir, spec_dir)
+        prd_dir = Path(args.prd_dir).resolve() if args.prd_dir else root / "docs" / "prds"
+        g = build_graph(root, adr_dir, spec_dir, prd_dir)
 
     if args.verb == "validate":
         if fmt == "json":

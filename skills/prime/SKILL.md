@@ -15,7 +15,7 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR, spec, and PRD directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}`, spec directory is `{spec-dir}`, and PRD directory is `{prd-dir}` (default `docs/prds/`, per ADR-0036).
 
    <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
 
@@ -49,7 +49,7 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
    **For untargeted priming** (`/sdd:prime` with no topic):
    - Enumerate all ADRs with `qmd ls {repo}-adrs` and all specs with `qmd ls {repo}-specs`, then read each document (via `qmd get`/`qmd multi-get` or directly from disk) per qmd-helpers § "Exhaustive Retrieval (list-all)"
    - In workspace mode, repeat for each module's per-module collections (`{repo}-{module}-adrs`, etc.)
-   - If `qmd ls` is unavailable or errors, fall back to direct file enumeration over `{adr-dir}/*.md` and `{spec-dir}/*/spec.md` (acceptable for exhaustive listing only — no ranking is involved)
+   - If `qmd ls` is unavailable or errors, fall back to direct file enumeration over `{adr-dir}/*.md`, `{spec-dir}/*/spec.md`, and `{prd-dir}/PRD-*.md` (acceptable for exhaustive listing only — no ranking is involved)
    
    **For topic-filtered priming** (`/sdd:prime {topic}`):
    - Construct a hybrid query with both `lex` (keyword match) and `vec` (semantic match) sub-queries per `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Hybrid Retrieval"
@@ -84,6 +84,7 @@ Load existing ADRs and specs into the session so Claude can give architecture-aw
 5. **Handle edge cases**:
    - If `{adr-dir}` does not exist: "The `{adr-dir}` directory does not exist. Run `/sdd:adr [description]` to create your first ADR."
    - If `{spec-dir}` does not exist: "The `{spec-dir}` directory does not exist. Run `/sdd:spec [capability]` to create your first spec."
+   - If `{prd-dir}` does not exist: say nothing. PRDs are optional and client-facing-only (ADR-0036), so prompting for a missing one implies a gap that is not there. When PRDs *do* exist, load those relevant to the session topic alongside the ADRs and specs — a PRD governing an ADR in scope is context for why the decision was made, not just what it was.
    - If neither directory has any artifacts: "No design artifacts found. Create an ADR with `/sdd:adr` or a spec with `/sdd:spec` first."
    - If ADRs exist but no specs (or vice versa), present whichever exists and note the other is empty
 
