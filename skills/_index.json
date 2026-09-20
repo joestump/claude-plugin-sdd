@@ -1,5 +1,5 @@
 {
-  "Creating Artifacts": ["adr", "spec"],
+  "Creating Artifacts": ["prd", "adr", "spec"],
   "Sprint Planning": ["plan", "organize", "enrich"],
   "Implementation": ["work", "review", "respond"],
   "Drift Detection": ["check", "audit"],
