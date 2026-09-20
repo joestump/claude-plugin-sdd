@@ -20,7 +20,7 @@ Every reference from a `SKILL.md` names its section. This file is ~800 lines; re
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-Canonical algorithm for resolving the paths to ADR and spec directories. All skills that access ADRs or specs MUST use this pattern instead of hardcoding `docs/adrs/` or `docs/openspec/specs/`.
+Canonical algorithm for resolving the paths to ADR, spec, and PRD directories. All skills that access ADRs, specs, or PRDs MUST use this pattern instead of hardcoding `docs/adrs/`, `docs/openspec/specs/`, or `docs/prds/`.
 
 ### Step 1: Determine the Module Root
 
@@ -36,15 +36,19 @@ Read the module's `CLAUDE.md` (or the root `CLAUDE.md` for single-module project
 
 - `- Architecture Decision Records are in {path}` → use `{path}` as the ADR directory
 - `- Specifications are in {path}` → use `{path}` as the spec directory
+- `- Product Requirements Documents are in {path}` → use `{path}` as the PRD directory (ADR-0036)
 
 Paths are relative to the module root (or project root for single-module projects).
 
 ### Step 3: Apply Defaults
 
-If the `CLAUDE.md` does not declare a path for ADRs or specs, fall back to these defaults:
+If the `CLAUDE.md` does not declare a path for ADRs, specs, or PRDs, fall back to these defaults:
 
 - **ADR directory**: `docs/adrs/`
 - **Spec directory**: `docs/openspec/specs/`
+- **PRD directory**: `docs/prds/`
+
+**PRDs are optional** (ADR-0036). Resolving `{prd-dir}` never implies the directory exists: most repositories have no PRDs at all, and a skill MUST treat an absent `{prd-dir}` as the normal case — skip PRD work silently rather than reporting a missing directory, and never flag an ADR or spec for having no upstream PRD.
 
 ### Step 4: Resolve Absolute Paths
 

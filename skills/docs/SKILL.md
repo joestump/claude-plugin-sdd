@@ -31,7 +31,7 @@ Supports two modes:
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR, spec, and PRD directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}`, spec directory is `{spec-dir}`, and PRD directory is `{prd-dir}` (default `docs/prds/`, per ADR-0036).
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Cross-Module Aggregation" -->
 
@@ -59,6 +59,7 @@ Each module's artifacts are transformed independently and placed under a module-
 
 - Check if Node.js is installed. If not, tell the user: "Node.js is required to run the docs site. Please install it from https://nodejs.org/ and re-run this command." and stop.
 - Check if `{adr-dir}` has any ADR `.md` files
+- Check if `{prd-dir}` has any `PRD-*.md` files. PRDs are optional (ADR-0036): when the directory is absent or empty, generate no PRD section and no empty placeholder page. When PRDs exist, give them their own sidebar section ahead of ADRs, matching the `PRD → ADR → spec` lineage, and render each PRD's `governs:` edges as links to the ADR and spec pages it governs.
 - Check if `{spec-dir}` has any spec directories (containing `spec.md`). Validate spec pairing per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Spec Pairing Validation".
 - If NEITHER has content, tell the user: "No ADRs or specs found. Create some first with `/sdd:adr` or `/sdd:spec`, then re-run `/sdd:docs`." and stop.
 - If only one has content, proceed but note which is empty (e.g., "No specs found yet -- the docs site will only include ADRs for now.")

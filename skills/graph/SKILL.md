@@ -19,7 +19,7 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
 
 <!-- Governing: ADR-0016 (Workspace Mode), SPEC-0014 REQ "Artifact Path Resolution" -->
 
-0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR and spec directories. The resolved ADR directory is `{adr-dir}` and spec directory is `{spec-dir}`.
+0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR, spec, and PRD directories. The resolved ADR directory is `{adr-dir}`, spec directory is `{spec-dir}`, and PRD directory is `{prd-dir}` (default `docs/prds/`, per ADR-0036). PRDs are optional — a project with no PRD directory builds exactly the graph it did before PRDs existed.
 
    In Story 2 the helper accepts a single root and a single ADR/spec dir per invocation. Workspace-mode aggregation (multiple modules, `[module]/ID` prefixes) lands in Story 5.
 
@@ -40,7 +40,7 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
    For `validate`:
 
    ```bash
-   python3 {skill-dir}/lib/graph.py validate --root {project-root} [--adr-dir DIR] [--spec-dir DIR]
+   python3 {skill-dir}/lib/graph.py validate --root {project-root} [--adr-dir DIR] [--spec-dir DIR] [--prd-dir DIR]
    ```
 
    For traversal verbs:
@@ -52,7 +52,7 @@ This skill differs from other SDD skills: instead of orchestrating Claude throug
    ```
 
    - `{project-root}` is the working directory (typically `.`).
-   - `{adr-dir}` and `{spec-dir}` are passed only if Step 0 resolved a non-default location (e.g., a workspace module). For a single-module project, omit them and the helper defaults to `docs/adrs/` and `docs/openspec/specs/` under the root.
+   - `{adr-dir}`, `{spec-dir}`, and `{prd-dir}` are passed only if Step 0 resolved a non-default location (e.g., a workspace module). For a single-module project, omit them and the helper defaults to `docs/adrs/`, `docs/openspec/specs/`, and `docs/prds/` under the root.
    - Traversal verbs refuse to run if validation has hard errors. Run `validate` first if the user reports unexpected output.
 
 4. **Present the helper's stdout to the user verbatim**.
@@ -103,14 +103,15 @@ Single contiguous bidirectional diagram: ancestors above (rendered as top-down c
 
 ### `orphans`
 
-Surfaces four categories of orphan as flat markdown tables (default for flat results per SPEC-0018):
+Surfaces five categories of orphan as flat markdown tables (default for flat results per SPEC-0018):
 
 1. **Source files without governing artifacts** — non-markdown source files in the project tree that contain no `Governing:` comment at all. Discovered by a dedicated walk so these files do not become graph nodes (they remain invisible to traversal queries) but DO surface here. The walk uses the same exclusions as the graph builder (`.git`, `node_modules`, `vendor`, build/cache dirs, `docs/`, `skills/`, `references/`, etc.). Markdown files are skipped — they participate via frontmatter (ADRs, specs) or are out of scope for v1 (READMEs, ad-hoc docs).
 2. **Source files with unrecognized governing comments** — files that DO contain a `Governing:` marker but from which the parser could read no `ADR-XXXX` / `SPEC-XXXX` ID: an issue-only reference (`// Governing: #24`), or a comment opener the parser does not accept. Each row carries the reason. These are listed apart from category 1 because the fix is the opposite — reformat the comment the file already has, do not add another. The same files also surface as `governing-unrecognized` warnings in `validate`.
 3. **Specs with no implementing code** — specs that no source file's governing comment references.
 4. **ADRs with no implementing spec** — ADRs that no spec declares `implements:` against.
+5. **Approved or shipped PRDs governing no artifact** — PRDs that have committed to a downstream artifact but declare no resolvable `governs:` target (SPEC-0037). Status gates the category deliberately: a `draft` or `client-review` PRD with an empty `governs:` list is a document still being interrogated, not a defect, and is never listed. Nor is the *absence* of a PRD ever reported — per ADR-0036 an ADR without an upstream PRD is the normal case, not a finding.
 
-Optional `--scope <subtree>` restricts categories 1 and 2 to source files under the given path. Categories 3 and 4 always cover the full graph.
+Optional `--scope <subtree>` restricts categories 1 and 2 to source files under the given path. Categories 3, 4, and 5 always cover the full graph.
 
 **How governing comments are read.** The helper scans the first 4096 bytes of each file for every line matching `<opener> Governing: ...` or `<opener> Implements: ...` — openers are `//`, `#`, `<!--`, `*` (JSDoc / block-comment continuation), and `/*` — and unions the artifact IDs across all of them. The canonical two-line block (`Governing:` + `Implements:`) and a repo that keeps an issue-style line above the artifact-style one are therefore both credited correctly; the first `Governing:` line no longer decides the file's fate on its own.
 
