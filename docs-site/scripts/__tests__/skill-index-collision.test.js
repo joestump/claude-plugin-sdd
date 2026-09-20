@@ -27,6 +27,7 @@ const REPO_ROOT = path.resolve(__dirname, '../../..');
 const TRANSFORM = path.join(REPO_ROOT, 'docs-site/scripts/transform-skills.js');
 const SIDEBARS = path.join(REPO_ROOT, 'docs-site/sidebars.ts');
 const MANIFEST = path.join(REPO_ROOT, 'skills/_index.json');
+const GENERATE_COMMANDS = path.join(REPO_ROOT, 'docs-site/scripts/generate-commands.js');
 
 test('the skill manifest still contains the colliding name', () => {
   // If `index` is ever renamed, this whole guard can go — but until then a
@@ -59,14 +60,52 @@ test('pageFileBase remaps only `index`', () => {
   assert.match(body, /name === 'index' \? 'index-skill' : name/);
 });
 
-test('the generated index skill page keeps the /skills/index slug', () => {
-  // The filename moves; the route must not, or the hero tile and the
-  // quick-reference guide break in the other direction.
+test('the index skill page is served from a route that does not collide', () => {
+  // Moving the file is necessary but not sufficient. Docusaurus emits
+  // `<slug>/index.html`, so a page slugged `/skills/index` builds to
+  // `skills/index/index.html` while the overview (slug `/skills/`) owns the
+  // FILE `skills/index.html` — and a static host matches the file first. So
+  // the route has to move too.
+  const src = fs.readFileSync(TRANSFORM, 'utf-8');
+  assert.match(src, /function pageSlug\(name\)/);
+  assert.match(
+    src,
+    /return `\/skills\/\$\{pageFileBase\(name\)\}`/,
+    'the slug must derive from the remapped stem, not the raw skill name',
+  );
+  assert.match(src, /`slug: \$\{pageSlug\(name\)\}`/);
+});
+
+test('the hero tiles link to the same route the pages are served from', () => {
   const src = fs.readFileSync(TRANSFORM, 'utf-8');
   assert.match(
     src,
-    /slug: \/skills\/\$\{name\}/,
-    'the slug must still derive from the skill name, not the filename stem',
+    /JSON\.stringify\(pageSlug\(name\)\)/,
+    'tile hrefs must go through pageSlug(), or they point at a route that does not exist',
+  );
+});
+
+test('the quick-reference guide rewrites the colliding route', () => {
+  // That guide is rendered by an upstream package which derives
+  // `/skills/{name}` with no knowledge of this site's collision, so the thin
+  // wrapper this repo owns applies the same remap.
+  const gen = fs.readFileSync(GENERATE_COMMANDS, 'utf-8');
+  assert.match(gen, /ROUTE_OVERRIDES = \{ index: '\/skills\/index-skill' \}/);
+  const { applyRouteOverrides } = require(GENERATE_COMMANDS);
+  const before = ' href={"/skills/index"} namespace={"sdd"}';
+  assert.equal(
+    applyRouteOverrides(before),
+    ' href={"/skills/index-skill"} namespace={"sdd"}',
+  );
+});
+
+test('the guide rewrite fails loudly if the upstream href format changes', () => {
+  // A silent no-op here reintroduces the original bug, where a link pointed
+  // at a page that was never served and the build still went green.
+  const { applyRouteOverrides } = require(GENERATE_COMMANDS);
+  assert.throws(
+    () => applyRouteOverrides('no tiles here'),
+    /expected a tile for "index"/,
   );
 });
 
