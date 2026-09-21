@@ -24,6 +24,7 @@ This project uses the [SDD plugin](https://github.com/joestump/claude-plugin-sdd
 | `/sdd:plan` | Break a spec into trackable issues with project grouping and branch conventions |
 | `/sdd:organize` | Retroactively group issues into tracker-native projects |
 | `/sdd:enrich` | Add branch naming and PR conventions to existing issues |
+| `/sdd:triage` | Give each open issue a verdict, close only on evidence from `main`, and apply exactly one `size/*` label |
 | `/sdd:work` | Pick up tracker issues and implement them in parallel using git worktrees |
 | `/sdd:review` | Review and merge PRs using reviewer-responder agent pairs |
 | `/sdd:respond` | Address review feedback on a PR: make the code fixes, push, and reply to each thread |

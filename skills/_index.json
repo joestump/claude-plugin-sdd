@@ -1,6 +1,6 @@
 {
   "Creating Artifacts": ["prd", "adr", "spec"],
-  "Sprint Planning": ["plan", "organize", "enrich"],
+  "Sprint Planning": ["plan", "organize", "enrich", "triage"],
   "Implementation": ["work", "review", "respond"],
   "Drift Detection": ["check", "audit"],
   "Discovery": ["discover", "search"],

@@ -55,7 +55,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    - Does it have board columns (Gitea: Todo, In Progress, In Review, Done)?
    - Does it have milestones for epics (Gitea)?
    - Are native dependency links set (Gitea)?
-   - Are all issues correctly grouped and labeled?
+   - Are all issues correctly grouped and labeled? Does each carry exactly one `size/*` label (per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels")?
    - Are `### Branch` and `### PR Convention` sections present in issue bodies?
 
    Present findings to the operator and offer **three intervention tiers** via `AskUserQuestion`:
@@ -74,6 +74,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    **(c) Complete refactor**: All tier (b) changes PLUS:
    - Re-group issues across epics (move misplaced stories)
    - Fix/add labels using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern")
+   - Give every issue exactly one `size/*` label per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels" — add a missing one, collapse duplicates, and never re-size an issue that already has exactly one
    - Create native dependency links (Gitea)
    - Update issue bodies with `### Branch` and `### PR Convention` sections (if missing)
 
@@ -144,6 +145,7 @@ This skill reads and writes the `Projects` subsection of the `### SDD Configurat
 - When writing config to CLAUDE.md, preserve existing keys
 - MUST link created projects to the repository for trackers that support project-repository associations (e.g., GitHub Projects V2 via `gh project link`, Gitea)
 - MUST use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern") for all label applications in tier (c) (Governing: SPEC-0011 REQ "Auto-Create Labels")
+- Tier (c) MUST leave every issue it touches with exactly one `size/*` label per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels", unless `#### Sizing > Enabled` is `false`
 - MUST degrade gracefully when tracker features are unavailable — skip and report, never fail (Governing: SPEC-0011 REQ "Graceful Degradation")
 - No `--review` support (utility skill)
 - **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 0a — sync from tracker before discovering issues, subject to 5-min dedup. On failure, fall back to live queries with a warning (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")

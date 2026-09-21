@@ -1,0 +1,22 @@
+[
+  {"query": "/sdd:triage --all", "should_trigger": true},
+  {"query": "triage the open issues in this repo and close the ones that are already done", "should_trigger": true},
+  {"query": "size every open issue with size/S, size/M, size/L or size/XL", "should_trigger": true},
+  {"query": "which of these backlog issues are stale? a lot of PRs said Closes #N but I don't trust them", "should_trigger": true},
+  {"query": "groom the backlog before we plan the next sprint", "should_trigger": true},
+  {"query": "half our issues have no size label and some have two — fix that", "should_trigger": true},
+  {"query": "/sdd:triage SPEC-0012 --dry-run", "should_trigger": true},
+  {"query": "go through issues #41 #42 #57 and tell me if they're still real", "should_trigger": true},
+  {"query": "find issues that were fixed but never closed because the PR forgot the closing keyword", "should_trigger": true},
+  {"query": "we have model/haiku and sonnet-ready labels alongside t-shirt sizes; collapse them into one scale", "should_trigger": true},
+  {"query": "break SPEC-0015 into trackable issues", "should_trigger": false},
+  {"query": "add branch naming sections to the open stories", "should_trigger": false},
+  {"query": "review and merge the open PRs for SPEC-0007", "should_trigger": false},
+  {"query": "file a bug against the SDD plugin, /sdd:plan burned an hour", "should_trigger": false},
+  {"query": "triage this production incident, the API is returning 500s", "should_trigger": false},
+  {"query": "what size should the docker image be for this service", "should_trigger": false},
+  {"query": "address the review comments on PR 88", "should_trigger": false},
+  {"query": "check whether the code still matches ADR-0004", "should_trigger": false},
+  {"query": "group the SPEC-0003 issues into a GitHub project board", "should_trigger": false},
+  {"query": "write a spec for the new triage dashboard feature", "should_trigger": false}
+]

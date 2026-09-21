@@ -176,7 +176,7 @@ Canonical algorithm for reading plugin configuration from CLAUDE.md. All skills 
 
 ### Step 1: Read Root CLAUDE.md
 
-Resolve the project memory file at the project root (`CLAUDE.md`, then `AGENTS.md`, then `CRUSH.md` — first file containing the SDD sections wins, per `harness-compat.md` § "Project Memory File"; called `CLAUDE.md` below). Read it and look for a `### SDD Configuration` section. If found, parse the subsections (`#### Tracker`, `#### Branch Conventions`, `#### PR Conventions`, `#### Review`, `#### Worktrees`, `#### Projects`) to extract configuration values.
+Resolve the project memory file at the project root (`CLAUDE.md`, then `AGENTS.md`, then `CRUSH.md` — first file containing the SDD sections wins, per `harness-compat.md` § "Project Memory File"; called `CLAUDE.md` below). Read it and look for a `### SDD Configuration` section. If found, parse the subsections (`#### Tracker`, `#### Branch Conventions`, `#### PR Conventions`, `#### Review`, `#### Worktrees`, `#### Projects`, `#### Sizing`) to extract configuration values.
 
 ### Step 2: Merge Module Config (if applicable)
 
@@ -192,6 +192,7 @@ For any keys not found in either CLAUDE.md, apply these defaults:
 - **Review**: `max_pairs`=2, `merge_strategy`="squash", `auto_cleanup`=false
 - **Worktrees**: `base_dir`=`.claude/worktrees/`, `max_agents`=3, `auto_cleanup`=false, `pr_mode`="ready"
 - **Projects**: `default_mode`="per-epic", `views`=["All Work", "Board", "Roadmap"], `columns`=["Todo", "In Progress", "In Review", "Done"], `iteration_weeks`=2
+- **Sizing**: `enabled`=true, anchors per `skills/triage/SKILL.md` § "The size ladder"
 
 ### Step 4: Fall Through
 
@@ -237,6 +238,13 @@ The `### SDD Configuration` section in CLAUDE.md uses the following markdown str
 - **Views**: All Work, Board, Roadmap
 - **Columns**: Todo, In Progress, In Review, Done
 - **Iteration Weeks**: 2
+
+#### Sizing
+- **Enabled**: true
+- **S**: an older Haiku
+- **M**: Opus 4.6 Max
+- **L**: Sonnet 5
+- **XL**: Opus 5 / Fable 5
 ```
 
 **Tracker-specific keys** (in the `#### Tracker` subsection):
@@ -255,6 +263,7 @@ Skills MAY tolerate minor natural-language variations in key names (e.g., "Branc
 | plan | Yes | Yes | Writes project IDs and tracker config back |
 | organize | Yes | No | Consumer only |
 | enrich | Yes | No | Consumer only |
+| triage | Yes | No | Consumer only; owns the `#### Sizing` semantics |
 | work | Yes | No | Consumer only |
 | review | Yes | No | Consumer only |
 | prime, check, audit, discover | No | No | Read-only skills; no config needed |
@@ -401,7 +410,15 @@ On harnesses without team primitives (Codex, OpenCode, Crush — or a Claude Cod
 
 When applying labels (e.g., `epic`, `story`, `spec`), attempt to apply the label first. If the tracker returns "label not found", create the label with a default color and retry.
 
-Default colors: `epic`=#6E40C9, `story`=#1D76DB, `spec`=#0E8A16, other=#CCCCCC.
+Default colors: `epic`=#6E40C9, `story`=#1D76DB, `spec`=#0E8A16, `size/S`=#C2E0C6, `size/M`=#FEF2C0, `size/L`=#F9D0C4, `size/XL`=#B60205, other=#CCCCCC.
+
+## Size Labels
+
+Every issue a skill creates or touches gets **exactly one** `size/S`, `size/M`, `size/L` or `size/XL` label, chosen by the ladder and tie-breakers in `${CLAUDE_PLUGIN_ROOT}/skills/triage/SKILL.md` § "The size ladder" (load that section only). Skip this when `#### Sizing > Enabled` is `false`.
+
+- **Creating** an issue: pick the size from the finished body, apply it with the try-then-create pattern.
+- **Touching** an issue that has no `size/*` label: add one. One that already has exactly one: leave it — re-sizing is `/sdd:triage`'s job, not a side effect. One that has several: keep the one the ladder supports and remove the rest.
+- Never introduce a second scale (t-shirt sizes, story points, model-name labels) alongside `size/*`.
 
 ## Branch Naming Conventions
 
