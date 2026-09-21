@@ -21,6 +21,7 @@ The skills are written in the open Agent Skills format and are harness-portable:
 | **Plan** | `/sdd:plan [spec-name or SPEC-XXXX] [--scrum] [--review] [--project <name>] [--no-projects] [--branch-prefix <prefix>] [--no-branches]` | Break a spec into trackable issues; use `--scrum` for a full team-groomed ceremony with spec audit, multi-agent grooming, and automatic organize + enrich |
 | **Organize** | `/sdd:organize [SPEC-XXXX or spec-name] [--project <name>] [--dry-run]` | Retroactively group existing issues into tracker-native projects |
 | **Enrich** | `/sdd:enrich [SPEC-XXXX or spec-name] [--branch-prefix <prefix>] [--dry-run]` | Add branch naming and PR conventions to existing issue bodies |
+| **Triage** | `/sdd:triage [SPEC-XXXX \| #N \| --all] [--dry-run] [--size-only]` | Give each open issue a verdict, close stale ones only on evidence from `main`, and apply exactly one `size/*` label |
 | **Work** | `/sdd:work [SPEC-XXXX \| issue numbers \| (empty = propose from backlog)] [--max-agents N] [--draft] [--dry-run] [--no-tests] [--module <name>]` | Pick up tracker issues and implement them in parallel using git worktrees |
 | **Review** | `/sdd:review [SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run] [--module <name>]` | Review and merge PRs using reviewer-responder agent pairs |
 | **Respond** | `/sdd:respond [PR numbers or URL \| (empty = infer from current branch)] [--reply-only] [--fix-only] [--no-push] [--dry-run] [--module <name>]` | Address review feedback on a PR: make the code fixes, push, and reply to each thread |
@@ -47,7 +48,7 @@ Add to your project's `.claude/settings.json`:
 }
 ```
 
-Then restart Claude Code. The plugin's skills will be available as `/sdd:init`, `/sdd:prime`, `/sdd:prd`, `/sdd:adr`, `/sdd:spec`, `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:work`, `/sdd:review`, `/sdd:respond`, `/sdd:check`, `/sdd:audit`, `/sdd:discover`, `/sdd:docs`, `/sdd:list`, `/sdd:status`, `/sdd:graph`, `/sdd:index`, `/sdd:search`, and `/sdd:report-friction`.
+Then restart Claude Code. The plugin's skills will be available as `/sdd:init`, `/sdd:prime`, `/sdd:prd`, `/sdd:adr`, `/sdd:spec`, `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:triage`, `/sdd:work`, `/sdd:review`, `/sdd:respond`, `/sdd:check`, `/sdd:audit`, `/sdd:discover`, `/sdd:docs`, `/sdd:list`, `/sdd:status`, `/sdd:graph`, `/sdd:index`, `/sdd:search`, and `/sdd:report-friction`.
 
 ## Configuration
 
@@ -228,7 +229,19 @@ Retroactively adds branch naming and PR convention sections to existing issue bo
 - Skips issues that already have these sections (idempotent)
 - Use `--dry-run` to preview without modifying
 - Custom branch prefix via `--branch-prefix`
+- Adds a `size/*` label to issues that lack one (never changes an existing size)
 - No `--review` support (utility skill)
+
+### `/sdd:triage` -- Triage and Size Issues
+
+Decides whether each open issue is still real, then how big it is:
+- Verdicts: `OK`, `STALE`, `SUPERSEDED`, `DUP`, `BLOCKED`, `HUMAN`, `BOT` — bot-managed dashboards are never sized or closed
+- Closes only on evidence from the current code on `main` — a merged PR's `Closes #N` is not evidence, and neither is age — and posts that evidence before every close
+- Catches the reverse case too: issues fixed by a PR that never used a closing keyword
+- Narrows partly-done issues instead of closing them
+- Applies exactly one `size/S` / `size/M` / `size/L` / `size/XL` label: the weakest model that can carry the issue end to end. `/sdd:plan`, `/sdd:organize` and `/sdd:enrich` use the same ladder
+- Model anchors are overridable under `#### Sizing` in the SDD configuration
+- Use `--dry-run` to preview, `--size-only` to skip verdicts
 
 ### `/sdd:work` -- Parallel Issue Implementation
 

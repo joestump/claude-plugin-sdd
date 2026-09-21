@@ -48,6 +48,7 @@ const SKILL_BLURBS: Record<string, string> = {
   plan:              'Break specs into sprint issues',
   organize:          'Group issues into tracker projects',
   enrich:            'Add branch/PR conventions to issues',
+  triage:            'Verdict and size issues; close only on evidence',
   work:              'Implement issues in parallel worktrees',
   review:            'Review and merge PRs with spec-aware pairs',
   respond:           'Address review feedback on a PR and reply',

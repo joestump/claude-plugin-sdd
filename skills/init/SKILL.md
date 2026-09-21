@@ -158,7 +158,7 @@ This is the canonical algorithm for building the plugin-owned portion of the `##
 
    ```
    prd, adr, spec, list, status, docs, init, prime, check, audit, discover,
-   plan, organize, enrich, work, review, graph, index, report-friction
+   plan, organize, enrich, triage, work, review, graph, index, report-friction
    ```
 
    When adding a brand-new skill that fits the lifecycle, append it to this list in the appropriate position during the same PR that introduces the skill; if the maintainer forgets, the skill still appears (alphabetically at the end), so existing users still pick it up.
