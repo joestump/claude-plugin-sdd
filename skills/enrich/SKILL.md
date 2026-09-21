@@ -102,6 +102,8 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
 
    h. **Auto-create labels** (Governing: SPEC-0011 REQ "Auto-Create Labels"): When applying labels like `epic` or `story` during enrichment, use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern").
 
+   h1. **Size label**: If the issue has no `size/*` label (and `#### Sizing > Enabled` is not `false`), add exactly one per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels". Never change a size that is already set — enrichment is additive; re-sizing is `/sdd:triage`'s job. Show the proposed size in `--dry-run` output.
+
    i. Update the issue body with the appended sections using the tracker API or CLI.
 
 8. **`--dry-run` mode**: If `--dry-run` is set, show what sections would be added to which issues but don't modify anything:
@@ -151,3 +153,4 @@ This skill reads the `Branch Conventions` and `PR Conventions` subsections of th
 - No `--review` support (utility skill)
 - **v5.0.0+**: MUST trigger Tier 4 issues sync on entry per Step 0a — sync from the configured tracker into `.sdd/issues/` before iterating issues, subject to the 5-minute dedup window. On sync failure, fall back to live tracker queries with a one-line warning (NEVER block) (Governing: ADR-0026, SPEC-0019 REQ "Tier 4 Always-Sync Issues for Sprint Skills")
 - **v5.0.0+**: MUST trigger Tier 1 mutation update of `{repo}-issues` after enrichment per Step 10 — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")
+- MUST add a `size/*` label to any processed issue that lacks one, per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels", and MUST NOT change an existing size

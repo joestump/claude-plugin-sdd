@@ -90,7 +90,7 @@ Spawn the five specialist agents and distribute all stories for parallel review.
 > Review each story for user value, priority order, and scope. Assign verdict: APPROVED, REVISE (with specific change), or DEFER (with reason). If deferring a MUST/SHALL violation, provide written justification.
 
 **Scrum Master (SM)**
-> Ensure stories are sprint-ready. Assign t-shirt size (XS/S/M/L/XL). Flag ambiguity, incorrect dependencies, or blockers. Tiebreaker when PO and Engineer B disagree.
+> Ensure stories are sprint-ready. Assign exactly one size — `size/S`, `size/M`, `size/L` or `size/XL` — from the ladder in `${CLAUDE_PLUGIN_ROOT}/skills/triage/SKILL.md` § "The size ladder" (never a second scale such as t-shirt sizes or points). Flag ambiguity, incorrect dependencies, or blockers. Tiebreaker when PO and Engineer B disagree.
 
 **Engineer A**
 > Assess technical risk, scope correctness, and whether WHEN/THEN scenarios are verifiable. Verdict: APPROVED, REVISE, or DEFER.
@@ -175,7 +175,7 @@ Ordered for implementation (dependencies respected):
 
 5. **Create issues in the detected tracker**:
 
-   **5.1: Create an epic.** Create an epic (or equivalent) for the specification itself, titled "Implement {Capability Title}" with a body referencing the spec number and linking to the spec/design files. Apply the `epic` label using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern"). (Governing: SPEC-0011 REQ "Auto-Create Labels")
+   **5.1: Create an epic.** Create an epic (or equivalent) for the specification itself, titled "Implement {Capability Title}" with a body referencing the spec number and linking to the spec/design files. Apply the `epic` label using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern"). (Governing: SPEC-0011 REQ "Auto-Create Labels") Apply exactly one size label per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels" — an epic is `size/XL` unless every child story is `size/S`.
 
    **5.1a: qmd-aware issue duplicate check** (v5.0.0+):
 
@@ -231,6 +231,7 @@ Ordered for implementation (dependencies respected):
      - A short description of what this story implements and its governing spec/ADR references
      - A `## Requirements` section containing a task checklist (see step 5.3)
      - Acceptance criteria summarized at the end
+   - Apply exactly one `size/*` label per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels", judged from the finished body (including any security checklist or companion test story added below). Companion test, CI and foundation stories are sized too.
    - **After creating the issue** (to obtain the issue number), unless `--no-branches` is set, update the issue body to append a `### Branch` section:
      - Stories: `` `feature/{issue-number}-{slug}` `` (or custom prefix from `--branch-prefix` or CLAUDE.md `Branch Conventions > Prefix`)
      - Epics: `` `epic/{issue-number}-{slug}` `` (or custom prefix from `--branch-prefix` or CLAUDE.md `Branch Conventions > Epic Prefix`)
@@ -480,6 +481,7 @@ Follow the standard protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references
 - `--project` and `--no-projects` are mutually exclusive; if both provided, warn and use `--no-projects`
 - `--no-branches` disables both `### Branch` AND `### PR Convention` sections
 - MUST use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern") for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
+- Every epic and story created MUST carry exactly one `size/*` label per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels", unless `#### Sizing > Enabled` is `false`; with `--scrum`, the Scrum Master's size is that label
 - MUST enrich projects after creation with descriptions, READMEs, views, iterations (GitHub) or milestones, columns, dependencies (Gitea) (Governing: SPEC-0011, ADR-0012)
 - Enrichment failures MUST be skipped and reported, never fail the entire operation (Governing: SPEC-0011 REQ "Graceful Degradation")
 - CLAUDE.md `Projects > Views`, `Projects > Columns`, `Projects > Iteration Weeks` are all optional with sensible defaults — do NOT overwrite existing keys when they are absent
