@@ -123,11 +123,18 @@ function ingestEdges(edges, sourceId, fm, allowed) {
   }
 }
 
+// `ID["..."]` is a Mermaid STR token with no backslash escape, so `"` and a
+// leading backtick break the parse; write them as `#name;` entities instead.
+const nodeLabel = (n) =>
+  (n.title || n.id)
+    .replace(/#/g, '#35;') // escape char first, so a literal `#42;` in a title cannot decode as an entity
+    .replace(/"/g, '#quot;')
+    .replace(/`/g, '#96;');
+
 function renderFullMermaid({ nodes, edges }) {
   const lines = ['flowchart TB'];
   const seen = new Set();
   const nodeId = (id) => id.replace(/[^A-Za-z0-9_]/g, '_');
-  const nodeLabel = (n) => (n.title || n.id).replace(/"/g, '\\"');
 
   for (const id of Object.keys(nodes).sort()) {
     const n = nodes[id];
@@ -149,7 +156,6 @@ function renderNeighborMermaid(targetId, { nodes, edges }) {
   if (!nodes[targetId]) return null;
   const lines = ['flowchart TB'];
   const nodeId = (id) => id.replace(/[^A-Za-z0-9_]/g, '_');
-  const nodeLabel = (n) => (n.title || n.id).replace(/"/g, '\\"');
   const neighborhood = new Set([targetId]);
   for (const e of edges) {
     if (e.source === targetId || e.target === targetId) {

@@ -185,10 +185,14 @@ function isKnownTag(tagName) {
 
 const nodeId = (id) => id.replace(/[^A-Za-z0-9_]/g, '_');
 
+// `ID["..."]` is a Mermaid STR token with no backslash escape, so `"` and a
+// leading backtick break the parse; write them as `#name;` entities instead.
 const nodeLabel = (n) =>
   (n.title || n.id)
     .replace(/^(?:ADR|SPEC)-\d+:\s*/, '')
-    .replace(/"/g, '\\"');
+    .replace(/#/g, '#35;') // escape char first, so a literal `#42;` in a title cannot decode as an entity
+    .replace(/"/g, '#quot;')
+    .replace(/`/g, '#96;');
 
 function extractTitle(text) {
   const m = text.match(/^#\s+(.+?)\s*$/m);
