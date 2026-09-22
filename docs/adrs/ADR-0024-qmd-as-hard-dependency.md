@@ -134,25 +134,25 @@ Declare an MCP server in `.claude-plugin/.mcp.json` as `npx -y @tobilu/qmd mcp` 
 
 ```mermaid
 flowchart TD
-  User([User]) -->|1. /sdd:init| Init[/sdd:init]
+  User([User]) -->|1. /sdd:init| Init["/sdd:init"]
   Init -->|preflight: command -v qmd| QmdCheck{qmd in PATH?}
   QmdCheck -->|no| Refuse[Refuse with install command:<br/>npm install -g @tobilu/qmd]
   QmdCheck -->|yes| WriteClaude[Write CLAUDE.md<br/>+ suggest /sdd:index]
-  WriteClaude -->|2. /sdd:index| Index[/sdd:index]
+  WriteClaude -->|2. /sdd:index| Index["/sdd:index"]
   Index -->|qmd collection add x3| QmdIndex[(qmd index<br/>~/.cache/qmd/index.sqlite)]
 
   WriteClaude -.->|3+. all qmd-aware skills MAY assume qmd is present| Skills
 
   subgraph Skills [qmd-aware skills v5+]
-    Prime[/sdd:prime]
-    Check[/sdd:check]
-    Audit[/sdd:audit]
-    Discover[/sdd:discover]
-    AdrSk[/sdd:adr]
-    SpecSk[/sdd:spec]
-    Plan[/sdd:plan]
-    Work[/sdd:work]
-    Review[/sdd:review]
+    Prime["/sdd:prime"]
+    Check["/sdd:check"]
+    Audit["/sdd:audit"]
+    Discover["/sdd:discover"]
+    AdrSk["/sdd:adr"]
+    SpecSk["/sdd:spec"]
+    Plan["/sdd:plan"]
+    Work["/sdd:work"]
+    Review["/sdd:review"]
   end
 
   Skills -->|qmd MCP query<br/>or qmd CLI| QmdIndex

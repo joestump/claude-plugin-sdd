@@ -59,7 +59,7 @@ sequenceDiagram
 
     U->>R: /sdd:respond [PR | current branch]
     R->>T: Resolve PR + fetch threads, reviews, comments, CI
-    R->>R: Load governing spec/ADRs; triage items
+    R->>R: Load governing spec/ADRs, triage items
     alt fix
         R->>W: Apply change + governing comments, run tests
         W->>T: Push to PR branch
@@ -72,7 +72,7 @@ sequenceDiagram
         R->>I: File follow-up issue (linked)
         R->>T: Reply linking issue
     end
-    R->>U: Summary (no merge); offer subscribe_pr_activity
+    R->>U: Summary (no merge), offer subscribe_pr_activity
 ```
 
 ## Risks / Trade-offs
