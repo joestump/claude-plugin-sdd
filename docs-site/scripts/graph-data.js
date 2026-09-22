@@ -36,10 +36,18 @@ const nodeId = (id) => id.replace(/[^A-Za-z0-9_]/g, '_');
 // `SPEC-XXXX:` prefix from the title since the node id already encodes
 // it (e.g., a node `ADR_0023` doesn't need its label to start with
 // "ADR-0023:" too -- that's just visual noise on every diagram).
+//
+// The label lands inside `ID["..."]`, which Mermaid lexes as a STR token
+// with no backslash escape: a raw `"` ends it early (Parse error), and a
+// leading backtick opens a markdown string (Lexical error). Both are
+// written as Mermaid's `#name;` entities, which render() decodes back to
+// the literal character in the SVG.
 const nodeLabel = (n) =>
   (n.title || n.id)
     .replace(/^(?:ADR|SPEC)-\d+:\s*/, '')
-    .replace(/"/g, '\\"');
+    .replace(/#/g, '#35;') // escape char first, so a literal `#42;` in a title cannot decode as an entity
+    .replace(/"/g, '#quot;')
+    .replace(/`/g, '#96;');
 
 /**
  * Parse YAML-ish frontmatter from a markdown body. Recognizes scalars
