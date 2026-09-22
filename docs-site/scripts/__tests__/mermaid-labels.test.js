@@ -139,10 +139,12 @@ test('plugin template: every generated mermaid block carries entity-escaped labe
   await plugin({ siteDir: site, siteConfig: { baseUrl: '/', title: 'Fixture' } }, {}).loadContent();
 
   const generated = path.join(root, 'docs-generated');
+  // The plugin keeps the source filename's casing; spell it exactly, since
+  // Linux CI is case-sensitive even where a macOS checkout is not.
   const pages = [
     'graph.mdx',
-    'decisions/adr-0001-quoted.mdx',
-    'decisions/adr-0002-backtick.mdx',
+    'decisions/ADR-0001-quoted.mdx',
+    'decisions/ADR-0002-backtick.mdx',
   ];
   for (const page of pages) {
     const body = fs.readFileSync(path.join(generated, page), 'utf-8');
