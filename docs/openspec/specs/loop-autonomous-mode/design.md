@@ -301,17 +301,17 @@ sequenceDiagram
 
   W->>GH: Open PR #X
   alt --no-chain
-    W-->>W: record chain_invoked=false; exit
+    W-->>W: record chain_invoked=false, then exit
   else chain enabled (default)
     alt /autofix-pr available
       W->>R: invoke /sdd:review X (one round per ADR-0010)
       R-->>W: review_outcome ∈ {approve, changes-requested, needs-human}
       W->>A: invoke /autofix-pr X
       A-->>W: handed off (continues monitoring CI)
-      W-->>W: record chain_invoked=true, review_outcome=…, autofix_pr_invoked=true; exit
+      W-->>W: record chain_invoked=true, review_outcome=…, autofix_pr_invoked=true, then exit
     else /autofix-pr unavailable
       W->>GH: open tracker issue tagged claude-code-version-required
-      W-->>W: log warning; record chain_invoked=true, autofix_pr_invoked=false; exit cleanly
+      W-->>W: log warning, record chain_invoked=true, autofix_pr_invoked=false, exit cleanly
     end
   end
 ```

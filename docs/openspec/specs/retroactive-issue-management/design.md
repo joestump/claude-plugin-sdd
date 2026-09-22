@@ -110,13 +110,13 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph "Issue Body (before enrich)"
-        B1["## Acceptance Criteria\n- [ ] Per SPEC-0007 REQ ...\n- [ ] Per SPEC-0007 Scenario ..."]
+        B1["Acceptance Criteria<br/>Per SPEC-0007 REQ ...<br/>Per SPEC-0007 Scenario ..."]
     end
 
     subgraph "Issue Body (after enrich)"
-        B2["## Acceptance Criteria\n- [ ] Per SPEC-0007 REQ ...\n- [ ] Per SPEC-0007 Scenario ..."]
-        B3["### Branch\n`feature/42-jwt-token-generation`"]
-        B4["### PR Convention\nCloses #42\nPart of #41 (SPEC-0007)"]
+        B2["Acceptance Criteria<br/>Per SPEC-0007 REQ ...<br/>Per SPEC-0007 Scenario ..."]
+        B3["Branch<br/>feature/42-jwt-token-generation"]
+        B4["PR Convention<br/>Closes ##35;42<br/>Part of ##35;41 (SPEC-0007)"]
     end
 
     B1 -->|"/sdd:enrich"| B2

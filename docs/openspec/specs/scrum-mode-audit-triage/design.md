@@ -98,10 +98,10 @@ sequenceDiagram
 
     par Spawn triage team (parallel per theme)
         L->>PO: Prioritize themes (P1/P2/P3) by business impact
-        L->>SM: Estimate effort (XS–XL) per theme; flag oversized
+        L->>SM: Estimate effort (XS–XL) per theme, flag oversized
         L->>EA: Assess technical complexity and refactor risk
-        L->>EB: Challenge false positives; require justification for evolution claims
-        L->>AR: Validate SoT; identify artifact-update findings
+        L->>EB: Challenge false positives, require justification for evolution claims
+        L->>AR: Validate SoT, identify artifact-update findings
     end
 
     PO-->>L: Priority verdicts + reasoning

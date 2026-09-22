@@ -179,22 +179,22 @@ Continue combining spec.md and design.md into a single page.
 
 ```mermaid
 flowchart TD
-    start["/sdd:docs invoked"] --> preflight["Pre-flight checks\n(Node.js, artifacts)"]
-    preflight --> scan["Scan for existing\ndocusaurus.config.*"]
-    scan --> found{Existing site\nfound?}
-    found -->|Yes| ask["Ask user:\nIntegrate or Scaffold?"]
-    found -->|No| manifest_check_s{"`.sdd-docs.json`\nexists?"}
-    ask -->|Integrate| manifest_check_i{"`.sdd-docs.json`\nexists?"}
+    start["/sdd:docs invoked"] --> preflight["Pre-flight checks<br/>(Node.js, artifacts)"]
+    preflight --> scan["Scan for existing<br/>docusaurus.config.*"]
+    scan --> found{Existing site<br/>found?}
+    found -->|Yes| ask["Ask user:<br/>Integrate or Scaffold?"]
+    found -->|No| manifest_check_s{"sdd-docs.json<br/>exists?"}
+    ask -->|Integrate| manifest_check_i{"sdd-docs.json<br/>exists?"}
     ask -->|Scaffold| manifest_check_s
 
-    manifest_check_s -->|Yes| upgrade_s["Upgrade Flow\n(scaffold mode)"]
-    manifest_check_s -->|No| scaffold["Scaffold Mode\n(copy templates)"]
-    manifest_check_i -->|Yes| upgrade_i["Upgrade Flow\n(integration mode)"]
-    manifest_check_i -->|No| integrate["Integration Mode\n(install plugin)"]
+    manifest_check_s -->|Yes| upgrade_s["Upgrade Flow<br/>(scaffold mode)"]
+    manifest_check_s -->|No| scaffold["Scaffold Mode<br/>(copy templates)"]
+    manifest_check_i -->|Yes| upgrade_i["Upgrade Flow<br/>(integration mode)"]
+    manifest_check_i -->|No| integrate["Integration Mode<br/>(install plugin)"]
 
-    scaffold --> write_manifest["Write .sdd-docs.json\n(version, mode, checksums)"]
+    scaffold --> write_manifest["Write .sdd-docs.json<br/>(version, mode, checksums)"]
     integrate --> write_manifest
-    upgrade_s --> update_manifest["Update .sdd-docs.json\n(new version, checksums)"]
+    upgrade_s --> update_manifest["Update .sdd-docs.json<br/>(new version, checksums)"]
     upgrade_i --> update_manifest
 ```
 

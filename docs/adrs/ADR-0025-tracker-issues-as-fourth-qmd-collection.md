@@ -190,14 +190,14 @@ flowchart LR
   end
 
   subgraph SddPlugin [SDD plugin]
-    IndexSk[/sdd:index update]
-    SyncLayer[references/tracker-sync.md<br/>per-tracker fetch + normalize]
-    Cursor[(.sdd/issues/_meta.json<br/>per-tracker cursors)]
+    IndexSk["/sdd:index update"]
+    SyncLayer["references/tracker-sync.md<br/>per-tracker fetch + normalize"]
+    Cursor[(".sdd/issues/_meta.json<br/>per-tracker cursors")]
   end
 
-  Cache[(.sdd/issues/<br/>{number}.md per issue<br/>frontmatter + body)]
+  Cache[(".sdd/issues/<br/>number.md per issue<br/>frontmatter + body")]
 
-  Qmd[(qmd index<br/>{repo}-issues collection)]
+  Qmd[("qmd index<br/>repo-issues collection")]
 
   GH -->|gh issue list --search updated:&gt;cursor| SyncLayer
   Gitea -->|MCP issue list since cursor| SyncLayer
@@ -209,19 +209,19 @@ flowchart LR
 
   IndexSk -->|trigger sync| SyncLayer
   SyncLayer -->|read cursor| Cursor
-  SyncLayer -->|write {number}.md| Cache
+  SyncLayer -->|write number.md| Cache
   SyncLayer -->|update cursor| Cursor
 
   Cache -->|qmd collection add /<br/>qmd update| Qmd
 
   subgraph Consumers [qmd-aware consumers]
-    Plan[/sdd:plan]
-    Work[/sdd:work]
-    Review[/sdd:review]
-    Enrich[/sdd:enrich]
+    Plan["/sdd:plan"]
+    Work["/sdd:work"]
+    Review["/sdd:review"]
+    Enrich["/sdd:enrich"]
   end
 
-  Consumers -->|qmd query -c {repo}-issues| Qmd
+  Consumers -->|qmd query -c repo-issues| Qmd
   Consumers -.->|opportunistic sync at start| IndexSk
 
   classDef store fill:#e8f4ff,stroke:#0366d6
