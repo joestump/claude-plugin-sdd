@@ -183,8 +183,8 @@ flowchart TD
     preflight --> scan["Scan for existing\ndocusaurus.config.*"]
     scan --> found{Existing site\nfound?}
     found -->|Yes| ask["Ask user:\nIntegrate or Scaffold?"]
-    found -->|No| manifest_check_s{"`.sdd-docs.json`\nexists?"}
-    ask -->|Integrate| manifest_check_i{"`.sdd-docs.json`\nexists?"}
+    found -->|No| manifest_check_s{".sdd-docs.json<br/>exists?"}
+    ask -->|Integrate| manifest_check_i{".sdd-docs.json<br/>exists?"}
     ask -->|Scaffold| manifest_check_s
 
     manifest_check_s -->|Yes| upgrade_s["Upgrade Flow\n(scaffold mode)"]
