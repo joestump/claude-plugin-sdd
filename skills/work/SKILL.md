@@ -82,7 +82,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    gh label create "merged" --color "6E40C9" --description "PR has been merged" --force
    ```
 
-   **For Gitea:** Use `ToolSearch` to discover label MCP tools (e.g., `mcp__gitea__label_write`). Create labels via the API equivalent. If labels already exist, the API will return an error — ignore it and proceed.
+   **For Gitea:** Use the `tea` CLI per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access". List existing labels with `tea labels ls --login {login} --repo {owner}/{repo}` and create only the missing ones with `tea labels create --login {login} --repo {owner}/{repo} --name queued --color CCCCCC --description "..."` (and likewise for the rest).
 
    **For `tasks.md` fallback:** Skip label creation (labels are not applicable to file-based tracking).
 
@@ -121,7 +121,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    - **Skip issues without `### Branch` sections**: These lack branch naming conventions. If any are found, suggest `/sdd:enrich` to add them and report which issues were skipped.
    - **Extract branch names**: Parse the `### Branch` section from each issue body to get the deterministic branch name (e.g., `feature/42-jwt-token-generation`).
    - **Extract PR conventions**: Parse the `### PR Convention` section for close keywords and epic references.
-   - **Detect dependency ordering**: If issue bodies reference dependencies or logical ordering, respect that order when queuing work. For **Gitea**, query native dependencies via `GET /repos/{owner}/{repo}/issues/{index}/dependencies` (or via MCP tools discovered by `ToolSearch`) to find unblocked stories. (Governing: SPEC-0011 REQ "Gitea Native Dependencies")
+   - **Detect dependency ordering**: If issue bodies reference dependencies or logical ordering, respect that order when queuing work. For **Gitea**, query native dependencies via `GET /repos/{owner}/{repo}/issues/{index}/dependencies` through `tea api --login {login}` to find unblocked stories. (Governing: SPEC-0011 REQ "Gitea Native Dependencies")
 
    - **Enforce dependency readiness** (Governing: SPEC-0015 REQ "Issue Lifecycle Labels"): Before marking any issue as ready to work, check its dependencies:
      1. Parse the issue body for dependency references: `Depends on #NNN`, `Blocked by #NNN`, `blocks:` syntax, or any `#NNN` reference in a dependencies section.
@@ -163,7 +163,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    ```bash
    gh issue edit {issue-number} --add-label "queued"
    ```
-   **For Gitea:** Use `ToolSearch` to discover label MCP tools and apply the label via API.
+   **For Gitea:** `tea issues edit --login {login} --repo {owner}/{repo} --add-labels in-progress {number}` (see shared-patterns.md § "Gitea Access").
 
 6. **Verify git state**:
    - Run `git status` to check for uncommitted changes. If there are uncommitted changes, use `AskUserQuestion` to ask:
@@ -245,7 +245,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
       ```bash
       gh issue edit {issue-number} --add-assignee "@me"
       ```
-      For Gitea, use `ToolSearch` to discover issue MCP tools and set the assignee via API.
+      For Gitea, `tea issues edit --login {login} --repo {owner}/{repo} --add-assignees {user} {number}`.
 
    2. **Remove `queued`, apply `in-progress`**: Each transition MUST remove the previous label before applying the new one.
       ```bash

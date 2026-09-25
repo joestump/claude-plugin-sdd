@@ -71,7 +71,7 @@ The `allowed-tools` frontmatter field controls what each skill can do at runtime
 - **Write skills** (`adr`, `spec`, `status`, `init`): Add `Write`, `Edit`, and `Bash` to create or modify design artifacts.
 - **Team skills** (`plan`, `audit`, `work`, `review`): Include agent coordination tools like `TeamCreate`, `TeamDelete`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`, and `SendMessage`. These skills orchestrate multi-agent workflows.
 - **Interactive skills** (`plan`, `docs`, `organize`, `enrich`, `discover`): Include `AskUserQuestion` to prompt for decisions during execution.
-- **Tool discovery** (`plan`, `organize`, `enrich`, `work`, `review`): Include `ToolSearch` to dynamically discover tracker-specific MCP tools (GitHub, Gitea, Jira, Linear, etc.) at runtime.
+- **Tool discovery** (`plan`, `organize`, `enrich`, `work`, `review`): Include `ToolSearch` to dynamically discover tracker-specific MCP tools (GitLab, Jira, Linear) at runtime. GitHub and Gitea go through the `gh` and `tea` CLIs instead.
 
 ## Shared Patterns
 

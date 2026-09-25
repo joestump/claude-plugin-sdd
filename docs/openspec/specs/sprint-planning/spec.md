@@ -72,12 +72,12 @@ Hosts that fall through to step 3 include but are not limited to: GitHub Enterpr
 
 Inference SHALL also fall through to step 3 when: the project is not a git repository; the project has multiple remotes pointing to different platforms and `origin`'s host does not match a known pattern (the skill MUST NOT silently use a non-`origin` remote); the project uses a non-VCS-derivable tracker (Jira, Linear, Beads).
 
-**Step 3 — Tooling probe.** When inference does not yield an unambiguous tracker, the skill SHALL probe for available trackers via `ToolSearch` and CLI availability checks. The six supported trackers are:
+**Step 3 — Tooling probe.** When inference does not yield an unambiguous tracker, the skill SHALL probe for available trackers via CLI availability checks, and via `ToolSearch` for the trackers that are reached through MCP (GitLab, Jira, Linear). The six supported trackers are:
 
 1. **Beads**: Detect via `.beads/` directory in the project root or `bd --version` CLI check
-2. **GitHub**: Detect via `ToolSearch` for `mcp__*github*` tools or `gh --version` CLI check
+2. **GitHub**: Detect via an authenticated `gh` CLI (`gh auth status`)
 3. **GitLab**: Detect via `ToolSearch` for `mcp__*gitlab*` tools or `glab --version` CLI check
-4. **Gitea**: Detect via `ToolSearch` for `mcp__*gitea*` tools
+4. **Gitea**: Detect via a `tea` CLI login whose URL matches the host (`tea logins list`). Gitea and GitHub are reached only through their CLIs, never an MCP server or a token read from the environment — see `references/shared-patterns.md` § "Gitea Access"
 5. **Jira**: Detect via `ToolSearch` for `mcp__*jira*` tools
 6. **Linear**: Detect via `ToolSearch` for `mcp__*linear*` tools
 

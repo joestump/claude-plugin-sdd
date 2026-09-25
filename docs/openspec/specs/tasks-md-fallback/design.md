@@ -52,8 +52,8 @@ flowchart TD
     A["Sprint planning<br/>(/sdd:plan step 6)"] --> B{"Detect trackers"}
 
     B -->|"Beads (.beads/ or bd)"| C["Create Beads issues"]
-    B -->|"GitHub (MCP or gh)"| D["Create GitHub issues"]
-    B -->|"Gitea (MCP)"| E["Create Gitea issues"]
+    B -->|"GitHub (gh)"| D["Create GitHub issues"]
+    B -->|"Gitea (tea)"| E["Create Gitea issues"]
     B -->|"None found"| F["Generate tasks.md"]
 
     F --> G["Read spec.md requirements"]

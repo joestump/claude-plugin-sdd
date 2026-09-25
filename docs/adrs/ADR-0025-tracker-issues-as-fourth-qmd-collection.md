@@ -83,7 +83,7 @@ The `references` block parses `SPEC-XXXX` and `ADR-XXXX` mentions from title and
 | Tracker | Sync command | Incremental cursor |
 |---------|--------------|-------------------|
 | GitHub | `gh issue list --state all --json number,title,body,state,labels,assignees,createdAt,updatedAt,url --search "updated:>{cursor}" --limit 1000` | `updated:>YYYY-MM-DD` in search |
-| Gitea | MCP tools (`mcp__gitea__issue_list` or equivalent), filtered by `since` | `since` parameter |
+| Gitea | `tea api 'repos/{owner}/{repo}/issues?state=all&since={cursor}'` (the `tea` CLI, not an MCP server) | `since` parameter |
 | GitLab | `glab issue list --all --updated-after {cursor}` | `--updated-after` |
 | Jira | MCP tools with JQL `updated >= "{cursor}"` | JQL clause |
 | Linear | MCP tools with `filter: { updatedAt: { gte: cursor } }` | GraphQL filter |
@@ -200,7 +200,7 @@ flowchart LR
   Qmd[("qmd index<br/>{repo}-issues collection")]
 
   GH -->|gh issue list --search updated:&gt;cursor| SyncLayer
-  Gitea -->|MCP issue list since cursor| SyncLayer
+  Gitea -->|tea api issues since cursor| SyncLayer
   GL -->|glab issue list --updated-after| SyncLayer
   Jira -->|JQL updated &gt;= cursor| SyncLayer
   Linear -->|GraphQL filter updatedAt| SyncLayer

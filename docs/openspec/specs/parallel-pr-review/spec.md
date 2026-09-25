@@ -107,12 +107,12 @@ Each reviewer agent SHALL read the PR diff, check it against the governing spec'
 #### Scenario: GitHub review submission
 
 - **WHEN** the tracker is GitHub
-- **THEN** the reviewer SHALL use `gh api` or MCP tools to submit a PR review with event `COMMENT`, `APPROVE`, or `REQUEST_CHANGES`, including line-level comments where applicable
+- **THEN** the reviewer SHALL use `gh api` to submit a PR review with event `COMMENT`, `APPROVE`, or `REQUEST_CHANGES`, including line-level comments where applicable
 
 #### Scenario: Gitea review submission
 
 - **WHEN** the tracker is Gitea
-- **THEN** the reviewer SHALL use MCP tools (discovered via `ToolSearch`) to submit a pull request review
+- **THEN** the reviewer SHALL use `tea api` (`POST repos/{owner}/{repo}/pulls/{number}/reviews`, per `references/shared-patterns.md` § "Gitea Access") to submit a pull request review
 
 #### Scenario: GitLab MR review
 

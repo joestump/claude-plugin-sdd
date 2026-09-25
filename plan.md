@@ -128,7 +128,7 @@ Running `/sdd:work` with parallel agents means dozens of `git push`, `gh pr crea
     "allow": [
       "Bash(git *)",
       "Bash(gh *)",
-      "mcp__gitea__*"
+      "Bash(tea *)"
     ]
   }
 }
@@ -138,8 +138,7 @@ Running `/sdd:work` with parallel agents means dozens of `git push`, `gh pr crea
 |---------|---------------|
 | `Bash(git *)` | push, commit, worktree add/remove, fetch, checkout, branch |
 | `Bash(gh *)` | pr create/merge, issue create/list, release create |
-| `mcp__gitea__*` | All Gitea API operations (issues, PRs, projects, labels) |
-| `mcp__github__*` | All GitHub MCP operations (if using GitHub MCP instead of gh CLI) |
+| `Bash(tea *)` | All Gitea operations (issues, PRs, labels, milestones; `tea api` for the rest) |
 | `mcp__gitlab__*` | All GitLab MCP operations |
 
 ---

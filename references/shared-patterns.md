@@ -327,9 +327,9 @@ The skill MUST extract `owner` and `repo` per the parsing rules above when infer
 Used when steps 1–2 do not produce an unambiguous answer.
 
 - **Beads**: Look for a `.beads/` directory in the project root, or run `bd --version`.
-- **GitHub**: Use `ToolSearch` to probe for MCP tools matching `github`, or check `gh` CLI via `gh --version`.
+- **GitHub**: Check the `gh` CLI via `gh auth status`.
 - **GitLab**: Use `ToolSearch` to probe for MCP tools matching `gitlab`, or check `glab` CLI via `glab --version`.
-- **Gitea**: Use `ToolSearch` to probe for MCP tools matching `gitea`, or check `tea` CLI via `tea --version`.
+- **Gitea**: Check the `tea` CLI has a login for the host (see "Gitea Access" below).
 - **Jira**: Use `ToolSearch` to probe for MCP tools matching `jira`.
 - **Linear**: Use `ToolSearch` to probe for MCP tools matching `linear`.
 
@@ -342,6 +342,34 @@ Used when steps 1–2 do not produce an unambiguous answer.
 ### Save Preference
 
 When the user agrees to save, write the tracker configuration into the `### SDD Configuration` section in the project-root `CLAUDE.md`. If the section already exists with other subsections, merge — don't overwrite. If it doesn't exist, create it. See the "CLAUDE.md Configuration Format" in the Config Resolution section above for the canonical format.
+
+## Gitea Access
+
+<!-- Governing: SPEC-0007 REQ "Tracker Detection" -->
+
+Every Gitea operation goes through the `tea` CLI, the way GitHub goes through `gh` and GitLab through `glab`. Do not use a Gitea MCP server, and do not `curl` the API with a token from the environment: agent shells rarely carry one, and a write sent with an empty token fails without anyone noticing.
+
+1. **Resolve the login once per run.** Match the configured `Host` against `tea`'s logins and keep the name:
+
+   ```bash
+   tea logins list -o json | jq -r --arg h "{host}" '.[] | select(.url == $h) | .name'
+   ```
+
+   No match → stop and ask the user to run `tea login add` for that host. Never ask for, construct, or paste a token.
+
+2. **Pass the login and repo explicitly** on every call: `tea <subcommand> --login {login} --repo {owner}/{repo}`. Useful subcommands: `tea issues ls|create|edit|close`, `tea pulls ls|create|merge|review-comments`, `tea comment`, `tea labels ls`, `tea milestones`, `tea actions runs ls|logs`.
+
+3. **Anything without a subcommand goes through `tea api`**, with paths relative to `/api/v1/`:
+
+   ```bash
+   tea api --login {login} [-X METHOD] [-d @body.json | -d @-] repos/{owner}/{repo}/...
+   ```
+
+   Common ones: `pulls/{n}.diff` (the diff), `pulls/{n}/reviews` (POST `{event, body}` submits a review), `pulls/{n}/requested_reviewers`, `commits/{sha}/status`, `issues?q=...&type=issues|pulls&state=...&since=...`, `issues/{n}/dependencies`, `milestones`.
+
+4. **`tea api` exits 0 on an HTTP error.** Read the response body (`.message`) or read the object back before reporting success; the exit code proves nothing.
+
+5. **Never `tea --debug` or `tea api -i`** in a recorded session. Both dump raw HTTP detail into the transcript, and debug output can carry the auth header.
 
 ## Team Handoff Protocol
 
@@ -819,7 +847,7 @@ When two PRs have a direct dependency (PR B requires types or changes introduced
 To find existing issues referencing a spec:
 
 - **GitHub**: `gh issue list --search "SPEC-XXXX" --json number,title,body,labels --limit 100`
-- **Gitea**: Use MCP tools (discovered via `ToolSearch`)
+- **Gitea**: `tea api --login {login} 'repos/{owner}/{repo}/issues?q=SPEC-XXXX&type=issues&state=all&limit=50'` (see "Gitea Access")
 - **GitLab**: Use MCP tools or `glab issue list --search "SPEC-XXXX"`
 - **Jira**: Use MCP tools with JQL containing the spec number
 - **Linear**: Use MCP tools to search issues containing the spec number
@@ -830,7 +858,7 @@ To find existing issues referencing a spec:
 To find open PRs referencing a spec:
 
 - **GitHub**: `gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url --limit 50` or `gh pr view {number} --json ...` for specific PRs
-- **Gitea**: Use MCP tools (discovered via `ToolSearch`) to list pull requests
+- **Gitea**: `tea api --login {login} 'repos/{owner}/{repo}/issues?q=SPEC-XXXX&type=pulls&state=open&limit=50'`, then `repos/{owner}/{repo}/pulls/{n}` for each (see "Gitea Access")
 - **GitLab**: Use MCP tools or `glab mr list --search "SPEC-XXXX"`
 
 ## Grill-First Interrogation Pattern
