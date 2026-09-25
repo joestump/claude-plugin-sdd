@@ -222,7 +222,7 @@ Most issue-body conventions translate across trackers, but a few details differ:
 | **Linear** | Same key-scoped pattern as Jira (`TEAM-45`) | Same handling. |
 | **GitLab** | Merge requests, not pull requests; "MR" in user-facing text | PR Convention sections in body should say "MR" when the tracker is GitLab; close keywords go in the MR description, not the issue body. |
 | **GitHub Projects V2** | Projects are owner-scoped, not repo-scoped, and need an explicit link to appear in the repo's Projects tab | `/sdd:plan` MUST link the project to the repo after creation via `gh project link {project-number} --owner {owner} --repo {owner}/{repo}` (per `/sdd:plan` Step 5.6). Without this, the project exists but is invisible. |
-| **Gitea** | MCP tools vary by instance | Use `ToolSearch` to discover the tracker's MCP tool surface at runtime; do not hardcode tool names. |
+| **Gitea** | No project API; reached through `tea`, not an MCP server | Use `tea` and `tea api` per `shared-patterns.md` § Gitea Access. Group epics as milestones. |
 
 For close keywords by tracker, see `shared-patterns.md` § PR Close Keywords. For branch naming by tracker, see `shared-patterns.md` § Branch Naming Conventions.
 

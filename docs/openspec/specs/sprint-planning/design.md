@@ -160,9 +160,9 @@ flowchart TD
 
     subgraph "Tracker Detection (step I)"
         D1["Beads: .beads/ or bd CLI"]
-        D2["GitHub: MCP or gh CLI"]
+        D2["GitHub: gh CLI"]
         D3["GitLab: MCP or glab CLI"]
-        D4["Gitea: MCP tools"]
+        D4["Gitea: tea CLI login"]
         D5["Jira: MCP tools"]
         D6["Linear: MCP tools"]
     end

@@ -35,7 +35,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 
 5. **Find existing issues**: Search the tracker for issues whose body references the spec number.
    - **GitHub**: `gh issue list --search "SPEC-XXXX" --json number,title,body,labels --limit 100`
-   - **Gitea**: Use MCP tools (use `ToolSearch` to discover `list_repo_issues` or similar)
+   - **Gitea**: `tea api --login {login} 'repos/{owner}/{repo}/issues?q=SPEC-XXXX&type=issues&state=all&limit=50'` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access")
    - **GitLab**: Use MCP tools or `glab issue list --search "SPEC-XXXX"`
    - **Jira**: Use MCP tools to search issues with JQL containing the spec number
    - **Linear**: Use MCP tools to search issues containing the spec number
@@ -86,13 +86,13 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    - Create "Sprint" iteration field via GraphQL with cycle length from CLAUDE.md `Projects > Iteration Weeks` (default: 2 weeks)
    - Create named views via GraphQL using CLAUDE.md `Projects > Views` (default: "All Work" table, "Board" board, "Roadmap" roadmap)
 
-   **Gitea workspace enrichment (tier b/c):**
-   - Create milestones (one per epic), assign stories to milestones
+   **Gitea workspace enrichment (tier b/c)**, all through `tea` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access"):
+   - Create milestones (one per epic) with `tea milestones create`, assign stories with `tea issues edit --milestone`
    - Configure board columns from CLAUDE.md `Projects > Columns` (default: Todo, In Progress, In Review, Done)
 
    **Tier (c) additional steps:**
    - Re-label issues using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern")
-   - Create Gitea native dependency links
+   - Create Gitea native dependency links (`tea api -X POST repos/{owner}/{repo}/issues/{index}/dependencies`)
    - Add `### Branch` / `### PR Convention` to issue bodies that lack them (same logic as `/sdd:enrich`)
 
 9. **`--dry-run` mode**: If `--dry-run` is set, report the assessment and what WOULD be done at each tier, but don't modify anything.

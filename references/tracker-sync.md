@@ -179,17 +179,19 @@ gh api graphql -f query='
 
 **Fetch**:
 
-Use MCP tools discovered via `ToolSearch` with query `select:mcp__gitea__issue_list` (or the equivalent local MCP tool name). The Gitea API exposes a `since` parameter for incremental fetch:
+Use the `tea` CLI per `shared-patterns.md` § "Gitea Access" — never a Gitea MCP server or a token read from the environment. The Gitea API exposes a `since` parameter for incremental fetch:
 
+```bash
+tea api --login {login} 'repos/{owner}/{repo}/issues?state=all&type=issues&since={cursor-iso-date}&limit=50&page={page}'
 ```
-GET /repos/{owner}/{repo}/issues?state=all&since={cursor-iso-date}&limit=50&page={page}
-```
+
+`tea api` exits 0 on an HTTP error, so treat a JSON object with a `message` field (rather than an array) as a failed fetch, not an empty page.
 
 **Status normalization**:
 - Gitea `state: open` → `open`
 - Gitea `state: closed` → `closed` (Gitea does not distinguish PR-merged from closed at the issue level; check the linked PR's `merged: true` field if PR data is needed)
 
-**Native dependencies**: Gitea exposes issue dependencies via `GET /repos/{owner}/{repo}/issues/{index}/dependencies`. Populate `references.blocked_by` from this endpoint in addition to body parsing.
+**Native dependencies**: Gitea exposes issue dependencies via `tea api --login {login} repos/{owner}/{repo}/issues/{index}/dependencies`. Populate `references.blocked_by` from this endpoint in addition to body parsing.
 
 **Cursor**: ISO 8601 timestamp. The `since` parameter is inclusive on some Gitea versions and exclusive on others — to be safe, store the cursor and after each sync set it to the maximum `updated_at` from the response, and on the next fetch increment by one second to avoid re-fetch.
 

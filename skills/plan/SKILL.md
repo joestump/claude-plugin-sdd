@@ -346,8 +346,8 @@ Ordered for implementation (dependencies respected):
 
    **5.6: Project grouping.** Unless `--no-projects` is set:
    - **Default (per-epic)**: For each epic, create a tracker-native project and add the epic and its child stories:
-     - **GitHub**: Projects V2 via `gh project create` CLI or MCP tools, then `gh project item-add` to add issues. **After creating the project, MUST link it to the repository** using `gh project link {project-number} --owner {owner} --repo {owner}/{repo}` so it appears in the repository's Projects tab.
-     - **Gitea**: Project via MCP tools (use `ToolSearch` to discover). MUST ensure the project is associated with the repository.
+     - **GitHub**: Projects V2 via `gh project create`, then `gh project item-add` to add issues. **After creating the project, MUST link it to the repository** using `gh project link {project-number} --owner {owner} --repo {owner}/{repo}` so it appears in the repository's Projects tab.
+     - **Gitea**: Gitea exposes no project API (`repos/{owner}/{repo}/projects` 404s on 1.27), so group each epic as a milestone with `tea milestones create --login {login} --repo {owner}/{repo}` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access") and report that a project board, if wanted, is made in the web UI.
      - **GitLab**: Milestone or board
      - **Jira**: Use existing project scope (no new project needed)
      - **Linear**: Project or cycle
@@ -385,7 +385,7 @@ Ordered for implementation (dependencies respected):
    **For Gitea:**
    1. **Create milestones**: One milestone per epic. Assign stories to the milestone corresponding to their epic.
    2. **Configure board columns**: Create columns from CLAUDE.md `Projects > Columns` (default: Todo, In Progress, In Review, Done).
-   3. **Create native dependency links**: For each story that depends on another, create a native dependency via `POST /repos/{owner}/{repo}/issues/{index}/dependencies` (or via MCP tools discovered by `ToolSearch`).
+   3. **Create native dependency links**: For each story that depends on another, create a native dependency with `tea api --login {login} -X POST repos/{owner}/{repo}/issues/{index}/dependencies` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access"), and read it back — `tea api` exits 0 on an error.
 
    **For other trackers**: Skip tracker-specific enrichment. Log skipped steps in the report.
 

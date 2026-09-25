@@ -192,7 +192,7 @@ Breaks an existing specification into trackable work items in your issue tracker
 - Accepts a spec name or SPEC number (e.g., `/sdd:plan web-dashboard` or `/sdd:plan SPEC-0003`)
 - Lists available specs interactively if no argument provided
 - Detects available issue trackers:
-  - [Beads](https://github.com/steveyegge/beads), GitHub (MCP or `gh` CLI), GitLab (MCP or `glab` CLI), Gitea (MCP or `tea` CLI), Jira (MCP), Linear (MCP)
+  - [Beads](https://github.com/steveyegge/beads), GitHub (`gh` CLI), GitLab (MCP or `glab` CLI), Gitea (`tea` CLI), Jira (MCP), Linear (MCP)
   - Saves tracker preference to CLAUDE.md so you're not re-prompted
 - Groups requirements into 3-4 story-sized issues by functional area (targeting 200-500 line PRs) with task checklists for each requirement
 - **Foundation story detection**: Analyzes requirements to identify shared types, packages, and helpers needed by 2+ stories. Extracts them into dedicated `foundation`-labeled stories that merge before feature work begins, preventing duplicate implementations

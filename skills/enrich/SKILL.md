@@ -59,7 +59,7 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
 
 6. **Find existing issues**: Search the tracker for issues referencing the spec number.
    - **GitHub**: `gh issue list --search "SPEC-XXXX" --json number,title,body,labels --limit 100`
-   - **Gitea**: Use MCP tools (discovered via `ToolSearch`)
+   - **Gitea**: `tea api --login {login} 'repos/{owner}/{repo}/issues?q=SPEC-XXXX&type=issues&state=all&limit=50'` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access")
    - **GitLab**: Use MCP tools or `glab issue list --search "SPEC-XXXX"`
    - **Jira**: Use MCP tools with JQL containing the spec number
    - **Linear**: Use MCP tools to search issues containing the spec number

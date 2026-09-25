@@ -64,7 +64,7 @@ Before making any changes, read the current state and build a component checklis
 | Workflow Section | Does the Workflow section contain the same steps as the canonical template? | `up-to-date` / `outdated` / `missing` |
 | Session Coordination | Does CLAUDE.md contain `### Session Coordination`? | `present` / `missing` |
 | SDD Plugin Config | Does CLAUDE.md contain `### SDD Configuration`? | `present` / `missing` |
-| Permissions | Does `.claude/settings.local.json` contain broad wildcard patterns for `git` and the detected tracker? (e.g., `Bash(git *)`, `Bash(gh *)`, `mcp__gitea__*`) | `configured` / `needs-update` |
+| Permissions | Does `.claude/settings.local.json` contain broad wildcard patterns for `git` and the detected tracker? (e.g., `Bash(git *)`, `Bash(gh *)`, `Bash(tea *)`) | `configured` / `needs-update` |
 | qmd Assumption Note | Does CLAUDE.md (or canonical template) include the v5 note "qmd-aware consumer skills MAY assume qmd is present"? | `present` / `missing` |
 | `.sdd/` Gitignore | Does `.gitignore` contain a `.sdd/` entry? (Required for v5.0.0+ — see ADR-0025 / SPEC-0019 REQ ".sdd Gitignore Enforcement") | `present` / `missing` |
 | Workspace Modules | Does `### Workspace Modules` exist? (only check if `.gitmodules` exists) | `present` / `missing` / `n/a` |
@@ -200,7 +200,7 @@ If `.claude/settings.local.json` already contains broad wildcard patterns for gi
 
 1. **Determine the tracker type** from the `### SDD Configuration` section in CLAUDE.md (or from the JSON config parsed in Step 1 before migration). If no tracker was detected, only include the base `git` permissions.
 
-2. **Detect available MCP tools** using `ToolSearch` to probe for tools matching `gitea`, `github`, `gitlab`.
+2. **Detect available tracker CLIs** with `command -v gh tea glab`, and use `ToolSearch` to probe for GitLab MCP tools. Gitea and GitHub are reached only through `tea` and `gh`, never an MCP server.
 
 3. **Build the canonical permission allowlist**:
 
@@ -208,10 +208,9 @@ If `.claude/settings.local.json` already contains broad wildcard patterns for gi
    |-----------|-------------------|
    | All projects | `Bash(git *)` |
    | GitHub tracker or `gh` CLI available | `Bash(gh *)` |
-   | Gitea MCP tools detected | `mcp__gitea__*` |
+   | Gitea tracker or `tea` CLI available | `Bash(tea *)` |
    | GitLab MCP tools detected | `mcp__gitlab__*` |
    | GitLab `glab` CLI available | `Bash(glab *)` |
-   | GitHub MCP tools detected | `mcp__github__*` |
 
 4. **Read** existing `.claude/settings.local.json` if it exists. If it doesn't exist, start with `{"permissions": {"allow": []}}`.
 
@@ -274,7 +273,7 @@ Output a component-level status table showing what was done.
 | Workflow | Updated | Added Review step (step 6), renumbered Validate to step 7 |
 | Session Coordination | Added | New section appended |
 | SDD Configuration | Added | Migrated from .claude-plugin-design.json |
-| Permissions | Updated | Added Bash(git *), Bash(gh *), mcp__gitea__* to .claude/settings.local.json |
+| Permissions | Updated | Added Bash(git *), Bash(gh *), Bash(tea *) to .claude/settings.local.json |
 | Workspace | Skipped | No .gitmodules found |
 
 ### Next steps:
