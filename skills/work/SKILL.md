@@ -272,6 +272,11 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
     **Worker steps:**
     1. All file operations use the worktree absolute path (read, write, edit, glob, grep).
+    1a. **Worktree/stash safety (MUST).** The stash stack is shared across all worktrees of the same repository. Never run bare `git stash` or `git stash pop` inside the worktree — a bare stash or pop can collide with concurrent work from other worktrees or workers on the same repo. If the tree must be cleaned, prefer a temporary WIP commit on the branch. If stashing is truly needed, push with a unique tag and restore by SHA, never pop:
+       ```bash
+       git -C {worktree-path} stash push -u -m "wip-#{issue-number}"
+       git -C {worktree-path} stash apply <sha>
+       ```
     2. Read the issue body and understand the acceptance criteria.
     3. Explore existing code in the worktree to understand the codebase structure.
 
@@ -547,6 +552,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST preserve worktrees for failed issues — never auto-clean failures
 - Workers MUST use worktree absolute paths for all file operations
 - Workers MUST NOT modify files outside their assigned worktree
+- Workers MUST NOT run bare `git stash` or `git stash pop` inside their worktree — the stash stack is shared across all worktrees of the same repository; if stashing is truly needed, use `git stash push -u -m "<unique-tag>"` and restore via `git stash apply <sha>` (never `pop`), or prefer a temporary WIP commit
 - Workers MUST push and create PRs before reporting success
 - Workers MUST assess PR size before opening a PR — do NOT create comments-only PRs or trivially small PRs (<30 lines of substantive code) as standalone PRs; send a `BUNDLE_REQUEST` to the lead instead
 - Lead MUST handle `BUNDLE_REQUEST` by checking the queue for additional bundleable issues before telling the worker to proceed

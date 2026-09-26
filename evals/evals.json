@@ -229,6 +229,10 @@
           "type": "content"
         },
         {
+          "text": "Worker protocol carries worktree/stash safety: no bare git stash or git stash pop in the worktree (shared stash stack); if stashing is needed, git stash push -u -m with a unique tag restored via git stash apply <sha>, or a temporary WIP commit",
+          "type": "content"
+        },
+        {
           "text": "Workers broadcast FILE_CLAIM via SendMessage before modifying files",
           "type": "structural"
         },
