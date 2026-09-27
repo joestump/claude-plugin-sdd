@@ -497,7 +497,9 @@ A disposable runtime resource is anything a worker boots to satisfy an issue's a
 
 ## PR Close Keywords
 
-Tracker-specific close keywords (or use CLAUDE.md `PR Conventions > Close Keyword`):- **GitHub/Gitea**: `Closes #{issue-number}`
+Tracker-specific close keywords (or use CLAUDE.md `PR Conventions > Close Keyword`):
+
+- **GitHub/Gitea**: `Closes #{issue-number}`
 - **GitLab**: `Closes #{issue-number}` (in MR description)
 - **Beads**: `bd resolve`
 - **Jira**: `{PROJECT-KEY}-{number}` reference
