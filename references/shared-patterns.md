@@ -481,11 +481,23 @@ Never run `git branch -D` on a branch whose merged state has not been confirmed 
 
 **Scope**: only branches the skill itself created for issues/PRs it has confirmed are done — `/sdd:work`'s "successfully-PRed issues" and `/sdd:review`'s "successfully-processed PRs" gates already define that set; this pattern does not widen it. Never run this against a branch the skill did not create, or one whose issue/PR is not confirmed finished (e.g. a failed issue's worktree, which both skills already preserve rather than clean up).
 
+## Disposable Runtime Resources
+
+Used by: `/sdd:work` step 6a, and by any stage that stands up runtime state to satisfy an issue.
+
+A disposable runtime resource is anything a worker boots to satisfy an issue's acceptance criteria and expects to outlive the test command: a booted mobile simulator/emulator, a container, an ephemeral database. Nothing in the filesystem tracks these the way `git status` tracks worktrees — an uncleaned simulator just sits there booted, and enough of them saturate the machine (observed 2026-09: booted simulators from sibling `/sdd:work` workers drove load average to ~50/140/180 and starved an unrelated pipeline stage into its idle timeout; see [#263](https://github.com/joestump/claude-plugin-sdd/issues/263)). The protocol below is what keeps that behavior from being emergent per-worker.
+
+**Three rules:**
+
+1. **Tag it with the issue number, unambiguously.** The issue number is part of the resource's identity: name it `sdd-{issue-number}-…` or tag it with the platform's equivalent (`--label issue=263`, the number in the env/file/container name). A resource whose name does not name its issue is unattributable litter later, and rule 3 has nothing to check against.
+2. **Stop, don't tear down — someone else may be last.** You cannot know whether a downstream review/validation stage outside `/sdd:work` still needs the resource (the acceptance criteria may be re-verified there). When your work is done, take the cheap reversible move: `shutdown` the simulator, `docker stop` the container, halt the database. Full teardown (`docker rm`, erasing volumes, deleting the simulator) is the last consumer's job, decided by whoever touches the issue last — the same final-ownership rule [Worktree Cleanup](#worktree-cleanup) assigns to branches.
+3. **Never touch a resource not tagged with the current issue's number.** It is either a sibling worker's live resource (your stop costs it its run) or a deliberately shared/durable asset another workflow depends on. A `docker ps` or `simctl list` full of things you did not create is not your cleanup queue — reaping by "looks abandoned" cannot distinguish a leak from a dependency.
+
+**Scope**: resources the worker created for this issue. Pre-existing project infrastructure (a docker-compose service the repo ships, a dev database the memory file documents) is not disposable runtime state — it is governed by the project's own CLAUDE.md, not this pattern.
+
 ## PR Close Keywords
 
-Tracker-specific close keywords (or use CLAUDE.md `PR Conventions > Close Keyword`):
-
-- **GitHub/Gitea**: `Closes #{issue-number}`
+Tracker-specific close keywords (or use CLAUDE.md `PR Conventions > Close Keyword`):- **GitHub/Gitea**: `Closes #{issue-number}`
 - **GitLab**: `Closes #{issue-number}` (in MR description)
 - **Beads**: `bd resolve`
 - **Jira**: `{PROJECT-KEY}-{number}` reference
