@@ -314,6 +314,8 @@ You are picking up tracker issues and implementing them in parallel using git wo
        // Governing: ADR-XXXX (short description), SPEC-XXXX REQ "Requirement Name"
        ```
     6. Run tests (unless `--no-tests`). If tests fail, attempt to fix (max 2 fix attempts). If still failing after 2 attempts, report blocked with details.
+
+       6a. **Disposable runtime resources**: if satisfying the acceptance criteria requires standing one up — a simulator/emulator, a container, an ephemeral database — follow `shared-patterns.md § "Disposable Runtime Resources"`: tag it with this issue's number, stop it rather than tear it down when your work is done, and never touch a resource that is not tagged with this issue's number.
     7. **Assess PR size before creating.** Run `git -C {worktree-path} diff --stat` to see the scope of changes. Use judgement about whether this warrants a standalone PR:
        - **Comments-only changes** (only comment lines added/changed, no logic): not worth a standalone PR
        - **Trivially small** (fewer than ~30 lines of substantive code across the whole branch): likely not worth a standalone PR
