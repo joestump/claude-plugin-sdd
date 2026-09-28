@@ -1900,6 +1900,35 @@
       "files": [
         "docs/openspec/specs/respond-to-pr-feedback/spec.md"
       ]
+    },
+    {
+      "id": 219,
+      "skill": "work",
+      "prompt": "Work on issue #265 for joestump/claude-plugin-sdd. A previous invocation was interrupted after it created the worktree .claude/worktrees/feat/265-resume and committed real progress to the branch, before any PR was opened.",
+      "expected_output": "Resolves the worktree collision per step 9.1a by resuming the existing branch through the skill's own dispatch path \u2014 task plus worker message carrying the resume instruction \u2014 keeping the label lifecycle intact: in-progress on assignment, in-review when the worker opens the PR. Never parks the issue to backlog and never dispatches a raw subagent outside the skill.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Collision detected and resolved by inspecting the existing branch state \u2014 commit count ahead of main and worktree status \u2014 not by parking the issue to backlog",
+          "type": "structural"
+        },
+        {
+          "text": "Worker dispatched through the skill's own path, TaskCreate plus SendMessage, with a resume instruction telling it to inspect git log main..HEAD and the working tree and continue, never restart from scratch",
+          "type": "structural"
+        },
+        {
+          "text": "Issue label lifecycle intact: in-progress applied on assignment and in-review applied when the resumed worker opens the PR (SPEC-0015)",
+          "type": "structural"
+        },
+        {
+          "text": "No raw implementation subagent dispatched outside /sdd:work's own invocation path",
+          "type": "content"
+        },
+        {
+          "text": "Existing commits on the branch are kept: no reset or rebase to main, no fresh worktree replacing the colliding one",
+          "type": "content"
+        }
+      ]
     }
   ]
 }

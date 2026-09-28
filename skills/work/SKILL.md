@@ -239,6 +239,17 @@ You are picking up tracker issues and implementing them in parallel using git wo
    ```
    Use the base directory from CLAUDE.md `Worktrees > Base Dir` if set, otherwise `.claude/worktrees/`.
 
+   **9.1a: Resolve a worktree collision (branch already exists).** If the `git worktree add` above fails because `{branch-name}` exists — the usual mark of a prior invocation that was interrupted after starting work but before opening its PR — do NOT park the issue to backlog and do not dispatch a raw subagent outside this skill: the resume must go through this same path so it keeps the label lifecycle handling below (step 9.2) and on PR open. Decide from the branch's state:
+
+   ```bash
+   git rev-list --count main..{branch-name}
+   git status --porcelain   # inside the existing worktree, if one is present
+   ```
+
+   - **Real progress** — the branch is ahead of `main`, or the worktree holds uncommitted changes: **resume it.** Check out the existing branch into the worktree (`git worktree add .claude/worktrees/{branch-name} {branch-name}`, no `-b`; if the worktree is already present, reuse it as-is). Dispatch the worker exactly as in a fresh run, with one addition in the message: *a prior attempt on this issue was interrupted; the worktree holds its progress — inspect `git log main..HEAD` and the working tree, then continue the existing work to completion (tests, PR), never restarting from scratch.* The issue's label lifecycle then runs unchanged: `in-progress` now, `in-review` when the worker opens the PR.
+   - **No progress** — zero commits ahead of `main` and a clean tree: reuse the branch as an empty start (check it out without `-b` and proceed as a fresh run).
+   - **Branch exists remotely** (pushed by a sibling machine): check it out without `-b`, as above, and proceed as a fresh run — the lead's Sibling PR Manifest (step 8a) already covers in-flight sibling PRs.
+
    **9.2: Transition to `in-progress`** (Governing: SPEC-0015 REQ "Issue Lifecycle Labels"): When assigning an issue to a worker, update its lifecycle state:
 
    1. **Set assignee**: Assign the current user (or a worker identifier) to the issue.
@@ -513,7 +524,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 | `TeamCreate` fails or is not a registered tool | Falls back to single-agent sequential mode with the context-hygiene rules from step 8 (subagent dispatch or `--name-only` + targeted excerpts; never full diffs inline) |
 | No workable issues found | Suggest `/sdd:plan` (no issues at all) or `/sdd:enrich` (issues exist but lack `### Branch`) |
 | Uncommitted changes in main tree | Ask user whether to continue or commit first |
-| `git worktree add` fails (branch exists) | Check if the branch already exists remotely. If so, use `git worktree add .claude/worktrees/{branch-name} {branch-name}` (without `-b`) to check out the existing branch |
+| `git worktree add` fails (branch exists) | Resolve per step 9.1a: remote branch → check out without `-b`; local branch with real progress (commits ahead of `main` or uncommitted changes) → resume it through this skill's own dispatch so the label lifecycle applies; no progress → reuse as a fresh start. Never park the issue to backlog over a collision alone |
 | Push fails (remote rejection) | Worker reports the error to lead; worktree preserved |
 | PR creation fails | Worker reports the error to lead; branch is still pushed, user can create PR manually |
 | Tracker not available | Suggest `/sdd:plan` to create issues first |
