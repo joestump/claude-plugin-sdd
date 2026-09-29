@@ -283,6 +283,9 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
     **Worker steps:**
     1. All file operations use the worktree absolute path (read, write, edit, glob, grep).
+
+    1a. **Worktree and stash safety.** The worktree's stash stack is shared with the main checkout and every other worktree, and other sessions may push or pop it concurrently. Never use bare `git stash` or `git stash pop` in the worktree. If you need to shelve in-flight changes temporarily (for example, to take a clean-tree measurement), prefer a temporary WIP commit on the branch — `git -C {worktree-path} commit -m "WIP #{issue-number}"` — and fold it into your final commit in step 8 (amend or squash). If stashing is truly unavoidable, use `git -C {worktree-path} stash push -u -m "sdd-{issue-number}-{short-tag}"` and restore with `git -C {worktree-path} stash apply <stash-sha>` (never `pop`), dropping the stash only after the working tree is verified.
+
     2. Read the issue body and understand the acceptance criteria.
     3. Explore existing code in the worktree to understand the codebase structure.
 
@@ -560,6 +563,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST preserve worktrees for failed issues — never auto-clean failures
 - Workers MUST use worktree absolute paths for all file operations
 - Workers MUST NOT modify files outside their assigned worktree
+- Workers MUST NOT use bare `git stash` or `git stash pop` in a worktree — the stash stack is shared with the main checkout and all other worktrees; prefer a temporary WIP commit, or a tagged `git stash push -u -m` restored via `git stash apply <sha>` (worker step 1a)
 - Workers MUST push and create PRs before reporting success
 - Workers MUST assess PR size before opening a PR — do NOT create comments-only PRs or trivially small PRs (<30 lines of substantive code) as standalone PRs; send a `BUNDLE_REQUEST` to the lead instead
 - Lead MUST handle `BUNDLE_REQUEST` by checking the queue for additional bundleable issues before telling the worker to proceed
