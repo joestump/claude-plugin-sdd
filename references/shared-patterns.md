@@ -505,6 +505,18 @@ Tracker-specific close keywords (or use CLAUDE.md `PR Conventions > Close Keywor
 - **Jira**: `{PROJECT-KEY}-{number}` reference
 - **Linear**: `{TEAM}-{number}` reference
 
+### Split-Host: tracker on a different host than the code
+
+A close keyword only resolves on the host the PR/MR lives on. GitHub and Gitea number issues and PRs in a single sequence per repository, so a bare `Closes #N` written with a tracker number into a PR on a different host resolves `#N` against that host's own sequence — on merge it can close an unrelated open issue or PR there, while the real tracker issue never closes (the code host cannot see it). Observed 2026-09: a Gitea-tracked project's GitHub PR carried a run of Gitea numbers including `#29`, and GitHub closed its own already-merged docs PR #29 one second after the merge ([#267](https://github.com/joestump/claude-plugin-sdd/issues/267)).
+
+Detect the split wherever a PR convention is written or a PR is created: compare the tracker's host, owner and repo (from `#### Tracker` via Config Resolution, or Tracker Detection) against the code host's git remote origin (`git remote get-url origin`). A different host — or the same host with a different owner/repo — is a split.
+
+When the hosts differ:
+
+1. **Never emit a close keyword with a tracker number.** In the issue's `### PR Convention` section and in the PR/MR body, write a host-qualified, non-closing reference instead: `Tracker: {tracker-owner}/{tracker-repo}#{issue-number}` (or the full issue URL).
+2. **Close tracker issues explicitly via the tracker's API after merge** — the code host's close-on-merge never reaches them.
+3. **Before merging, verify the PR body carries no close keyword + `#N`** that resolves to an open issue or PR on the code host, and rewrite any that does to a qualified reference. The issue body may be stale if the project's configuration changed after the section was written.
+
 ## Governing Comment Format
 
 All skills that generate or modify code MUST use file-level governing comment blocks (ADR-0020). The canonical format:

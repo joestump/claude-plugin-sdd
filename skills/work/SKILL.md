@@ -373,9 +373,10 @@ You are picking up tracker issues and implementing them in parallel using git wo
        ```bash
        git -C {worktree-path} push -u origin {branch-name}
        ```
-    10. Create a PR using the tracker's tools or CLI:
+    10. Create a PR using the code host's tools or CLI (the tracker's, when tracker and code share a host):
         - Title: the issue title (or a combined title if issues were bundled)
         - Body: Include close keywords for all bundled issues, reference the epic, reference the spec
+        - Split-host (tracker's host differs from the code host's git remote, per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "PR Close Keywords" → "Split-Host"): never put a close keyword with a tracker number in the body — write `Tracker: {tracker-owner}/{tracker-repo}#{issue-number}` for each bundled issue instead
         - Regular (non-draft) by default, draft if `--draft` was set
     11. **Transition to `in-review`** (Governing: SPEC-0015 REQ "Issue Lifecycle Labels"): After the PR is created, update lifecycle labels:
         ```bash
