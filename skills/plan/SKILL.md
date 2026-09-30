@@ -339,6 +339,7 @@ Ordered for implementation (dependencies respected):
      - **Jira**: `{PROJECT-KEY}-{number}` reference
      - **Linear**: `{TEAM}-{number}` reference
    - Use CLAUDE.md `PR Conventions` settings when available (Close Keyword, Ref Keyword, Include Spec Reference)
+   - Split-host: when the tracker's host differs from the code host's git remote (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "PR Close Keywords" → "Split-Host"), write `Tracker: {tracker-owner}/{tracker-repo}#{issue-number}` instead of the close keyword
 
    **5.4: Set up dependencies between stories.** Where stories have logical ordering (e.g., setup before core logic, core before extensions), set up dependency relationships between story issues using the tracker's native features. If using Beads, use `bd dep add`.
 

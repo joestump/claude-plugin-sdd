@@ -233,6 +233,10 @@
           "type": "content"
         },
         {
+          "text": "Each worker's dispatch prompt includes the split-host close-keyword rule: when the tracker's host differs from the code host's git remote, the PR body never carries a close keyword with a tracker number, and a host-qualified 'Tracker: {owner}/{repo}#{issue-number}' reference is used instead",
+          "type": "content"
+        },
+        {
           "text": "Workers broadcast FILE_CLAIM via SendMessage before modifying files",
           "type": "structural"
         },

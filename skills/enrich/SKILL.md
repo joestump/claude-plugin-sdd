@@ -99,6 +99,7 @@ You are retroactively adding `### Branch` and `### PR Convention` sections to ex
       {ref-keyword} #{epic-number} (SPEC-XXXX)
       ```
       Tracker-specific close keywords: see the plugin's `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "PR Close Keywords".
+      Split-host: when the tracker's host differs from the code host's git remote (see that section's "Split-Host"), the first line is `Tracker: {tracker-owner}/{tracker-repo}#{issue-number}` instead of the close keyword — a bare keyword would resolve against the code host's own numbering on merge.
 
    h. **Auto-create labels** (Governing: SPEC-0011 REQ "Auto-Create Labels"): When applying labels like `epic` or `story` during enrichment, use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern").
 
