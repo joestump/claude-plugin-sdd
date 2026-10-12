@@ -9,7 +9,7 @@ argument-hint: "[skill-name] [--label bug|documentation|enhancement|usability] [
 
 # Report Friction with the SDD Plugin
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file. **Invocation and arguments.** Where your harness has no command layer (Crush, Codex CLI, OpenCode) this skill is reached from its `description`, not a slash command: the `/sdd:{name}` form below is Claude Code namespacing. `$ARGUMENTS` means whatever arrived with the invocation: take the target and any `--flags` from the request that triggered this skill, and when neither is present follow this skill's documented no-argument path instead of reporting missing arguments (harness-compat § "Invocation and Arguments").
 
 This is a meta-skill: when an SDD plugin skill burns time, breaks, or guides you wrong, you can use this to file a feedback issue against the plugin's own repository (`joestump/claude-plugin-sdd`). The user always sees and approves the entire submission first.
 
@@ -118,7 +118,7 @@ Surface the top 3 results to the user. If a near-match exists (semantic match on
 
 ### Step 7: User prompt — show the entire submission
 
-Use `AskUserQuestion` with the full proposed issue rendered inline. The question text MUST include the *complete* body (not a summary), the labels that will be applied, and any sanitization warnings. Options:
+Offer the choice with `AskUserQuestion` where the harness has it, with the full proposed issue rendered inline; otherwise print the same options as a plain-text numbered list and wait for the answer. The prompt text MUST include the *complete* body (not a summary), the labels that will be applied, and any sanitization warnings. Options:
 
 1. **Submit as drafted (Recommended once reviewed)** — proceeds to Step 8 with the body exactly as shown
 2. **Edit then submit** — write the body to `/tmp/sdd-friction-{timestamp}.md`, output the path and instruction "Edit this file, then re-run `/sdd:report-friction --from-file /tmp/sdd-friction-{timestamp}.md`". Stop.
@@ -241,7 +241,7 @@ If you change your mind later, you can re-run `/sdd:report-friction` (the thresh
 ## Rules
 
 - MUST always target `joestump/claude-plugin-sdd` regardless of the cwd's git remote — this skill files against the SDD plugin's own repo, NOT against the user's project. Use `--repo joestump/claude-plugin-sdd` on every `gh` invocation.
-- MUST prompt the user with the **complete** proposed body via `AskUserQuestion` before submitting — the user is the final approver. No silent submissions ever.
+- MUST put the **complete** proposed body in front of the user and get an explicit yes before submitting — via `AskUserQuestion` where the harness has it, otherwise by printing the body and asking in plain text. Where no answer can be obtained (batch, CI, unattended run) do not submit: leave the drafted body for the user to approve. The user is the final approver; no silent submissions ever.
 - MUST run the qualification threshold check (Step 2) before drafting. The threshold is intentionally high; over-filing dilutes signal.
 - MUST run the sanitization scan (Step 5) before showing the draft. Replace each match with a clear placeholder (`[REDACTED-PATH]`, `[REDACTED-URL]`, `[REDACTED-CREDENTIAL]`, `[REDACTED-EMAIL]`, `[REDACTED-IP]`) AND surface a "what was redacted" log above the body so the user knows both what is leaving the machine and what was changed. The displayed body is the submitted body — no surprise content gets added or subtracted between display and submission.
 - MUST run the duplicate search (Step 6) every time. Cite duplicates in the prompt; offer "comment on existing" as an option when a near-match is found.

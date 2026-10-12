@@ -3,8 +3,10 @@
 # Structural lint for the SDD plugin. Catches the failure modes that markdown
 # and JSON can hit without anything else noticing: an unparseable JSON file, a
 # skill whose frontmatter name disagrees with its directory, a skill missing
-# from skills/_index.json (so it never reaches the docs site), or a second
-# plugin manifest drifting out of sync with .claude-plugin/plugin.json.
+# from skills/_index.json (so it never reaches the docs site), a second plugin
+# manifest drifting out of sync with .claude-plugin/plugin.json, or a skill
+# whose only path to being invoked is a command layer that half our target
+# harnesses do not have.
 #
 # Governing: ADR-0029 (skills/_index.json drives skill page generation)
 
@@ -299,6 +301,51 @@ if [ -n "$bad_jsx" ]; then
 else
   pass "no bare JSX.Element annotations in templates or docs-site"
 fi
+
+# --- Harness portability ---------------------------------------------------
+
+# The invocation layer is the one that breaks silently: a skill can satisfy
+# every rule in its body and still do nothing on a harness with no command
+# layer, because the "/sdd:x" the README told the user to type matched no
+# command and $ARGUMENTS was never populated (#236). These three checks keep
+# the portable-invocation contract in the files that carry it, rather than in
+# a reference nobody opens when a skill "won't trigger".
+
+# 1. Every skill states the invocation and argument rule under its title, so a
+#    skill read on its own (which is how a skill is read) explains itself.
+inv_bad=0
+for skill_md in skills/*/SKILL.md; do
+  if ! grep -q 'Invocation and Arguments' "$skill_md"; then
+    fail "$skill_md: portability note does not cover invocation/\$ARGUMENTS (harness-compat § \"Invocation and Arguments\")"
+    inv_bad=1
+  fi
+done
+[ "$inv_bad" -eq 0 ] && pass "every skill states how it is invoked without a command layer"
+
+# 2. A description that names a slash command trains the model to wait for a
+#    command instead of recognizing the task, which is the only trigger a
+#    description-matching harness has.
+desc_bad=0
+while IFS= read -r hit; do
+  [ -n "$hit" ] || continue
+  fail "${hit%%:*}: frontmatter description names a slash command (it is also the trigger phrase)"
+  desc_bad=1
+done < <(grep -n '^description:.*\[\?/sdd:' skills/*/SKILL.md 2>/dev/null || true)
+[ "$desc_bad" -eq 0 ] && pass "no skill description depends on a slash command"
+
+# 3. A normative rule that names a harness-specific tool is violated on every
+#    other harness unless the line itself gives the fallback. Citing the
+#    capability map at the top of the file is not enough: the rules are what a
+#    model follows literally.
+must_bad=0
+while IFS= read -r hit; do
+  [ -n "$hit" ] || continue
+  fail "${hit:0:200}: normative rule names a harness-specific tool with no fallback clause"
+  must_bad=1
+done < <(grep -nE 'MUST[^|]*\b(AskUserQuestion|TeamCreate|TeamDelete|SendMessage|TaskCreate|TaskUpdate|TaskList|TaskGet|ToolSearch|EnterWorktree|WebFetch|WebSearch)\b' skills/*/SKILL.md \
+  | grep -v 'Harness portability' \
+  | grep -vE 'where the harness|where available|where it cannot|otherwise|harness-compat|Capability Map|Single-Agent|single-agent|non-interactive|batch mode' || true)
+[ "$must_bad" -eq 0 ] && pass "no MUST outranks a harness it cannot satisfy"
 
 # --- Shell ----------------------------------------------------------------
 

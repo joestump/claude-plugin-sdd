@@ -10,7 +10,7 @@ argument-hint: "[SPEC-XXXX | issue numbers | (empty = propose from backlog)] [--
 
 # Work on Issues
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file. **Invocation and arguments.** Where your harness has no command layer (Crush, Codex CLI, OpenCode) this skill is reached from its `description`, not a slash command: the `/sdd:{name}` form below is Claude Code namespacing. `$ARGUMENTS` means whatever arrived with the invocation: take the target and any `--flags` from the request that triggered this skill, and when neither is present follow this skill's documented no-argument path instead of reporting missing arguments (harness-compat § "Invocation and Arguments").
 
 You are picking up tracker issues and implementing them in parallel using git worktrees. Each issue gets its own worktree and worker agent.
 
@@ -552,7 +552,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - A spec is NOT required — `/sdd:work` can operate from the backlog alone
 - When no arguments are provided, MUST analyze the backlog and propose a batch to the user before starting any work
 - MUST read spec.md and design.md before dispatching workers only when a spec is provided or resolvable from issue bodies
-- MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
+- MUST discover tracker MCP tools at runtime where the harness can probe for them (`ToolSearch`); where it cannot, assume no tracker MCP tool is present and take the tracker CLI path (`gh` / `glab` / `tea`) — never assume specific tools are available (harness-compat § Capability Map)
 - MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" to read configuration from CLAUDE.md
 - MUST extract branch names from issue bodies — never invent branch names
 - MUST skip epics (labeled `epic` or titled "Implement ...") — only work on implementation issues
@@ -579,8 +579,8 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST read `## SDD Configuration` from CLAUDE.md for `max-parallel-agents` setting before falling back to default
 - MUST queue excess stories when more are ready than the parallelism limit allows, starting them as active agents complete
 - MUST report active agent count and queue depth to the user before starting work ("Starting N of M ready stories (Q queued, max-parallel-agents: limit)")
-- Workers MUST broadcast `FILE_CLAIM` via `SendMessage` before modifying any file
-- Workers MUST broadcast `TYPE_CREATED` via `SendMessage` after creating new types, structs, interfaces, or shared helpers
+- Workers MUST announce a `FILE_CLAIM` before modifying any file — via `SendMessage` where the harness has team messaging, otherwise by recording the claim in the shared manifest the lead maintains (harness-compat § Capability Map)
+- Workers MUST announce `TYPE_CREATED` after creating new types, structs, interfaces, or shared helpers — via `SendMessage` where the harness has team messaging, otherwise in that same shared manifest
 - Workers receiving `TYPE_CREATED` MUST import the type rather than creating a duplicate
 - Workers receiving `FILE_CLAIM` for a file they also need MUST send `CONFLICT_ALERT` and wait for lead coordination
 - MUST ensure lifecycle labels (`queued`, `in-progress`, `in-review`, `merged`) exist before assigning work — using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern") (Governing: SPEC-0015 REQ "Issue Lifecycle Labels")
@@ -600,8 +600,8 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST build a sibling PR manifest before dispatching workers by querying the tracker for all open PRs in the sprint/epic scope (Governing: SPEC-0015 REQ "Pre-Flight PR Awareness")
 - MUST inject the sibling PR manifest into each worker's context when assigning work
 - Workers MUST check the sibling PR manifest before modifying files or creating types — if a file or type is already claimed by a sibling, the worker MUST coordinate rather than duplicate
-- Workers MUST update their local manifest dynamically via `SendMessage` broadcasts (FILE_CLAIM, TYPE_CREATED, AVAILABILITY)
-- Lead MUST broadcast `AVAILABILITY` messages when foundation or sibling PRs merge so workers can lift file avoidance directives
+- Workers MUST keep their local manifest current from team broadcasts (FILE_CLAIM, TYPE_CREATED, AVAILABILITY) via `SendMessage` where the harness has team messaging; otherwise the lead refreshes the manifest between steps and each worker re-reads it before touching files
+- Lead MUST announce `AVAILABILITY` when foundation or sibling PRs merge so workers can lift file avoidance directives — via `SendMessage` where the harness has team messaging, otherwise by refreshing the manifest each worker re-reads
 - MUST compute topological merge order based on file overlap analysis after all PRs reach `in-review` state (Governing: SPEC-0015 REQ "Topological Merge Ordering")
 - PRs with zero file overlap MUST be merged first (Tier 0, any order)
 - PRs sharing files with already-merged PRs MUST rebase before merging

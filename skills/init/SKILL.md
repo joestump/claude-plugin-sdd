@@ -9,7 +9,7 @@ argument-hint: "[--module <name>]"
 
 # Initialize SDD Plugin
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file. **Invocation and arguments.** Where your harness has no command layer (Crush, Codex CLI, OpenCode) this skill is reached from its `description`, not a slash command: the `/sdd:{name}` form below is Claude Code namespacing. `$ARGUMENTS` means whatever arrived with the invocation: take the target and any `--flags` from the request that triggered this skill, and when neither is present follow this skill's documented no-argument path instead of reporting missing arguments (harness-compat § "Invocation and Arguments").
 
 Set up the project's `CLAUDE.md` with architecture context so Claude sessions are design-aware. This skill uses **componentized convergence** — each component independently checks its own state and converges. No single gate blocks other components. Running init N times produces the same result as running it once.
 
@@ -349,11 +349,11 @@ Each component is independently idempotent:
 - Do NOT create `docs/adrs/` or `docs/openspec/specs/` directories — those are created by `/sdd:adr` and `/sdd:spec` when needed
 - MUST detect `.claude-plugin-design.json` before the main flow and migrate automatically (Governing: SPEC-0014 REQ "Migration from JSON to CLAUDE.md")
 - MUST preserve all configuration values exactly during migration — no lossy translation
-- MUST delete `.claude-plugin-design.json` after successful migration — no AskUserQuestion needed
+- MUST delete `.claude-plugin-design.json` after successful migration — no prompt needed
 - When merging migrated config into an existing `### SDD Configuration` section, CLAUDE.md values take precedence on conflicts
-- MUST auto-configure `.claude/settings.local.json` with tracker-appropriate permission allowlists — no AskUserQuestion needed. Claude Code only: on other harnesses MUST skip the write and instead report the commands to pre-approve (per harness-compat § "Permissions and Approvals")
+- MUST auto-configure `.claude/settings.local.json` with tracker-appropriate permission allowlists — no prompt needed. Claude Code only: on other harnesses MUST skip the write and instead report the commands to pre-approve (per harness-compat § "Permissions and Approvals")
 - MUST detect `.gitmodules` and offer workspace setup when submodules are found (Governing: ADR-0016, SPEC-0014 REQ "Init Workspace Setup")
-- MUST NOT create submodule CLAUDE.md files without user consent via `AskUserQuestion`
+- MUST NOT create submodule CLAUDE.md files without the user's consent, gathered via `AskUserQuestion` where the harness has it and in plain text otherwise
 - MUST write `### Workspace Modules` table in root CLAUDE.md when workspace is detected
 - MUST skip submodules that already have CLAUDE.md (unless user explicitly requests update)
 - When `.gitmodules` and `.claude-plugin-design.json` both exist, migration (Step 1) runs before workspace setup (Step 4)
