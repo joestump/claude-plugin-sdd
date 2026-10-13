@@ -9,7 +9,7 @@ argument-hint: "[SPEC-XXXX or spec-name] [--project <name>] [--dry-run] [--modul
 
 # Organize Issues into Projects
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file. **Invocation and arguments.** Where your harness has no command layer (Crush, Codex CLI, OpenCode) this skill is reached from its `description`, not a slash command: the `/sdd:{name}` form below is Claude Code namespacing. `$ARGUMENTS` means whatever arrived with the invocation: take the target and any `--flags` from the request that triggered this skill, and when neither is present follow this skill's documented no-argument path instead of reporting missing arguments (harness-compat § "Invocation and Arguments").
 
 You are retroactively grouping existing tracker issues into tracker-native projects and enriching project workspaces. You use a three-tier intervention model that lets the operator control how invasive the changes are. See ADR-0012 and SPEC-0011.
 
@@ -138,7 +138,7 @@ This skill reads and writes the `Projects` subsection of the `### SDD Configurat
 - Tier (c) MAY modify issue content (labels, body sections, grouping)
 - MUST present the three-tier choice to the operator before making changes (Governing: SPEC-0011 REQ "Organize Three-Tier Intervention")
 - MUST skip projects that already exist (idempotent)
-- MUST use `ToolSearch` for project tools at runtime
+- MUST probe for project tools at runtime where the harness can (`ToolSearch`); where it cannot, assume them absent and take the documented CLI path (harness-compat § Capability Map)
 - Failures MUST be reported but MUST NOT stop processing remaining issues
 - MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" to read configuration from CLAUDE.md
 - MUST check CLAUDE.md `Projects` for cached project IDs before creating
