@@ -404,7 +404,7 @@ Auto-routed: collections did not exist → ran `add` then started `embed` ({fore
 {If skipped: include "Run `/sdd:index embed` — semantic and hybrid search are disabled until vectors exist."}
 - After adding new ADRs/specs/code, re-run `/sdd:index update`
 - The qmd MCP server (`mcp__plugin_qmd_qmd__*` tools, if you have the qmd plugin loaded) sees new collections immediately — no harness restart required. Verified empirically against running sessions.
-- Consider recording this with `/sdd:adr "Adopt qmd for cross-repo semantic search"` — there is no ADR for this yet
+- No ADR to file for qmd: it is SDD plugin tooling, not a project dependency, and the plugin already records the decision in ADR-0024 (`docs/adrs/ADR-0024-qmd-as-hard-dependency.md` in the plugin repo)
 ```
 
 ### After `update`
@@ -550,7 +550,7 @@ In aggregate mode, render one section per module before the report's shared sect
 - MUST confirm with the user before `remove` — via `AskUserQuestion` where the harness has it, otherwise in plain text, and where it cannot ask, do not remove: report that confirmation is pending. Dropping a collection deletes embeddings that take real time and (on CPU) significant compute to regenerate
 - MUST NOT modify `.claude-plugin/plugin.json` — skills auto-discover from `skills/`; touching the manifest causes plugin reload churn
 - MUST NOT create the `docs/adrs/` or `docs/openspec/specs/` directories if they are absent — that is the job of `/sdd:adr` and `/sdd:spec`. Skip the corresponding collection with a warning instead.
-- MUST suggest recording this capability with `/sdd:adr` in the report — no ADR exists yet for adopting qmd, and the user explicitly noted this is an architectural decision worth documenting after the skill is in use
+- MUST cite the plugin's ADR-0024 (`docs/adrs/ADR-0024-qmd-as-hard-dependency.md`) in the report rather than suggesting a `/sdd:adr` for qmd adoption — qmd is a plugin dependency, not a project dependency, and the adoption decision is already recorded upstream
 - In workspace aggregate mode, MUST iterate per-module and prefix collections as `{repo}-{module}-{kind}` so the same `--module` filter works in both `/sdd:index` and `/sdd:check`
 - When `--module` is provided, MUST scope to that single module — do not touch sibling modules' collections
 - MUST detect qmd hardware mode via the cached probe at `~/.cache/sdd-plugin/qmd-hardware.json` (Step 2 sub-step 5) — MUST NOT scan `qmd status` output for the "running on CPU" warning (the warning emits during `qmd embed` model-load only, never in `qmd status`; this was a real-world bug). MUST NOT read filesystem markers under `~/.cache/qmd/` to infer hardware — couples to qmd internals (Governing: ADR-0026 embed policy)
