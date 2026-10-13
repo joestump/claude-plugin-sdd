@@ -2,9 +2,11 @@
 
 A Claude Code plugin for architecture governance: ADRs, specifications, sprint planning, parallel implementation, code review, and documentation generation.
 
-The skills are written in the open Agent Skills format and are harness-portable: they also run under Codex CLI, OpenCode, and Crush. Claude Code-specific tool names in the skill bodies denote capabilities with per-harness mappings and fallbacks — see [references/harness-compat.md](references/harness-compat.md).
+The skills are written in the open Agent Skills format and are harness-portable: they also run under Codex CLI, OpenCode, and Crush. Two things differ off Claude Code. Claude Code-specific tool names in the skill bodies denote capabilities, with per-harness mappings and fallbacks; and on a harness with no command layer the skills are reached by description rather than by a `/sdd:` command. Both are defined in [references/harness-compat.md](references/harness-compat.md).
 
 ## Skills
+
+The **Invoke** column is Claude Code's command form. Where your harness has no command layer, describe the task instead ("create an ADR for our queue choice", "pick up issue 64 and implement it"): each skill's description is written to be recognized from what you are trying to do. See [Running Without a Plugin Layer](#running-without-a-plugin-layer-crush-codex-cli-opencode).
 
 | Skill | Invoke | Description |
 |-------|--------|-------------|
@@ -49,6 +51,30 @@ Add to your project's `.claude/settings.json`:
 ```
 
 Then restart Claude Code. The plugin's skills will be available as `/sdd:init`, `/sdd:prime`, `/sdd:prd`, `/sdd:adr`, `/sdd:spec`, `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:triage`, `/sdd:work`, `/sdd:review`, `/sdd:respond`, `/sdd:check`, `/sdd:audit`, `/sdd:discover`, `/sdd:docs`, `/sdd:list`, `/sdd:status`, `/sdd:graph`, `/sdd:index`, `/sdd:search`, and `/sdd:report-friction`.
+
+## Running Without a Plugin Layer (Crush, Codex CLI, OpenCode)
+
+These harnesses load Agent Skills from directories you configure. They have no plugin system, no slash-command layer, and no argument substitution, so the `/sdd:{name}` forms above do not exist there. Install by pointing the harness at a checkout of this repo:
+
+```sh
+git clone https://github.com/joestump/claude-plugin-sdd ~/.config/crush/skills-ext/claude-plugin-sdd
+```
+
+Then add the plugin's `skills/` directory to the harness's skill path list. For Crush, in `crush.json`:
+
+```json
+{
+  "skills_paths": ["/home/YOU/.config/crush/skills-ext/claude-plugin-sdd/skills"]
+}
+```
+
+Restart the harness (skills are read at startup, so a `git pull` needs a restart too), then invoke by describing the task. Three differences worth knowing:
+
+- **Invocation is by description.** Typing `/sdd:work` matches nothing, because there is no command layer to receive it. Say what you want done.
+- **Arguments arrive in the prompt, not by substitution.** There is no equivalent of `/sdd:work SPEC-0003 --max-agents 4`; each skill reads the spec or issue number and any `--flags` from the request itself, and otherwise follows its documented no-argument path.
+- **`allowed-tools` and `argument-hint` frontmatter is informational only.** Approvals live in your harness's own permission config. And a skill listed under Crush's `options.disabled_skills` will not trigger from any phrasing: check that list before concluding a skill is broken.
+
+Keep the whole plugin directory in place. `references/` and `templates/` resolve relative to the skill's own location, so a skill copied out on its own cannot load its references.
 
 ## Configuration
 

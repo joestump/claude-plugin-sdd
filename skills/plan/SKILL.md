@@ -10,7 +10,7 @@ argument-hint: "[spec-name or SPEC-XXXX] [--review] [--scrum] [--project <name>]
 
 # Plan Sprint from Specification
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file. **Invocation and arguments.** Where your harness has no command layer (Crush, Codex CLI, OpenCode) this skill is reached from its `description`, not a slash command: the `/sdd:{name}` form below is Claude Code namespacing. `$ARGUMENTS` means whatever arrived with the invocation: take the target and any `--flags` from the request that triggered this skill, and when neither is present follow this skill's documented no-argument path instead of reporting missing arguments (harness-compat § "Invocation and Arguments").
 
 You are breaking down an existing specification into trackable work items (epics and story-sized issues) in the user's issue tracker. Instead of creating one issue per requirement, you group related requirements into 3-4 story-sized issues by functional area, with task checklists in the issue body for requirement traceability. See ADR-0011 and SPEC-0010.
 
@@ -469,7 +469,7 @@ Follow the standard protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references
 - For Beads, MUST use native subtasks (`bd subtask add`) instead of markdown checklists
 - Story groupings SHOULD target 200-500 line PRs — functional cohesion takes priority over line-count targets (Governing: SPEC-0010 REQ "PR Size Target")
 - Coupled requirements (same files, shared data structures) MUST be placed in the same story (Governing: SPEC-0010 REQ "Grouping Heuristics")
-- MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
+- MUST discover tracker MCP tools at runtime where the harness can probe for them (`ToolSearch`); where it cannot, assume no tracker MCP tool is present and take the tracker CLI path (`gh` / `glab` / `tea`) — never assume specific tools are available (harness-compat § Capability Map)
 - MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" to read configuration from CLAUDE.md
 - MUST offer to save tracker preference to the `### SDD Configuration` section in CLAUDE.md when a tracker is selected for the first time
 - When writing config to CLAUDE.md, preserve existing keys — only update changed sections
@@ -478,7 +478,7 @@ Follow the standard protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references
 - MUST link created projects to the repository for trackers that support project-repository associations (e.g., GitHub Projects V2 via `gh project link`, Gitea). Without linking, projects are invisible from the repository's Projects tab.
 - Branch slug MUST be derived from the story title (kebab-case, max 50 chars), not invented
 - PR close keywords MUST match the detected tracker
-- MUST use `ToolSearch` for project tools at runtime
+- MUST probe for project tools at runtime where the harness can (`ToolSearch`); where it cannot, assume them absent and take the documented CLI path (harness-compat § Capability Map)
 - `--project` and `--no-projects` are mutually exclusive; if both provided, warn and use `--no-projects`
 - `--no-branches` disables both `### Branch` AND `### PR Convention` sections
 - MUST use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern") for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")

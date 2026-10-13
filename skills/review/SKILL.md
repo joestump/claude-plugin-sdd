@@ -1,6 +1,6 @@
 ---
 name: review
-description: Review and merge PRs produced by /sdd:work using reviewer-responder agent pairs. Use when the user says "review PRs", "review the spec PRs", or wants automated spec-aware code review.
+description: Review and merge PRs produced by the work skill using reviewer-responder agent pairs. Use when the user says "review PRs", "review the spec PRs", or wants automated spec-aware code review.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, WebFetch, WebSearch, TeamCreate, TeamDelete, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage, AskUserQuestion, ToolSearch
 argument-hint: "[SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run] [--module <name>] [--loop [--pr N] [--max-iterations N] [--max-prs N] [--max-minutes N] [--max-dollars N] [--lock={skip|wait|force}] [--resume] [--budget-file PATH]]"
 ---
@@ -10,7 +10,7 @@ argument-hint: "[SPEC-XXXX or PR numbers] [--pairs N] [--no-merge] [--dry-run] [
 
 # Review and Merge PRs
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file. **Invocation and arguments.** Where your harness has no command layer (Crush, Codex CLI, OpenCode) this skill is reached from its `description`, not a slash command: the `/sdd:{name}` form below is Claude Code namespacing. `$ARGUMENTS` means whatever arrived with the invocation: take the target and any `--flags` from the request that triggered this skill, and when neither is present follow this skill's documented no-argument path instead of reporting missing arguments (harness-compat § "Invocation and Arguments").
 
 You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pairs. Each pair processes PRs through exactly one review-response round: the reviewer checks the diff against spec acceptance criteria, the responder addresses feedback, and the reviewer re-evaluates. Approved PRs are merged; unresolved PRs are left with comments for human follow-up. See ADR-0010 and SPEC-0009.
 
@@ -291,7 +291,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 ## Rules
 
 - MUST load spec and design context before dispatching reviewers
-- MUST use `ToolSearch` to discover tracker MCP tools at runtime — never assume specific tools are available
+- MUST discover tracker MCP tools at runtime where the harness can probe for them (`ToolSearch`); where it cannot, assume no tracker MCP tool is present and take the tracker CLI path (`gh` / `glab` / `tea`) — never assume specific tools are available (harness-compat § Capability Map)
 - MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" to read configuration from CLAUDE.md
 - MUST use round-robin distribution across pairs (Governing: SPEC-0009 REQ "PR Distribution")
 - MUST limit to exactly one review-response round per PR — no unbounded iteration (Governing: ADR-0010)

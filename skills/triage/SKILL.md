@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Triage and size tracker issues — give every open issue a verdict (OK, STALE, SUPERSEDED, DUP, BLOCKED, HUMAN, BOT), close the ones that are no longer real only on evidence from the code on main, and apply exactly one size/S|M|L|XL label measured as "the weakest model that can carry this end to end". Use when the user says "triage the backlog", "size these issues", "groom the issues", "which of these issues are stale", "close what's already done", or before planning work from an existing backlog. Also the canonical definition of the size ladder that /sdd:plan, /sdd:organize and /sdd:enrich apply.
+description: Triage and size tracker issues — give every open issue a verdict (OK, STALE, SUPERSEDED, DUP, BLOCKED, HUMAN, BOT), close the ones that are no longer real only on evidence from the code on main, and apply exactly one size/S|M|L|XL label measured as "the weakest model that can carry this end to end". Use when the user says "triage the backlog", "size these issues", "groom the issues", "which of these issues are stale", "close what's already done", or before planning work from an existing backlog. Also the canonical definition of the size ladder that the plan, organize and enrich skills apply.
 allowed-tools: Read, Glob, Grep, Bash, ToolSearch, AskUserQuestion
 argument-hint: "[SPEC-XXXX | #N | --all] [--dry-run] [--size-only] [--module <name>]"
 ---
@@ -9,7 +9,7 @@ argument-hint: "[SPEC-XXXX | #N | --all] [--dry-run] [--size-only] [--module <na
 
 # Triage and Size Issues
 
-> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file.
+> **Harness portability.** This skill runs on any agent harness that loads Agent Skills — Claude Code, Codex CLI, OpenCode, Crush. Tool names used below (`AskUserQuestion`, `Task`, `TeamCreate`, `SendMessage`, `TaskCreate`, `ToolSearch`, `mcp__*`, `${CLAUDE_PLUGIN_ROOT}`) denote *capabilities*, not hard requirements: map each to your harness's equivalent or use the documented fallback per `${CLAUDE_PLUGIN_ROOT}/references/harness-compat.md`. References to `CLAUDE.md` mean the project memory file (`CLAUDE.md`, `AGENTS.md`, or `CRUSH.md`) per harness-compat § "Project Memory File". A citation of the form `shared-patterns.md § "Section"` names one `##` heading in that file — load only that section (see its "How to Read This File" note), never the whole file. **Invocation and arguments.** Where your harness has no command layer (Crush, Codex CLI, OpenCode) this skill is reached from its `description`, not a slash command: the `/sdd:{name}` form below is Claude Code namespacing. `$ARGUMENTS` means whatever arrived with the invocation: take the target and any `--flags` from the request that triggered this skill, and when neither is present follow this skill's documented no-argument path instead of reporting missing arguments (harness-compat § "Invocation and Arguments").
 
 You are deciding, for each open issue, **whether it is still real** and, if it is, **how big it is**. The two questions are asked in that order: sizing is worthless on an issue that should be closed.
 
@@ -139,4 +139,4 @@ Read the `### SDD Configuration` section per `${CLAUDE_PLUGIN_ROOT}/references/s
 - MUST NOT run a second capability scale alongside `size/*`
 - MUST confirm with the user before closing issues, unless they have already said to apply
 - MUST use the try-then-create pattern for label applications
-- MUST use `ToolSearch` to discover tracker tools at runtime
+- MUST probe for tracker tools at runtime where the harness can (`ToolSearch`); where it cannot, assume them absent and take the tracker CLI path (`gh` / `glab` / `tea`) (harness-compat § Capability Map)
