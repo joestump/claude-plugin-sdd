@@ -18,6 +18,8 @@ Update the status of an ADR or spec, **preserving the file's existing status for
 
 0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR, spec, and PRD directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module; otherwise, in a workspace, aggregate across all modules. The resolved ADR directory is `{adr-dir}`, spec directory is `{spec-dir}`, and PRD directory is `{prd-dir}` (default `docs/prds/`, per ADR-0036).
 
+   Also resolve the project constitution once per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Constitution Resolution"; the resolved file is `{constitution-path}`. Status changes retire the design records that constitution rules point at, so the report in step 6 needs to know which rules do. No constitution means no constitution line in the report and no prompt (Governing: ADR-0037).
+
 1. **Parse arguments**: Extract the identifier and new status from `$ARGUMENTS`.
    - Identifier: `ADR-XXXX` or `SPEC-XXXX` (or a capability name for specs)
    - Status: the new status value
@@ -65,6 +67,16 @@ Update the status of an ADR or spec, **preserving the file's existing status for
    - "Updated ADR-0001 status: accepted → superseded (inline-bullet, preserved format; refinement note dropped)"
    - "Added inline-bullet status to SPEC-0005: draft (file had no prior status field; inline format chosen to match sibling specs)"
 
+   6a. **Rules citing this artifact** (Governing: ADR-0037). When `{constitution-path}` exists, scan its non-retired rules for a `Governs` pointer naming the artifact (for a spec, also match a pointer to one of its requirement numbers) and append:
+   - "Cited by: Rule 3 (One way to do it), Rule 9 (Reuse before new)" when any rule points at it.
+   - "No constitution rule cites it" when none does.
+
+   Then warn when the new status orphans a live rule, in the same report:
+   - Moving an ADR or spec to `deprecated` or `superseded` while a non-retired rule cites it: "Rule {N} still applies this record as a standing decision. Run `/sdd:check` on the constitution and decide whether to retire or re-point it — `/sdd:status` does not edit rules."
+   - Moving one to `accepted` or `implemented` while a citing rule exists: no warning, cite the rules; that is the transition the pointer was waiting for.
+
+   This is the whole of what "rule usage" means for a skill running in one checkout: per-run citations live in PR bodies on the tracker, not in the repo, and a local run cannot count them. A project that wants a tally greps its own tracker for the literal line `Owner rule applied: Rule` (`references/constitution.md` § "Rule usage in `/sdd:status`"). Never present a count this skill did not read.
+
 7. **Tier 1 mutation update** (v5.0.0+):
 
    <!-- Governing: ADR-0026 (Tiered Index Freshness), SPEC-0019 REQ "Tier 1 Mutation-Aware Updates" -->
@@ -101,7 +113,8 @@ When `$ARGUMENTS` starts with `backfill`, the skill does NOT update any status v
 - MUST ask the user which format to use when the file has no status field, via `AskUserQuestion` where the harness has it and in plain text otherwise; never silently default to a format
 - When the format is `inline-bullet` and a parenthetical refinement note exists, MUST ask whether to drop it (recommended) or preserve it via `--keep-refinement`
 - MUST report which format was preserved or added in the success message — silent mutations are how the previous bug went undetected
-- Do not modify any content outside the status field — neither YAML keys nor body content nor adjacent bullets
+- Do not modify any content outside the status field — neither YAML keys nor body content nor adjacent bullets. In particular this skill MUST NOT edit a constitution, retire a rule, or re-point a `Governs` pointer; it reports the rules that need a decision and leaves them to a person (Governing: ADR-0037)
+- MUST report which constitution rules cite the artifact when a constitution exists, and MUST warn when the new status orphans a live rule (Governing: ADR-0037)
 - Refinement note format is preserved in source files (per the prior `/sdd:prime` and `/sdd:list` updates that strip parentheticals from the table view) — this skill's job is to update the lifecycle word, not the refinement annotation, and only on explicit user direction
 - In `backfill` mode: MUST exclude `{adr-dir}/0000-template.md` and `{adr-dir}/README.md` from the scan — neither is an artifact, and writing frontmatter into the template propagates a fixed status and date into every ADR seeded from it; MUST classify every artifact with the Format Detection algorithm first and MUST skip dual-format files as corrupt; MUST remove the inline Status/Date bullets when migrating (leaving them creates the dual-source-of-truth corruption); MUST preserve any existing frontmatter keys verbatim; MUST show the per-file plan before writing (or with `--dry-run`, instead of writing); MUST NOT change any status VALUE during backfill — a value change is a separate explicit `/sdd:status` run
 - **v5.0.0+**: MUST trigger Tier 1 update of the affected collection (`{repo}-adrs` or `{repo}-specs`) per Step 7 — best-effort, silent on success, one-line warning on failure (Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates")

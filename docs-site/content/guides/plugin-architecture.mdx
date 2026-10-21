@@ -27,10 +27,12 @@ claude-plugin-sdd/
 │           └── upgrade-mode.md
 ├── references/               # Shared patterns across skills
 │   ├── shared-patterns.md    # Tracker detection, config schema, etc.
+│   ├── constitution.md       # Constitution format, citation, and findings rules
 │   └── claude-md-template.md # CLAUDE.md template for /sdd:init
 ├── templates/                # Docusaurus site templates
 │   ├── docusaurus/           # Standalone scaffold templates
-│   └── integration/          # Plugin for existing Docusaurus sites
+│   ├── integration/          # Plugin for existing Docusaurus sites
+│   └── constitution-example.md # Standing owner rules, copied to docs/constitution.md
 └── docs/                     # This plugin's own design artifacts
     ├── prds/                 # Product Requirements Documents (optional)
     ├── adrs/                 # Architecture Decision Records
@@ -134,6 +136,8 @@ The `templates/` directory contains source files that get copied into the user's
 - **`templates/docusaurus/`**: Used by scaffold mode. Contains a complete standalone Docusaurus site structure including `docusaurus.config.ts`, `sidebars.ts`, custom components (RFC 2119 highlighting, status badges, requirement boxes), and CSS. This gets copied to a `docs-site/` directory in the user's project.
 
 - **`templates/integration/`**: Used by integration mode. Contains a Docusaurus build-time plugin (`sync-spec-docs`) that hooks into an existing Docusaurus installation. It uses `loadContent()` and `getPathsToWatch()` for hot module reloading. Output goes to `{site}/docs/architecture/` (gitignored), with components placed in `{site}/src/components/design-docs/`.
+
+- **`templates/constitution-example.md`**: Not copied by any skill. A project copies it to `docs/constitution.md` by hand to give unattended runs its standing owner rules (ADR-0037); the structural lint validates it on every `make lint` so the example stays copyable.
 
 ## Design Artifacts
 

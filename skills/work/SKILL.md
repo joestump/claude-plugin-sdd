@@ -24,6 +24,10 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
 0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the ADR and spec directories. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
 
+    <!-- Governing: ADR-0037 (SDD Constitution), ADR-0015 (Markdown-Native Configuration) -->
+
+    0a. **Resolve the project constitution**: Follow `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Constitution Resolution" once for the run. Resolved rules become `{constitution}`, passed to every worker in step 10 and consulted at every stop this skill would otherwise make on ambiguous scope. No constitution means every constitution step below is skipped silently, with no prompt and no mention in output.
+
 1. **Parse arguments**: Parse `$ARGUMENTS`.
 
    **Target resolution:**
@@ -276,6 +280,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
     - Spec content (spec.md) — if a spec was resolved for this issue; omitted otherwise
     - Design content (design.md) — if a spec was resolved; omitted otherwise
     - ADR content (any referenced ADRs) — if a spec was resolved; omitted otherwise
+    - **Constitution rules** resolved by the lead in step 0a (`{constitution}`), or nothing when the project has no constitution
     - **Sibling PR Manifest** (from step 8a) — files being modified by siblings, shared types available, in-progress sibling PRs
     - Worktree absolute path
     - Whether to run tests (`--no-tests` flag)
@@ -287,6 +292,18 @@ You are picking up tracker issues and implementing them in parallel using git wo
     1a. **Worktree and stash safety.** The worktree's stash stack is shared with the main checkout and every other worktree, and other sessions may push or pop it concurrently. Never use bare `git stash` or `git stash pop` in the worktree. If you need to shelve in-flight changes temporarily (for example, to take a clean-tree measurement), prefer a temporary WIP commit on the branch — `git -C {worktree-path} commit -m "WIP #{issue-number}"` — and fold it into your final commit in step 8 (amend or squash). If stashing is truly unavoidable, use `git -C {worktree-path} stash push -u -m "sdd-{issue-number}-{short-tag}"` and restore with `git -C {worktree-path} stash apply <stash-sha>` (never `pop`), dropping the stash only after the working tree is verified.
 
     2. Read the issue body and understand the acceptance criteria.
+
+    2a. **Standing owner rules come before stopping.**
+
+       <!-- Governing: ADR-0037 (SDD Constitution) -->
+
+       When the acceptance criteria leave a decision open and this worker would otherwise park the issue or ask the owner, consult `{constitution}` before doing either:
+
+       1. A rule whose `Applies to` list covers `work` (or which carries no such list) and whose decision answers that exact question: apply it, and record the citation line from `references/constitution.md` § "Citing a rule" for step 10.
+       2. A question listed under `## Always ask the owner`: stop and ask, even if another rule appears to cover it.
+       3. No matching rule: behave exactly as before, and cite nothing.
+
+       "Close enough" is not a match. A rule read and not applied is never cited, and the absence of a rule never justifies a guess.
     3. Explore existing code in the worktree to understand the codebase structure.
 
     3a. **qmd-aware code pre-search before writing** (v5.0.0+).
@@ -346,7 +363,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
         ```bash
         git -C {worktree-path} diff --name-only
         ```
-        For each modified file, check if it falls under a protected path (`{spec-dir}`, `{adr-dir}`, root `CLAUDE.md`, `.claude-plugin-design.json`).
+        For each modified file, check if it falls under a protected path (`{spec-dir}`, `{adr-dir}`, `{constitution-path}` when a constitution is configured, root `CLAUDE.md`, `.claude-plugin-design.json`).
 
         **If protected files are found:**
         1. Revert each protected file:
@@ -376,6 +393,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
     10. Create a PR using the code host's tools or CLI (the tracker's, when tracker and code share a host):
         - Title: the issue title (or a combined title if issues were bundled)
         - Body: Include close keywords for all bundled issues, reference the epic, reference the spec
+        - Body: When step 2a applied any rule, add a `### Owner Rules Applied` section listing one `Owner rule applied: Rule N — {title}` line per rule actually applied (Governing: ADR-0037). Omit the section when nothing was applied; never write it as empty.
         - Split-host (tracker's host differs from the code host's git remote, per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "PR Close Keywords" → "Split-Host"): never put a close keyword with a tracker number in the body — write `Tracker: {tracker-owner}/{tracker-repo}#{issue-number}` for each bundled issue instead
         - Regular (non-draft) by default, draft if `--draft` was set
     11. **Transition to `in-review`** (Governing: SPEC-0015 REQ "Issue Lifecycle Labels"): After the PR is created, update lifecycle labels:
@@ -554,6 +572,9 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST read spec.md and design.md before dispatching workers only when a spec is provided or resolvable from issue bodies
 - MUST discover tracker MCP tools at runtime where the harness can probe for them (`ToolSearch`); where it cannot, assume no tracker MCP tool is present and take the tracker CLI path (`gh` / `glab` / `tea`) — never assume specific tools are available (harness-compat § Capability Map)
 - MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" to read configuration from CLAUDE.md
+- MUST resolve the project constitution once in step 0a via `shared-patterns.md § "Constitution Resolution"`, pass it to every worker, and consult it at every ambiguous stop before parking or asking (worker step 2a, loop gate above). A project with no constitution sees no change in behavior and no mention of one (Governing: ADR-0037)
+- MUST NOT let a rule resolve a question listed under the constitution's `## Always ask the owner`, and MUST NOT apply a rule whose `Applies to` list excludes `work` (Governing: ADR-0037)
+- MUST cite an applied rule as `Owner rule applied: Rule N — {title}` in the PR body's `### Owner Rules Applied` section, and MUST NOT cite a rule that did not change the outcome (Governing: ADR-0037)
 - MUST extract branch names from issue bodies — never invent branch names
 - MUST skip epics (labeled `epic` or titled "Implement ...") — only work on implementation issues
 - MUST skip issues without `### Branch` sections and suggest `/sdd:enrich`
@@ -703,6 +724,18 @@ All gates are re-evaluated **on every tick** (per SPEC-0020 REQ "Gates Are Not D
 | **Resume-Divergence** (resume only) | A `tracked_prs[]` entry's `head_sha_at_iteration_end` does not match the live remote HEAD | "PR #{N} has diverged since the prior iteration crashed — re-attach, skip, or stop the loop?" | `re-attach`, `skip`, `stop` |
 
 Note: the **Post-Feedback Merge** gate is a `/sdd:review --loop` gate; it does NOT fire on the work side. Backlog-Drift is a work-side-only gate.
+
+#### Constitution pre-emption (Ambiguous Criteria)
+
+<!-- Governing: ADR-0037 (SDD Constitution) -->
+
+The **Ambiguous Criteria** gate fires on a question the owner may already have answered. Before firing it, consult `{constitution}` (resolved in step 0a, and re-resolved on a tick that follows a `--resume`, since the file may have changed between runs):
+
+- A rule whose decision answers the ambiguity, and which covers `work`: the gate does not fire. The worker implements under that rule and cites it in the PR body per worker step 2a and step 10. No `gates[]` entry is recorded, because the gate never fired — the citation, not a gate record, is the audit trail.
+- The ambiguity appears under `## Always ask the owner`: the gate fires as documented, whatever else the rules say.
+- Nothing matches: the gate fires exactly as SPEC-0020 REQ "Ambiguous-Acceptance-Criteria Gate" requires.
+
+Rules resolve ambiguity. They never resolve a budget, lockfile, dependency-cycle, qmd-unreachable, or interrupt condition: every other gate and stop condition in this section is unaffected by a constitution.
 
 #### Multi-budget batching (gate 80%)
 

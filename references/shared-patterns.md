@@ -176,7 +176,7 @@ Canonical algorithm for reading plugin configuration from CLAUDE.md. All skills 
 
 ### Step 1: Read Root CLAUDE.md
 
-Resolve the project memory file at the project root (`CLAUDE.md`, then `AGENTS.md`, then `CRUSH.md` — first file containing the SDD sections wins, per `harness-compat.md` § "Project Memory File"; called `CLAUDE.md` below). Read it and look for a `### SDD Configuration` section. If found, parse the subsections (`#### Tracker`, `#### Branch Conventions`, `#### PR Conventions`, `#### Review`, `#### Worktrees`, `#### Projects`, `#### Sizing`) to extract configuration values.
+Resolve the project memory file at the project root (`CLAUDE.md`, then `AGENTS.md`, then `CRUSH.md` — first file containing the SDD sections wins, per `harness-compat.md` § "Project Memory File"; called `CLAUDE.md` below). Read it and look for a `### SDD Configuration` section. If found, parse the subsections (`#### Tracker`, `#### Branch Conventions`, `#### PR Conventions`, `#### Review`, `#### Worktrees`, `#### Projects`, `#### Sizing`, `#### Constitution`) to extract configuration values.
 
 ### Step 2: Merge Module Config (if applicable)
 
@@ -193,6 +193,7 @@ For any keys not found in either CLAUDE.md, apply these defaults:
 - **Worktrees**: `base_dir`=`.claude/worktrees/`, `max_agents`=3, `auto_cleanup`=false, `pr_mode`="ready"
 - **Projects**: `default_mode`="per-epic", `views`=["All Work", "Board", "Roadmap"], `columns`=["Todo", "In Progress", "In Review", "Done"], `iteration_weeks`=2
 - **Sizing**: `enabled`=true, anchors per `skills/triage/SKILL.md` § "The size ladder"
+- **Constitution**: `enabled`=true, `path`=`docs/constitution.md` — when no file exists at the resolved path there is no constitution, and every consumer skill skips the feature silently per § "Constitution Resolution"
 
 ### Step 4: Fall Through
 
@@ -245,6 +246,10 @@ The `### SDD Configuration` section in CLAUDE.md uses the following markdown str
 - **M**: Opus 4.6 Max
 - **L**: Sonnet 5
 - **XL**: Opus 5 / Fable 5
+
+#### Constitution
+- **Enabled**: true
+- **Path**: docs/constitution.md
 ```
 
 **Tracker-specific keys** (in the `#### Tracker` subsection):
@@ -268,6 +273,37 @@ Skills MAY tolerate minor natural-language variations in key names (e.g., "Branc
 | review | Yes | No | Consumer only |
 | prime, check, audit, discover | No | No | Read-only skills; no config needed |
 | adr, spec, list, status, docs | No | No | Operate on artifacts, not config |
+
+Config and constitution are separate lookups: `work`, `respond`, `review`, `check` and `status` read config here and the project constitution per § "Constitution Resolution" (ADR-0037). A skill that reads one is not excused from the other.
+
+## Constitution Resolution
+
+Canonical algorithm for reading a project's standing owner rules. A consumer skill MUST use this pattern instead of globbing for `docs/constitution.md` on its own.
+
+The constitution itself — format, citation line, what counts as a match — is specified in `${CLAUDE_PLUGIN_ROOT}/references/constitution.md`. This section only resolves where it lives.
+
+### Step 1: Read the Constitution Config
+
+From the `### SDD Configuration` section already parsed by § "Config Resolution", read the `#### Constitution` subsection:
+
+- **Enabled**: `true` (default)
+- **Path**: `docs/constitution.md` (default)
+
+Skills SHOULD tolerate natural-language key variation here exactly as § "Config Resolution" allows elsewhere.
+
+### Step 2: Merge Module Config (if applicable)
+
+Under `--module`, also read that module's project memory file for its own `#### Constitution` subsection. A module-level `Path` or `Enabled` wins over root; a module with no subsection inherits root. In workspace aggregate mode (`check`, `status` without `--module`), resolve per module and report per module, per ADR-0016.
+
+### Step 3: Read the File
+
+If `Enabled` is `true` and the resolved path exists, read it once for the run and parse it per `references/constitution.md` § "Reading a rule". Do not re-read it per file, per issue, or per loop tick: the constitution is project state, not request state.
+
+### Step 4: Absent Means Unchanged Behavior
+
+No `#### Constitution` subsection and no file at the default path → the skill skips every constitution step it carries. It MUST NOT prompt the user to create one, MUST NOT suggest `/sdd:init` for it, and MUST NOT mention a constitution in its output. Projects that never asked for this feature keep the behavior they have; silence is that guarantee.
+
+A file that exists but does not parse is the one exception: report `Constitution: {path} does not parse — ignoring it` once, then continue as if absent. A malformed rules file must never stall work, and must never be silently ignored either.
 
 ## Tracker Detection
 

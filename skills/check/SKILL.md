@@ -21,6 +21,8 @@ You are performing a fast, focused drift check on a specific target. This skill 
 
    **Cross-module aggregation**: When in aggregate mode (no `--module`, workspace detected), check all modules and group findings by module in the output. Add a `Module` column to the findings table and organize findings under per-module subheadings. When `--module` is provided, check only that module — no module labels needed. When in single-module mode (no workspace), operate normally.
 
+   0a. **Resolve the project constitution**: Follow `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Constitution Resolution" once for the run; the resolved file is `{constitution-path}` and its parsed rules are `{constitution}`. In aggregate mode, resolve per module. When a project has no constitution, skip step 5b silently: no finding, no output line, no suggestion to create one (Governing: ADR-0037).
+
 1. **Parse the target**: Extract the target from `$ARGUMENTS`.
    - A file path: `src/auth/login.ts`
    - A directory path: `src/auth/`
@@ -79,6 +81,18 @@ You are performing a fast, focused drift check on a specific target. This skill 
    - **Committed PRDs govern something**: a PRD with status `approved` or `shipped` MUST declare at least one `governs:` target that resolves to an existing ADR or spec. Otherwise `[WARNING]`: "PRD {id} is {status} but governs no existing artifact." A `draft` or `client-review` PRD with an empty `governs:` list is correct — do not report it.
    - **Open questions block approval**: a PRD with status `approved` or `shipped` MUST NOT have unresolved entries under `## Open questions` (an entry is resolved when it records an owner and a date, or is struck through). Otherwise `[WARNING]`: "PRD {id} is {status} with unresolved open questions."
    - **Shipped criteria carry evidence**: a PRD with status `shipped` MUST show met evidence (a test, run, or verification reference) or an explicit waiver for every success criterion. Otherwise `[CRITICAL]`: "PRD {id} is shipped but criterion \"{criterion}\" has no met evidence and no waiver."
+
+5b. **Constitution vs. Design** (skip entirely when `{constitution-path}` does not exist). A constitution states decisions that are supposed to follow from design records; when the record moves and the rule does not, an unattended run will keep applying an answer nobody owns anymore. Findings use category **Constitution vs. Design** (Governing: ADR-0037).
+
+   For each non-retired rule in `{constitution}`:
+
+   - **Contradiction with its own source**: where the rule declares `Governs`, read that ADR decision or spec requirement and compare it with the rule's `Decision`. A rule whose decision the source rules out is `[CRITICAL]`: "Rule {N} ({title}) contradicts {ADR-XXXX / SPEC-XXXX Req N}: {one line on the conflict}. The rule and its source cannot both be followed."
+   - **Dangling pointer**: `Governs` names an `ADR-XXXX` or `SPEC-XXXX` that does not exist under `{adr-dir}` / `{spec-dir}` — `[WARNING]`: "Rule {N} points at {target}, which is not in this repo's design records."
+   - **Deprecated source**: `Governs` targets an artifact whose status is `deprecated` or `superseded`, while the rule is still live — `[WARNING]`: "Rule {N} cites {target} ({status}); the rule needs a decision."
+   - **Malformed rule**: a rule missing `Decision` (and not marked `retired`), a duplicated rule number, or an `Applies to` value naming a skill outside `work, respond, review, check, status` — `[WARNING]`, one finding per problem, quoting the rule heading.
+   - **Rules section missing**: the file exists but has no `## Rules` heading — `[WARNING]`: "{constitution-path} has no `## Rules` section, so no skill can apply it."
+
+   A constitution whose rules carry no `Governs` pointer cannot contradict a design record: report nothing rather than guessing that a rule should cite one.
 
 6. **Security lint scan**: Scan source code files in the target for dangerous patterns that indicate security risks. Use text-based pattern matching (Grep tool with regex), NOT AST analysis. False positives are acceptable — flag patterns for human review.
 
@@ -161,6 +175,10 @@ You are performing a fast, focused drift check on a specific target. This skill 
    - Check for contradictions between ADR decisions and spec requirements -- contradictions are `[CRITICAL]`
    - Check for terminology or approach mismatches -- mismatches are `[WARNING]`
 
+   **Constitution vs. Design** (from step 5b, omitted when there is no constitution): does each standing rule still agree with the ADR or spec requirement it points at?
+   - Contradictions between a rule and its `Governs` target -- `[CRITICAL]`
+   - Dangling or deprecated pointers, and malformed rules -- `[WARNING]`
+
 9. **Produce the findings table** using the standard format:
 
    ```
@@ -235,13 +253,15 @@ You are performing a fast, focused drift check on a specific target. This skill 
 - A coverage gap (no governing artifact) is always `[INFO]`
 - A stale artifact (status does not match reality) is `[WARNING]`
 - An inconsistency between ADR and spec (e.g., ADR says X, spec says Y) is `[CRITICAL]`
+- A constitution rule that contradicts the ADR or spec requirement in its `Governs` pointer is `[CRITICAL]`; a dangling or deprecated pointer, and any malformed rule, is `[WARNING]` (Governing: ADR-0037)
+- A project with no constitution produces no constitution finding of any kind, including an `[INFO]` suggesting one (Governing: ADR-0037)
 - All security lint pattern matches are `[WARNING]` (false positives are acceptable — flag for human review)
 - Template quality patterns use their individually defined severity: duplicate scripts and duplicate nav are `[WARNING]`, duplicate forms and framework sprawl are `[INFO]`, dev-only CDN is `[WARNING]`
 
 ## Rules
 
 - This skill is always single-agent. It does NOT support `--review`.
-- Analyzes three drift categories (Code vs. Spec, Code vs. ADR, ADR vs. Spec) plus two code quality scans (Security Lint, Template Quality). Coverage gaps, stale artifacts, and policy violations are NOT checked — use `/sdd:audit` for a comprehensive six-category analysis.
+- Analyzes three drift categories (Code vs. Spec, Code vs. ADR, ADR vs. Spec), plus Constitution vs. Design when the project has a constitution, plus two code quality scans (Security Lint, Template Quality). Coverage gaps, stale artifacts, and policy violations are NOT checked — use `/sdd:audit` for a comprehensive six-category analysis.
 - Keep analysis focused and fast. Read only the files relevant to the target, not the entire codebase.
 - Always use full artifact identifiers in output: `ADR-0001`, `SPEC-0002`, `Req 3`. Do not abbreviate.
 - Include file paths with line numbers in the Location column when possible (e.g., `src/auth/login.ts:45`).

@@ -24,6 +24,10 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 
 0. **Resolve artifact paths**: Follow the **Artifact Path Resolution** pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Artifact Path Resolution" to determine the spec directory. If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that module. The resolved spec directory is `{spec-dir}`.
 
+    <!-- Governing: ADR-0037 (SDD Constitution), ADR-0015 (Markdown-Native Configuration) -->
+
+    0a. **Resolve the project constitution**: Follow `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Constitution Resolution" once for the run; resolved rules become `{constitution}` and go to every reviewer with their assigned PRs. Reviewers verify citations; they never apply rules to decide a PR. No constitution means every constitution step below is skipped silently, with no prompt and no mention in the review (Governing: ADR-0037).
+
 1. **Parse arguments**: Parse `$ARGUMENTS`.
 
    **Target resolution:**
@@ -172,6 +176,23 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
       - Spec acceptance criteria (from the issue body's `## Requirements` or `## Acceptance Criteria` section)
       - Governing ADR compliance
       - General code quality (tests, regressions, clean diffs)
+      - Owner rule citations, when `{constitution}` exists and the PR body carries a `### Owner Rules Applied` section (step 4a)
+
+   4a. **Verify cited owner rules** (Governing: ADR-0037).
+
+       For each `Owner rule applied: Rule N — {title}` line in the PR body, read Rule N in `{constitution}` and check the citation against what the diff actually does:
+
+       | Condition | Finding |
+       |-----------|---------|
+       | The diff does the opposite of, or something the rule was not about, what the decision says | `Owner rule misapplied: Rule N ({title}) — {what the diff did instead}` — **blocking** |
+       | Rule N does not exist in the constitution | `Owner rule misapplied: Rule N is cited but no such rule exists in {constitution-path}` — **blocking** |
+       | Rule N is marked `retired` | `Owner rule misapplied: Rule N is retired` (plus "retired by Rule M" when the file states a replacement) — **blocking** |
+       | The rule carries a `Governs` pointer whose ADR or spec requirement the diff contradicts | Add the misapplication finding and cite that ADR or requirement alongside it, so the author can argue with the source and not only the number |
+       | The change clearly needed a rule and did not cite it | Non-blocking note: "Consider citing Rule N — this looks like the decision it records." Never a blocker: no citation is not evidence of a wrong decision |
+
+       Where the diff makes a decision that appears under the constitution's `## Always ask the owner` and no owner answered it in the thread, raise a **blocking** finding: `Standing rule says ask: {bullet}`. The list exists precisely so that no rule citation can talk past it.
+
+       A blocking owner-rule finding is submitted as `REQUEST_CHANGES` with the rule number, the decision text quoted, and the file/line evidence, like any other blocking finding; it is not a comment on the side.
    5. Submit a review via the tracker's review API:
       - **GitHub**: `gh api repos/{owner}/{repo}/pulls/{number}/reviews` — submit review with event `APPROVE`, `COMMENT`, or `REQUEST_CHANGES`, including line-level comments where applicable.
       - **Gitea**: `tea api --login {login} -X POST repos/{owner}/{repo}/pulls/{number}/reviews -d @-` with `{"event":"APPROVED"|"COMMENT"|"REQUEST_CHANGES","body":"...","comments":[...]}` on stdin; re-read `.../reviews` to confirm it posted.
@@ -291,6 +312,9 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 ## Rules
 
 - MUST load spec and design context before dispatching reviewers
+- MUST resolve the project constitution once in step 0a via `shared-patterns.md § "Constitution Resolution"` and give every reviewer `{constitution}`; MUST NOT apply rules as a decision source in this skill — citations are verified, not extended (Governing: ADR-0037)
+- Reviewers MUST treat a misapplied, nonexistent, or retired rule citation as a blocking finding, and MUST NOT submit `APPROVE` while one is unresolved (Governing: ADR-0037)
+- Reviewers MUST NOT block on a missing citation alone; absence of a citation is a note
 - MUST discover tracker MCP tools at runtime where the harness can probe for them (`ToolSearch`); where it cannot, assume no tracker MCP tool is present and take the tracker CLI path (`gh` / `glab` / `tea`) — never assume specific tools are available (harness-compat § Capability Map)
 - MUST follow the Config Resolution pattern from `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Config Resolution" to read configuration from CLAUDE.md
 - MUST use round-robin distribution across pairs (Governing: SPEC-0009 REQ "PR Distribution")

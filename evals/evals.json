@@ -1937,6 +1937,89 @@
           "type": "content"
         }
       ]
+    },
+    {
+      "id": 220,
+      "skill": "work",
+      "prompt": "Work on issue #266 for joestump/claude-plugin-sdd. The repo has docs/constitution.md whose Rule 1 says that when it is unclear whether existing code already satisfies a requirement, treat it as no match and implement. Issue #266's acceptance criteria leave exactly that question open.",
+      "expected_output": "Applies Rule 1 instead of parking the issue or asking the owner, implements the requirement, and cites the rule in the PR body. A project with no constitution would behave unchanged.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Constitution resolved once in step 0a via shared-patterns.md 'Constitution Resolution', not by globbing for docs/constitution.md",
+          "type": "structural"
+        },
+        {
+          "text": "Issue is not parked and no owner question is raised for the ambiguity Rule 1 answers",
+          "type": "structural"
+        },
+        {
+          "text": "PR body has a '### Owner Rules Applied' section with the line 'Owner rule applied: Rule 1'",
+          "type": "format"
+        },
+        {
+          "text": "No rule is cited that did not change the outcome, and the section is omitted rather than written empty when nothing was applied",
+          "type": "content"
+        },
+        {
+          "text": "A question listed under the constitution's 'Always ask the owner' still stops for the owner",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 221,
+      "skill": "review",
+      "prompt": "Review PR #267 for joestump/claude-plugin-sdd. Its body cites 'Owner rule applied: Rule 2 (Main's design wins)' while the diff overrides a design already on main instead of following it, and a second PR in the same batch cites Rule 9, which the constitution marks retired.",
+      "expected_output": "Both PRs are rejected with a blocking 'Owner rule misapplied' finding naming the rule, the decision text, and the diff evidence. Reviewers verify citations rather than applying rules themselves, and never block on a missing citation alone.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Each citation is verified against the diff per reviewer step 4a before any review is submitted",
+          "type": "structural"
+        },
+        {
+          "text": "Review event is REQUEST_CHANGES for both PRs, citing the rule number and the decision text",
+          "type": "structural"
+        },
+        {
+          "text": "Retired-rule citation is reported as retired rather than treated as a live rule",
+          "type": "content"
+        },
+        {
+          "text": "A missing citation is raised as a note at most, never as a blocker",
+          "type": "content"
+        },
+        {
+          "text": "No APPROVE is submitted while an owner-rule finding is unresolved",
+          "type": "content"
+        }
+      ]
+    },
+    {
+      "id": 222,
+      "skill": "check",
+      "prompt": "Check docs/constitution.md against the design records in joestump/claude-plugin-sdd. Rule 4's Governs points at ADR-0012, whose accepted decision rules out what Rule 4 tells the agent to do, and Rule 7 points at SPEC-0042, which does not exist in the repo.",
+      "expected_output": "Reports the Rule 4 contradiction as a CRITICAL finding in the Constitution vs. Design category and the dangling SPEC-0042 pointer as a WARNING, and says nothing about rules that carry no pointer.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Findings use the 'Constitution vs. Design' category and name the rule number and its Governs target",
+          "type": "format"
+        },
+        {
+          "text": "Rule/source contradiction is [CRITICAL]; a dangling or deprecated pointer and a malformed rule are [WARNING]",
+          "type": "structural"
+        },
+        {
+          "text": "Rules without a Governs pointer produce no finding",
+          "type": "content"
+        },
+        {
+          "text": "A repo with no constitution produces no constitution finding, including no INFO suggesting one",
+          "type": "content"
+        }
+      ]
     }
   ]
 }

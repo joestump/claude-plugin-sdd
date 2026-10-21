@@ -35,6 +35,14 @@ use `/sdd:respond` to address the review someone left on your PR.
    If `$ARGUMENTS` contains `--module <name>`, resolve paths relative to that
    module. The resolved spec directory is `{spec-dir}`.
 
+   0a. **Resolve the project constitution**: Follow
+       `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Constitution Resolution"
+       once for the run. Resolved rules become `{constitution}`. Reviewer feedback is
+       frequently a question the owner has already answered project-wide, and a standing
+       rule is the sourced answer step 5 would otherwise lack. No constitution means every
+       constitution step below is skipped silently, with no prompt and no mention in output
+       (Governing: ADR-0037).
+
 1. **Parse arguments**: Parse `$ARGUMENTS`.
 
    **Target resolution:**
@@ -123,6 +131,14 @@ use `/sdd:respond` to address the review someone left on your PR.
    Resolved/outdated threads and already-addressed comments are skipped. Approving
    reviews with no change requests need no response.
 
+   Where `{constitution}` carries a rule that answers a feedback item, classify the item
+   on the rule's decision and record the citation for the reply (step 9) and, when code
+   changed, for the PR body. A feedback item that asks for something listed under the
+   constitution's `## Always ask the owner` is classified **reply** and put to the owner
+   rather than answered from the file. A rule never overrides a spec, an ADR, or a
+   reviewer's explicit instruction: those outrank it, and the rule is not applied
+   (Governing: ADR-0037).
+
 6. **Dry-run gate**: If `--dry-run` is set, print the plan and stop — change
    nothing, push nothing, reply to nothing:
 
@@ -161,6 +177,10 @@ use `/sdd:respond` to address the review someone left on your PR.
 8. **Commit and push** (skip if `--reply-only` or `--no-push`):
    - Commit with a message that summarizes the round of fixes (reference the PR,
      e.g. `Address review feedback on #142`). Do not include tool/model identifiers.
+   - If a rule decided any change in this round, add or refresh the `### Owner Rules
+     Applied` section in the PR body with one `Owner rule applied: Rule N — {title}` line
+     per rule now applied across the branch, replacing the previous list rather than
+     appending to it (Governing: ADR-0037).
    - Push to the PR's head branch: `git push -u origin {branch-name}` (retry on
      network failure with exponential backoff: 2s, 4s, 8s, 16s).
 
@@ -176,6 +196,11 @@ use `/sdd:respond` to address the review someone left on your PR.
 
    Reply content by class:
    - **fix** → "Fixed in {short-sha} — {one line on what changed}."
+   - Any class decided by a standing rule → add the citation on its own line:
+     `Owner rule applied: Rule N — {title}` (`references/constitution.md` § "Citing a
+     rule"). Cite only a rule that decided the outcome. When the rule carries a
+     `Governs` pointer, cite that artifact too, so the reviewer can argue with the
+     source rather than the number (Governing: ADR-0037).
    - **reject** → a courteous explanation citing the governing spec/ADR
      (e.g., "Leaving as-is: SPEC-0009 REQ \"Token Validation\" requires the expiry
      check to run before signature verification; reordering would violate it.").
