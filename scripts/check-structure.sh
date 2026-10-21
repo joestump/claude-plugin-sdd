@@ -347,6 +347,157 @@ done < <(grep -nE 'MUST[^|]*\b(AskUserQuestion|TeamCreate|TeamDelete|SendMessage
   | grep -vE 'where the harness|where available|where it cannot|otherwise|harness-compat|Capability Map|Single-Agent|single-agent|non-interactive|batch mode' || true)
 [ "$must_bad" -eq 0 ] && pass "no MUST outranks a harness it cannot satisfy"
 
+# --- Constitutions ----------------------------------------------------------
+
+# A constitution (ADR-0037) is read by unattended runs as a source of standing
+# decisions, so the two ways it can rot are both silent: a rule whose number
+# collides or whose Decision is missing is skipped without anyone noticing, and
+# a rule that grew into a procedure hands whoever can edit the file a way to
+# instruct every future run. Validate the format statically. The fixture is the
+# example template itself, so `make lint` proves it stays copyable.
+#
+# CONSTITUTION_FILES overrides the tracked-file discovery so the checks can be
+# exercised against a file that is not in the index (see scripts/README notes on
+# the other checks); unset, tracked files only, so generated output never fails
+# the build.
+
+constitution_files=()
+if [ -n "${CONSTITUTION_FILES:-}" ]; then
+  read -r -a constitution_files <<<"$CONSTITUTION_FILES"
+else
+  while IFS= read -r constitution_file; do
+    [ -n "$constitution_file" ] || continue
+    constitution_files+=("$constitution_file")
+  done < <(
+    {
+      list_files '*constitution.md'
+      list_files '*constitution-example.md'
+    } | grep -v '^references/constitution\.md$' | sort -u
+  )
+fi
+
+if [ "${#constitution_files[@]}" -eq 0 ]; then
+  printf 'skip  no constitution files tracked\n'
+else
+  constitution_errors=$(
+    python3 - "${constitution_files[@]}" <<'PY'
+import re
+import sys
+
+SKILLS = {"work", "respond", "review", "check", "status"}
+GOVERNS = re.compile(r"^(ADR-\d{4}|SPEC-\d{4}(?:\s+Req\s+\d+)?)(?:\s*,\s*(ADR-\d{4}|SPEC-\d{4}(?:\s+Req\s+\d+)?))?$")
+RULE_HEAD = re.compile(r"^### Rule (\d+)(?:\s*[—–-]\s*(.*))?$")
+BAD_HEAD = re.compile(r"^###\s+Rule\b", re.IGNORECASE)
+
+errors = []
+
+for path in sys.argv[1:]:
+    try:
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+    except OSError as exc:
+        errors.append(f"{path}: unreadable ({exc})")
+        continue
+
+    if any(line.lstrip().startswith("```") for line in lines):
+        errors.append(
+            f"{path}: contains a fenced code block; a constitution holds decisions, "
+            "not procedures or commands (ADR-0037)"
+        )
+
+    if not any(line.strip() == "## Rules" for line in lines):
+        errors.append(f"{path}: no '## Rules' section, so no skill can read it")
+        continue
+
+    numbers = {}
+    current = None
+
+    def close(rule):
+        if rule is None:
+            return
+        if rule["retired"]:
+            return
+        if not rule["decision"]:
+            errors.append(
+                f"{path}: Rule {rule['num']} ({rule['title'] or 'untitled'}) has no "
+                "- **Decision**: line, so it can never be applied"
+            )
+
+    for offset, line in enumerate(lines, start=1):
+        head = RULE_HEAD.match(line)
+        if head:
+            close(current)
+            num = int(head.group(1))
+            if num < 1:
+                errors.append(f"{path}: line {offset}: rule numbers start at 1, not {num}")
+            if num in numbers:
+                errors.append(
+                    f"{path}: line {offset}: Rule {num} already defined at line {numbers[num]}; "
+                    "numbers MUST be unique"
+                )
+            else:
+                numbers[num] = offset
+            current = {"num": num, "title": (head.group(2) or "").strip(),
+                       "decision": "", "retired": False, "fields": []}
+            continue
+        if BAD_HEAD.match(line):
+            errors.append(
+                f"{path}: line {offset}: rule heading does not match "
+                "'### Rule N — Title' with a positive integer N"
+            )
+            continue
+        if current is None:
+            continue
+        if line.startswith("## ") and not line.startswith("### "):
+            close(current)
+            current = None
+            continue
+        field = re.match(r"^\s*-\s+\*\*(.+?)\*\*\s*:\s*(.*)$", line)
+        if not field:
+            continue
+        name, value = field.group(1).strip(), field.group(2).strip()
+        lowered = name.lower()
+        current["fields"].append(lowered)
+        if lowered == "decision":
+            current["decision"] = value
+        elif lowered == "status":
+            current["retired"] = value.lower() == "retired"
+            if value.lower() not in {"retired", "active"}:
+                errors.append(
+                    f"{path}: line {offset}: rule Status MUST be 'retired' or omitted, got '{value}'"
+                )
+        elif lowered == "governs":
+            if not value or not GOVERNS.match(value):
+                errors.append(
+                    f"{path}: line {offset}: Governs must name an ADR-XXXX or "
+                    f"SPEC-XXXX Req N (optionally both), got '{value}'"
+                )
+        elif lowered == "applies to":
+            wanted = [part.strip().lower() for part in value.split(",") if part.strip()]
+            if not wanted:
+                errors.append(f"{path}: line {offset}: Applies to is empty; omit the field to mean all skills")
+            unknown = [part for part in wanted if part not in SKILLS]
+            if unknown:
+                errors.append(
+                    f"{path}: line {offset}: Applies to names unknown skill(s) "
+                    f"{', '.join(unknown)} (known: {', '.join(sorted(SKILLS))})"
+                )
+    close(current)
+
+for problem in errors:
+    print(problem)
+PY
+  )
+  if [ -n "$constitution_errors" ]; then
+    while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      fail "$line"
+    done <<<"$constitution_errors"
+  else
+    pass "constitution files parse and hold decisions only"
+  fi
+fi
+
 # --- Shell ----------------------------------------------------------------
 
 if command -v shellcheck >/dev/null 2>&1; then
