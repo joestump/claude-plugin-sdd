@@ -34,6 +34,19 @@ Don't wait for decisions to feel "big enough." A decision to use a specific libr
 
 Small decisions get a small record. `/sdd:adr --quick` writes a lightweight ADR — context, decision, a one-line alternative, consequences — with no options matrix and no diagram. Reach for it whenever the honest alternative is "don't do this." A padded Considered Options list is worse than a short one: it makes the record look weighed when it was not, and it costs every future reader the time to discover the extra options were never real. The moment a second genuinely viable option turns up, that's a full ADR.
 
+## Write Down the Decisions You Make Twice
+
+An ADR explains a design choice. A different kind of decision recurs without ever earning one: "when it's unclear whether existing code already satisfies a requirement, treat it as no match and implement", "when a task conflicts with a design already on main, follow main". Every time one of these comes up, an agent stops and asks, and the answer is the answer you gave last time.
+
+Put them in a constitution: `docs/constitution.md`, numbered rules, one decision each. `/sdd:work` and `/sdd:respond` apply a matching rule instead of stopping and cite it in the PR body as `Owner rule applied: Rule N`; `/sdd:review` treats a citation that doesn't hold as a blocking finding; `/sdd:check` flags a rule that has drifted away from the ADR or spec behind it. Copy `templates/constitution-example.md` to start, and read [ADR-0037](https://github.com/joestump/claude-plugin-sdd/blob/main/docs/adrs/ADR-0037-sdd-constitution-standing-owner-rules.md) for why the format is what it is.
+
+Two rules about the format matter more than the rest:
+
+- **Decisions only, never procedures.** No commands, no steps, no instructions to the agent. Whoever can edit the file an unattended run reads as decisions can otherwise reach every future run in the project, so the file stays data and the lint rejects a constitution containing a code block.
+- **Keep `## Always ask the owner` short and real.** Those bullets outrank every rule, and they are where the decisions you want to make in person belong.
+
+If you find yourself writing a rule that explains *how* to do something, that's a spec requirement or an ADR, not a rule. A constitution stays useful at around ten rules; past that, the ambiguous case is usually one the project hasn't decided yet.
+
 ## Keep Specs and Design Docs in Sync
 
 `spec.md` and `design.md` are paired artifacts — when one changes, the other needs review. The spec defines *what* and *why*; the design doc defines *how*. If you update requirements without revisiting the design, or change the design without checking it still satisfies the spec, you've introduced drift at the source of truth.

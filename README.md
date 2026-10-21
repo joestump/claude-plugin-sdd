@@ -113,6 +113,10 @@ Run `/sdd:init` to set up the initial configuration, or add it manually:
 - **Merge Strategy**: squash
 - **Auto Cleanup**: false
 
+#### Constitution
+- **Enabled**: true
+- **Path**: docs/constitution.md
+
 #### Projects
 - **Default Mode**: per-epic
 - **Views**: All Work, Board, Roadmap
@@ -135,6 +139,43 @@ Two additional top-level keys control parallel agent behavior:
 
 - **Max parallel agents**: Caps the number of concurrent worker agents in `/sdd:work` (CLI flag `--max-agents` overrides).
 - **Hotspot threshold**: Percentage of recent PRs a file must appear in to be classified as a merge-conflict hotspot (used by `/sdd:plan` to serialize stories touching hot files).
+
+## Project Constitution
+
+A constitution is your project's standing owner decisions: the calls you would otherwise make one ticket at a time. ADRs record decisions about a design, and specs record requirements; neither is the short list of default answers an agent should consult before stopping to ask you something.
+
+Without one, an ambiguous ticket stops for a person even when the answer has been the same every time. With one, `/sdd:work` and `/sdd:respond` apply the rule instead of stopping, `/sdd:review` checks that the citation is honest, `/sdd:check` flags a rule that now contradicts the ADR or spec behind it, and `/sdd:status` tells you which rules cite an artifact before you retire it.
+
+Adopt it by copying [`templates/constitution-example.md`](templates/constitution-example.md) to `docs/constitution.md`:
+
+```markdown
+## Rules
+
+### Rule 1 — Ambiguity resolves to no match
+- **Decision**: When it is unclear whether existing code already satisfies a requirement, treat it as no match and implement the requirement.
+
+### Rule 2 — Main's design wins
+- **Decision**: When a task conflicts with a design already on the default branch, follow the default branch and record the conflict in the PR body instead of stopping.
+
+## Always ask the owner
+- Anything that widens who or what can read project data
+```
+
+Then an agent that would have stopped writes, in the PR body and its reply to the reviewer:
+
+```markdown
+### Owner Rules Applied
+
+- Owner rule applied: Rule 1 — Ambiguity resolves to no match
+```
+
+Three things are worth knowing before you write rules:
+
+- **Rules are decisions, never procedures.** The file holds no commands and no instructions to the agent; the lint rejects a constitution containing a code block. Whoever can edit a file the whole pipeline reads as decisions can otherwise reach every unattended run.
+- **`## Always ask the owner` outranks every rule.** It exists for the decisions you want to make in person no matter how well a rule seems to fit.
+- **No constitution, no change.** Nothing prompts you to create one, and no output mentions it. Rules resolve ambiguous scope only: they never resolve a budget, a lockfile, failing CI, or a dependency cycle.
+
+Full format, matching, citation and findings rules: [`references/constitution.md`](references/constitution.md). The design record is [ADR-0037](docs/adrs/ADR-0037-sdd-constitution-standing-owner-rules.md).
 
 ## Development
 
@@ -163,7 +204,7 @@ make check
 | `make install` | `npm ci` in `docs-site/` (the other targets do this on demand) |
 | `make dev` | Run the docs site locally with live content reload |
 
-`scripts/check-structure.sh` validates what can be checked without an LLM: every tracked JSON file parses, `.claude-plugin/plugin.json` carries its required fields and a semver version, no duplicate plugin manifest has reappeared, every `skills/<name>/SKILL.md` has frontmatter whose `name` matches its directory and a non-empty `description`, `skills/_index.json` is bidirectionally consistent with `skills/`, the eval definitions under `evals/` are well-formed and reference skills that exist, and no component under `templates/` or `docs-site/src` uses a bare `JSX.Element` annotation. It also runs `shellcheck` when it is installed.
+`scripts/check-structure.sh` validates what can be checked without an LLM: every tracked JSON file parses, `.claude-plugin/plugin.json` carries its required fields and a semver version, no duplicate plugin manifest has reappeared, every `skills/<name>/SKILL.md` has frontmatter whose `name` matches its directory and a non-empty `description`, `skills/_index.json` is bidirectionally consistent with `skills/`, the eval definitions under `evals/` are well-formed and reference skills that exist, every tracked constitution parses and holds decisions rather than procedures, and no component under `templates/` or `docs-site/src` uses a bare `JSX.Element` annotation. It also runs `shellcheck` when it is installed.
 
 The skill evals themselves are graded by an LLM and run only in CI ([`skill-evals.yml`](.github/workflows/skill-evals.yml)) -- `make test` does not invoke them. See [`evals/README.md`](evals/README.md) for running individual eval prompts locally with `claude -p`.
 
