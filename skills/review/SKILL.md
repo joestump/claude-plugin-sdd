@@ -46,7 +46,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
 3. **Discover target PRs**: Search the tracker for open PRs matching the target.
    - **GitHub**: `gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url --limit 50` or `gh pr view {number} --json number,title,headRefName,body,url` for explicit PR numbers.
    - **Gitea**: the `tea` CLI per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access" — `tea api --login {login} 'repos/{owner}/{repo}/issues?q=SPEC-XXXX&type=pulls&state=open'`.
-   - **GitLab**: Use MCP tools or `glab mr list --search "SPEC-XXXX"`.
+   - **GitLab**: `glab mr list -R {owner}/{repo} --search "SPEC-XXXX" --output json --per-page 100`, or `glab mr view {number} -R {owner}/{repo} --output json` for explicit MR numbers (per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "GitLab Access").
 
    If no open PRs are found, inform the user and suggest running `/sdd:work` to create PRs from planned issues.
 
@@ -59,7 +59,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
    1. Fetch the full diff:
       - **GitHub**: `gh pr diff {number}`
       - **Gitea**: `tea api --login {login} repos/{owner}/{repo}/pulls/{number}.diff`
-      - **GitLab**: Use MCP tools or `glab mr diff`.
+      - **GitLab**: `glab mr diff {number} -R {owner}/{repo} --raw`
 
    2. Scan every line of the diff for conflict markers. The bracketing markers `<<<<<<<` (conflict start) and `>>>>>>>` (conflict end) are distinctive — flag any diff line beginning with either. Treat a `=======` separator line as a conflict marker **only when it appears between a `<<<<<<<` line and a `>>>>>>>` line in the same file** — a standalone run of seven equals signs is legitimate content (a Markdown setext H1 underline beneath a 7-character title like `Summary`, or an ASCII divider) and MUST NOT trigger the gate on its own.
 
@@ -68,7 +68,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
       - Submit a `REQUEST_CHANGES` review immediately:
         - **GitHub**: `gh api repos/{owner}/{repo}/pulls/{number}/reviews -f event=REQUEST_CHANGES -f body="..."` with the rejection message below.
         - **Gitea**: `tea pulls reject --login {login} --repo {owner}/{repo} {number} "..."`, or `tea api -X POST .../pulls/{number}/reviews` with `{"event":"REQUEST_CHANGES","body":"..."}`.
-        - **GitLab**: Use MCP tools or `glab` CLI.
+        - **GitLab**: post the rejection message below as a resolvable thread with `glab mr note create {number} -R {owner}/{repo} -m "..."`, and `glab mr revoke {number}` if this reviewer approved earlier (GitLab has no request-changes verdict; see shared-patterns.md § "GitLab Access").
       - Rejection message:
         ```
         ## Conflict Markers Detected
@@ -170,7 +170,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
    3. **Check CI status**: Before reviewing the diff, verify all status checks are green:
       - **GitHub**: `gh pr checks {number}` or `gh pr view {number} --json statusCheckRollup` — ALL checks MUST pass.
       - **Gitea**: `tea api --login {login} repos/{owner}/{repo}/commits/{sha}/status` — `.state` MUST be `success`.
-      - **GitLab**: Use MCP tools or `glab ci status`.
+      - **GitLab**: `glab mr view {number} -R {owner}/{repo} --output json` — `.head_pipeline.status` MUST be `success`.
       - If any checks are failing or pending, do NOT proceed with code review. Report to lead: "PR #{number} has failing CI checks — skipping review until checks pass." The lead should retry after checks complete or report it as blocked.
    4. Check the diff against:
       - Spec acceptance criteria (from the issue body's `## Requirements` or `## Acceptance Criteria` section)
@@ -196,7 +196,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
    5. Submit a review via the tracker's review API:
       - **GitHub**: `gh api repos/{owner}/{repo}/pulls/{number}/reviews` — submit review with event `APPROVE`, `COMMENT`, or `REQUEST_CHANGES`, including line-level comments where applicable.
       - **Gitea**: `tea api --login {login} -X POST repos/{owner}/{repo}/pulls/{number}/reviews -d @-` with `{"event":"APPROVED"|"COMMENT"|"REQUEST_CHANGES","body":"...","comments":[...]}` on stdin; re-read `.../reviews` to confirm it posted.
-      - **GitLab**: Use MCP tools or `glab` CLI to add review comments.
+      - **GitLab**: line comments with `glab mr note create {number} -R {owner}/{repo} --file {path} --line {n} -m "..."`, a summary thread with `glab mr note create {number} -m "..."`, then `glab mr approve {number}` for `APPROVE`, or for `REQUEST_CHANGES` leave the findings as unresolved threads (and `glab mr revoke {number}` any earlier approval). Re-read `glab mr note list {number} --output json` to confirm they posted (see shared-patterns.md § "GitLab Access").
    6. If the PR is clean (no issues found), submit `APPROVE` and skip the response round for that PR.
    7. Report outcome to lead via `SendMessage`.
 
@@ -230,7 +230,7 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
        - Merge the PR using the configured strategy (default: squash).
        - **GitHub**: `gh pr merge {number} --squash` (or `--merge` / `--rebase` per config).
        - **Gitea**: `tea pulls merge --login {login} --repo {owner}/{repo} --style squash {number}` (or `merge` / `rebase`), then confirm `.merged` from `tea api .../pulls/{number}`.
-       - **GitLab**: Use MCP tools or `glab mr merge`.
+       - **GitLab**: `glab mr merge {number} -R {owner}/{repo} --yes --auto-merge=false --squash` (or `--rebase`, or neither for a merge commit, per config), with `--sha {reviewed-head-sha}`; then confirm `.state == "merged"` from `glab mr view {number} --output json`. `--auto-merge` defaults to on and would only *schedule* the merge (see shared-patterns.md § "GitLab Access").
        - Same-host: the tracker's native close-on-merge behavior will automatically close the linked story issue.
        - Split-host (tracker on a different host than the PR's, per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "PR Close Keywords" → "Split-Host"): close-on-merge never reaches the tracker. Before merging, verify the PR body carries no close keyword with a tracker number that resolves to an open issue or PR on the code host (rewrite any that does to `Tracker: {tracker-owner}/{tracker-repo}#{issue-number}`). After a confirmed merge, close the linked story issue explicitly via the tracker's API (GitHub: `gh issue close`, Gitea: `tea issues close --login {login} --repo {owner}/{repo}`, GitLab: `glab issue close` on the tracker's host).
     5a. **Tier 1 mutation update on merge** (v5.0.0+, Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates"): After a successful merge, trigger narrow re-syncs of BOTH `{repo}-code` (the merge changed code) AND `{repo}-issues` (the linked story issue closed). Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns". Best-effort and silent on success. On failure of either, append a one-line warning to the run log ("Index refresh failed for `{collection}` after merging PR #{N} — run `/sdd:index update` manually") but the merge itself is reported as successful.
@@ -239,11 +239,11 @@ You are reviewing PRs produced by `/sdd:work` using reviewer-responder agent pai
        b. Fetch the epic issue and extract its child story references. Read the `PR Conventions > Ref Keyword` from CLAUDE.md config (default: "Part of") and use it to find child issues:
           - **GitHub**: Search for open issues that reference the epic number in their body using the configured ref keyword (e.g., `{Ref Keyword} #{epic-number}`), or list issues in the same project/milestone.
           - **Gitea**: `tea api --login {login} 'repos/{owner}/{repo}/issues?q={Ref Keyword}%20%23{epic-number}&type=issues&state=open'` (URL-encode the query: a bare `#` starts a fragment and drops the rest), or `tea issues ls --login {login} --repo {owner}/{repo} --milestones {epic milestone}`.
-          - **GitLab**: Use MCP tools or `glab` CLI to find open issues referencing the epic with the configured ref keyword.
+          - **GitLab**: `glab issue list -R {owner}/{repo} --search "{Ref Keyword} #{epic-number}" --in description --output json --per-page 100` (open issues only, which is what this check wants), or `glab issue list --milestone "{epic milestone}"` when epics are grouped as milestones.
        c. If **all** child story issues are now closed (no open stories remain), close the epic issue:
           - **GitHub**: `gh issue close {epic-number}`
           - **Gitea**: `tea issues close --login {login} --repo {owner}/{repo} {epic-number}`
-          - **GitLab**: Use MCP tools or `glab issue close {epic-number}`.
+          - **GitLab**: `glab issue close {epic-number} -R {owner}/{repo}`, and the comment below with `glab issue note {epic-number} -R {owner}/{repo} --message "..."`.
           - Add a comment on the epic: "All child stories have been merged. Closing epic automatically."
        d. If some child stories are still open, do nothing — the epic remains open.
        e. Report epic closure (or not) to the lead via `SendMessage`.

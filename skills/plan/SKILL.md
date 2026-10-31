@@ -237,6 +237,7 @@ Ordered for implementation (dependencies respected):
      - Epics: `` `epic/{issue-number}-{slug}` `` (or custom prefix from `--branch-prefix` or CLAUDE.md `Branch Conventions > Epic Prefix`)
      - The slug MUST be derived from the story title using kebab-case, max 50 chars (or CLAUDE.md `Branch Conventions > Slug Max Length`)
      - This requires a two-pass approach: create the issue first to get the number, then update the body
+     - On GitLab: `glab issue create -R {owner}/{repo} --title "..." --description-file {file} --label ... --yes` (`--yes` skips the confirmation prompt an agent shell cannot answer). It prints the new issue's URL; the number is the path segment after `/-/issues/`. Write the final body back with `glab issue update {n} -R {owner}/{repo} --description-file {file}` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "GitLab Access")
 
    **5.2.1: Detect HTTP endpoint stories for security checklist injection.**
 
@@ -349,14 +350,14 @@ Ordered for implementation (dependencies respected):
    - **Default (per-epic)**: For each epic, create a tracker-native project and add the epic and its child stories:
      - **GitHub**: Projects V2 via `gh project create`, then `gh project item-add` to add issues. **After creating the project, MUST link it to the repository** using `gh project link {project-number} --owner {owner} --repo {owner}/{repo}` so it appears in the repository's Projects tab.
      - **Gitea**: Gitea exposes no project API (`repos/{owner}/{repo}/projects` 404s on 1.27), so group each epic as a milestone with `tea milestones create --login {login} --repo {owner}/{repo}` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access") and report that a project board, if wanted, is made in the web UI.
-     - **GitLab**: Milestone or board
+     - **GitLab**: Group each epic as a milestone with `glab milestone create -R {owner}/{repo} --title "{epic title}" --description "{spec reference}"` and assign its stories with `glab issue update {n} -R {owner}/{repo} --milestone "{epic title}"` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "GitLab Access"). Group epics need GitLab Premium and live on the group, not the project, so use one only when the `#### Projects` config names a group and the user asked for epics; otherwise the milestone is the grouping.
      - **Jira**: Use existing project scope (no new project needed)
      - **Linear**: Project or cycle
      - **Beads**: No-op (the epic IS the grouping)
    - **`--project <name>`**: Create a single project with the given name and add all issues to it
    - Use `ToolSearch` to discover project-creation MCP tools at runtime
    - Read CLAUDE.md `Projects > Default Mode` and cached project IDs for settings. If a project ID is already cached for this spec, reuse it instead of creating a new one.
-   - **Repository linking is critical**: For trackers that support project-repository associations (GitHub Projects V2, Gitea), the project MUST be linked to the repository after creation. Without this step, the project exists but is invisible from the repository's Projects tab.
+   - **Repository linking is critical**: For trackers that support project-repository associations (GitHub Projects V2, Gitea), the project MUST be linked to the repository after creation. GitLab milestones are created inside the project, so there is nothing to link. Without this step, the project exists but is invisible from the repository's Projects tab.
    - **Graceful failure**: If project creation fails, warn the user but do not block issue creation. Report the failure in the final summary.
 
    **5.7: Workspace enrichment.** After project creation, enrich the project with navigational context and structure. Read CLAUDE.md `Projects` configuration for custom settings (Views, Columns, Iteration Weeks). All enrichment steps use **graceful degradation**: if a feature is unavailable for the tracker, skip that step and log "Skipped {step}: {tracker} does not support {feature}". (Governing: SPEC-0011, ADR-0012)
@@ -387,6 +388,11 @@ Ordered for implementation (dependencies respected):
    1. **Create milestones**: One milestone per epic. Assign stories to the milestone corresponding to their epic.
    2. **Configure board columns**: Create columns from CLAUDE.md `Projects > Columns` (default: Todo, In Progress, In Review, Done).
    3. **Create native dependency links**: For each story that depends on another, create a native dependency with `tea api --login {login} -X POST repos/{owner}/{repo}/issues/{index}/dependencies` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access"), and read it back — `tea api` exits 0 on an error.
+
+   **For GitLab** (all through `glab`, see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "GitLab Access"):
+   1. **Create milestones**: One milestone per epic (done in 5.6). Put the README template above in the milestone description with `glab milestone edit {id} -R {owner}/{repo} --description ...`, so the agent-navigable context sits on the grouping like it does on a GitHub project.
+   2. **Configure a board**: `glab issue board create -R {owner}/{repo} --name "{spec title}"`. Its lists (Todo, In Progress, In Review, Done from CLAUDE.md `Projects > Columns`) are label lists: create one list per lifecycle label with `glab api --hostname {host} -X POST projects/{encoded-path}/boards/{board-id}/lists -f label_id={id}`. Skip and log if board creation fails.
+   3. **Create dependency links**: For each story that depends on another, `glab api --hostname {host} -X POST projects/{encoded-path}/issues/{n}/links -f target_project_id={project-id} -f target_issue_iid={blocker} -f link_type=is_blocked_by`. On a Free-tier project that call fails (blocking links are Premium); create the link with `link_type=relates_to` instead and make sure the story body carries its `Blocked by: #{blocker}` line, which every skill already parses.
 
    **For other trackers**: Skip tracker-specific enrichment. Log skipped steps in the report.
 
@@ -483,7 +489,7 @@ Follow the standard protocol from the plugin's `${CLAUDE_PLUGIN_ROOT}/references
 - `--no-branches` disables both `### Branch` AND `### PR Convention` sections
 - MUST use the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern") for all label applications — never fail on missing labels (Governing: SPEC-0011 REQ "Auto-Create Labels")
 - Every epic and story created MUST carry exactly one `size/*` label per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels", unless `#### Sizing > Enabled` is `false`; with `--scrum`, the Scrum Master's size is that label
-- MUST enrich projects after creation with descriptions, READMEs, views, iterations (GitHub) or milestones, columns, dependencies (Gitea) (Governing: SPEC-0011, ADR-0012)
+- MUST enrich projects after creation with descriptions, READMEs, views, iterations (GitHub) or milestones, columns, dependencies (Gitea, GitLab) (Governing: SPEC-0011, ADR-0012)
 - Enrichment failures MUST be skipped and reported, never fail the entire operation (Governing: SPEC-0011 REQ "Graceful Degradation")
 - CLAUDE.md `Projects > Views`, `Projects > Columns`, `Projects > Iteration Weeks` are all optional with sensible defaults — do NOT overwrite existing keys when they are absent
 - Story issues MUST be consumable by `/sdd:work` and `/sdd:review` — they use the same `### Branch` and `### PR Convention` structural sections (Governing: SPEC-0010 REQ "Downstream Compatibility")

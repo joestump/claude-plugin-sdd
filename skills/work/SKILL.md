@@ -88,6 +88,8 @@ You are picking up tracker issues and implementing them in parallel using git wo
 
    **For Gitea:** Use the `tea` CLI per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access". List existing labels with `tea labels ls --login {login} --repo {owner}/{repo}` and create only the missing ones with `tea labels create --login {login} --repo {owner}/{repo} --name queued --color CCCCCC --description "..."` (and likewise for the rest).
 
+   **For GitLab:** Per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "GitLab Access", list existing labels once with `glab label list -R {owner}/{repo} --output json --per-page 100` and create only the missing ones with `glab label create -R {owner}/{repo} --name queued --color "#CCCCCC" --description "..."` (and likewise for the rest). Create them before the first transition: GitLab silently auto-creates a missing label on apply, with the default color.
+
    **For `tasks.md` fallback:** Skip label creation (labels are not applicable to file-based tracking).
 
 3b. **Define protected paths** (Governing: ADR-0017, ADR-0020, SPEC-0015 REQ "Design Document Isolation"):
@@ -125,7 +127,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    - **Skip issues without `### Branch` sections**: These lack branch naming conventions. If any are found, suggest `/sdd:enrich` to add them and report which issues were skipped.
    - **Extract branch names**: Parse the `### Branch` section from each issue body to get the deterministic branch name (e.g., `feature/42-jwt-token-generation`).
    - **Extract PR conventions**: Parse the `### PR Convention` section for close keywords and epic references.
-   - **Detect dependency ordering**: If issue bodies reference dependencies or logical ordering, respect that order when queuing work. For **Gitea**, query native dependencies via `GET /repos/{owner}/{repo}/issues/{index}/dependencies` through `tea api --login {login}` to find unblocked stories. (Governing: SPEC-0011 REQ "Gitea Native Dependencies")
+   - **Detect dependency ordering**: If issue bodies reference dependencies or logical ordering, respect that order when queuing work. For **Gitea**, query native dependencies via `GET /repos/{owner}/{repo}/issues/{index}/dependencies` through `tea api --login {login}` to find unblocked stories. (Governing: SPEC-0011 REQ "Gitea Native Dependencies") For **GitLab**, read `glab api --hostname {host} projects/{encoded-path}/issues/{n}/links` and treat entries with `link_type` `is_blocked_by` as blockers.
 
    - **Enforce dependency readiness** (Governing: SPEC-0015 REQ "Issue Lifecycle Labels"): Before marking any issue as ready to work, check its dependencies:
      1. Parse the issue body for dependency references: `Depends on #NNN`, `Blocked by #NNN`, `blocks:` syntax, or any `#NNN` reference in a dependencies section.
@@ -136,7 +138,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
         Issue #274 is blocked by #273 (currently: in-progress)
         ```
      5. Place blocked issues in a **deferred queue**. When a dependency reaches `merged` state (detected during monitoring in step 11), automatically move newly-unblocked issues to the ready queue.
-     6. For Gitea trackers, also check native dependencies via the API in addition to body parsing.
+     6. For Gitea and GitLab trackers, also check native dependencies via the API in addition to body parsing.
 
    If no workable issues are found after filtering, report why and suggest `/sdd:plan` (no issues at all) or `/sdd:enrich` (issues exist but lack branch sections).
 
@@ -168,6 +170,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    gh issue edit {issue-number} --add-label "queued"
    ```
    **For Gitea:** `tea issues edit --login {login} --repo {owner}/{repo} --add-labels in-progress {number}` (see shared-patterns.md § "Gitea Access").
+   **For GitLab:** `glab issue update {issue-number} -R {owner}/{repo} --label queued` (see shared-patterns.md § "GitLab Access").
 
 6. **Verify git state**:
    - Run `git status` to check for uncommitted changes. If there are uncommitted changes, use `AskUserQuestion` to ask:
@@ -218,12 +221,14 @@ You are picking up tracker issues and implementing them in parallel using git wo
       ```bash
       gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url,labels --limit 50
       ```
+      GitLab: `glab mr list -R {owner}/{repo} --search "SPEC-XXXX" --output json --per-page 100`.
       Include PRs from previous `/sdd:work` runs that haven't merged yet.
 
    2. **For each open PR, extract file ownership:**
       ```bash
       gh pr diff {number} --name-only
       ```
+      GitLab: `glab api --hostname {host} projects/{encoded-path}/merge_requests/{number}/diffs --paginate --output ndjson | jq -r .new_path` (`glab mr diff` has no file-list mode).
       Scan the diff for new type/struct/interface/class/function definitions to identify shared artifacts.
 
    3. **For foundation PRs** (labeled `foundation`), catalog all shared types and helpers with their file paths and merge status (merged = available on main, open = available after merge).
@@ -260,12 +265,13 @@ You are picking up tracker issues and implementing them in parallel using git wo
       ```bash
       gh issue edit {issue-number} --add-assignee "@me"
       ```
-      For Gitea, `tea issues edit --login {login} --repo {owner}/{repo} --add-assignees {user} {number}`.
+      For Gitea, `tea issues edit --login {login} --repo {owner}/{repo} --add-assignees {user} {number}`. For GitLab, `glab issue update {issue-number} -R {owner}/{repo} --assignee "+{username}"`, with `{username}` from `glab api --hostname {host} user | jq -r .username`.
 
    2. **Remove `queued`, apply `in-progress`**: Each transition MUST remove the previous label before applying the new one.
       ```bash
       gh issue edit {issue-number} --remove-label "queued" --add-label "in-progress"
       ```
+      GitLab: `glab issue update {issue-number} -R {owner}/{repo} --unlabel queued --label in-progress`.
 
    **9.3: Create a task** using `TaskCreate` for each issue, with the issue details, branch name, and worktree path.
 
@@ -400,6 +406,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
         ```bash
         gh issue edit {issue-number} --remove-label "in-progress" --add-label "in-review"
         ```
+        GitLab: `glab issue update {issue-number} -R {owner}/{repo} --unlabel in-progress --label in-review`.
         If multiple issues were bundled into one PR, transition ALL bundled issues to `in-review`.
     12. Report outcome to lead via `SendMessage`: success (with PR URL and list of bundled issues) or failure (with details).
 
@@ -409,6 +416,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
       ```bash
       gh issue edit {issue-number} --remove-label "in-review" --add-label "merged"
       ```
+      GitLab: `glab issue update {issue-number} -R {owner}/{repo} --unlabel in-review --label merged`.
       If the work session itself does not merge PRs, the `merged` transition will be handled by `/sdd:review` or the next `/sdd:work` invocation that detects merged PRs.
     - **Tier 1 mutation update on merge** (v5.0.0+, Governing: ADR-0026, SPEC-0019 REQ "Tier 1 Mutation-Aware Updates"): After detecting a PR merge, before transitioning to `merged`, trigger a narrow re-sync of `{repo}-code` so the qmd index reflects the newly-merged code. Use the canonical update pattern from `${CLAUDE_PLUGIN_ROOT}/references/qmd-helpers.md` § "Update Patterns". Best-effort and silent on success. On failure, append a one-line warning to the run log ("Index refresh failed for `{repo}-code` after merging PR #{N} — run `/sdd:index update` manually") but the merged-label transition still proceeds.
     - **Unblock deferred issues**: After any issue transitions to `merged`, re-check the deferred queue from step 4. For each deferred issue, re-query its dependencies. If ALL dependencies now have the `merged` label, move the issue to the ready queue and start it if an agent slot is available.
@@ -427,6 +435,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
       ```bash
       gh pr diff {number} --name-only
       ```
+      GitLab: the `merge_requests/{number}/diffs` call from step 8 above.
 
    2. **Build file overlap graph.** For each pair of PRs, compute the intersection of modified files. PRs that share files have an ordering dependency.
 
@@ -595,7 +604,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - Maximum 2 test-fix attempts per worker before reporting blocked
 - When `TeamCreate` fails or is absent, MUST fall back to single-agent sequential mode — never error out
 - In single-agent sequential mode, MUST NOT pull full diffs or large file dumps into the lead session by default — dispatch read-heavy verification to subagents (compact outcome back only) when subagents exist, otherwise use `--name-only` + targeted excerpts (per harness-compat § "Single-Agent Sequential Fallback"; friction report #201)
-- For Gitea trackers, MUST query native dependencies via API to determine unblocked stories (Governing: SPEC-0011 REQ "Gitea Native Dependencies")
+- For Gitea trackers, MUST query native dependencies via API to determine unblocked stories (Governing: SPEC-0011 REQ "Gitea Native Dependencies"); for GitLab, MUST read the issue's `is_blocked_by` links the same way
 - MUST NOT spawn more than `max-parallel-agents` concurrent agents (default: 4); resolve from CLI flag → CLAUDE.md → default (Governing: SPEC-0015 REQ "Parallelism Limits", ADR-0017 Layer 1)
 - MUST read `## SDD Configuration` from CLAUDE.md for `max-parallel-agents` setting before falling back to default
 - MUST queue excess stories when more are ready than the parallelism limit allows, starting them as active agents complete
@@ -611,7 +620,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
 - MUST transition `in-review` -> `merged` when a PR is merged, removing the previous label first
 - Each label transition MUST remove the outgoing label before applying the incoming label — no issue should have two lifecycle labels simultaneously
 - Label management is best-effort — if label operations fail, log the failure but do NOT block implementation work
-- MUST set assignee on the issue when an agent picks it up (`gh issue edit --add-assignee "@me"` or equivalent)
+- MUST set assignee on the issue when an agent picks it up (`gh issue edit --add-assignee "@me"`, `glab issue update --assignee "+{username}"`, or equivalent)
 - MUST check dependency status before starting work on any issue — parse issue body for `Depends on #NNN`, `Blocked by #NNN`, and `blocks:` syntax
 - MUST refuse to start work on issues whose dependencies have not reached `merged` state
 - MUST report blocked issues with the specific blocking dependency and its current state (e.g., "Issue #274 is blocked by #273 (currently: in-progress)")

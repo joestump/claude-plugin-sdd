@@ -37,7 +37,7 @@ Sprint planning was previously embedded as step 8 of the `/sdd:spec` skill, whic
 
 ### Runtime tracker detection via ToolSearch
 
-**Choice**: Use `ToolSearch` at runtime to probe for MCP tool servers, supplemented by CLI availability checks (`gh --version`, `glab --version`, `bd --version`).
+**Choice**: Use `ToolSearch` at runtime to probe for MCP tool servers, supplemented by CLI availability checks (`gh --version`, `glab auth status --hostname {host}`, `bd --version`). For `glab` the check is the login, not the install: a logged-out `glab` can do nothing the skills need.
 **Rationale**: MCP tool availability is dynamic -- users may add or remove tool servers between sessions. Static configuration would go stale. ToolSearch discovers what is actually available at invocation time, and CLI fallbacks cover tools that expose a command-line interface without MCP.
 **Alternatives considered**:
 - Static tracker configuration in plugin.json: Goes stale; cannot adapt to environment changes

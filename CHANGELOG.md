@@ -16,6 +16,17 @@ All notable changes to the SDD plugin (`claude-plugin-sdd`) are documented here.
 
 ### Changed
 
+- **GitLab goes through the `glab` CLI, with every step naming its command**: the GitLab lines in `/sdd:plan`, `/sdd:organize`, `/sdd:enrich`, `/sdd:triage`, `/sdd:work`, `/sdd:review`, `/sdd:respond` and the tracker sync said "use MCP tools or `glab`" (or, for `/sdd:plan`'s grouping, just "Milestone or board"), which named no command. Several of the commands they did name did not work: `glab issue list` had no `--updated-after` until glab 1.124 (2026-10-20), so the incremental sync broke on every earlier glab; `glab issue list --search` returns only open issues without `--all`, so `/sdd:organize` and `/sdd:enrich` missed closed stories; `glab mr diff` has no file-list mode, so pre-flight awareness and merge ordering had no GitLab path; and `glab mr merge` defaults to `--auto-merge`, so a merge requested while a pipeline runs only schedules itself and exits 0. A new `shared-patterns.md § "GitLab Access"` covers all GitLab work:
+  - check `glab auth status --hostname {host}` and stop if logged out (tracker detection probes the login, not `glab --version`)
+  - pass `-R {owner}/{repo}` explicitly, keeping subgroup paths whole, and the full URL on self-hosted instances
+  - issues (`#N`) and MRs (`!N`) are separate sequences
+  - `--output json` long form, because `glab issue list` and `glab mr list` use different short flags
+  - `glab api` for MR file lists, issue links, discussions and the `updated_after` sync
+  - MR review: CI from `.head_pipeline.status`, line comments and replies with `glab mr note create`, approve / revoke, merge with `--auto-merge=false --sha {reviewed-head-sha}` and confirm the state
+  - tier-gated features (`is_blocked_by` links, group epics) fall back to a `relates_to` link plus the `Blocked by: #N` body line, and to milestones
+
+  `/sdd:plan` and `/sdd:organize` now group a GitLab epic as a milestone (with the README template in its description), create a board with label lists, and create issue links. The Try-Then-Create label pattern gains a GitLab exception: GitLab auto-creates a missing label on apply with the default color, so labels are created first. A GitLab MCP server may still stand in where one is loaded, but no step depends on one. SPEC-0007's tracker-detection probe and SPEC-0009's GitLab review scenario are amended to match.
+
 - **Gitea goes through the `tea` CLI and GitHub through `gh`, with no forge MCP**: every Gitea step in `/sdd:review`, `/sdd:respond`, `/sdd:work`, `/sdd:plan`, `/sdd:organize`, `/sdd:enrich` and the tracker sync used to say "use MCP tools discovered via `ToolSearch`". That named no command, so it depended on a Gitea MCP server that many installs don't have. Where an agent fell back to `curl` with a token from the environment, the shell usually had none, and writes failed silently. A new `shared-patterns.md § "Gitea Access"` covers all Gitea work:
   - resolve the `tea` login for the configured host
   - pass `--login` and `--repo` explicitly

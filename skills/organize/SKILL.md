@@ -36,7 +36,7 @@ You are retroactively grouping existing tracker issues into tracker-native proje
 5. **Find existing issues**: Search the tracker for issues whose body references the spec number.
    - **GitHub**: `gh issue list --search "SPEC-XXXX" --json number,title,body,labels --limit 100`
    - **Gitea**: `tea api --login {login} 'repos/{owner}/{repo}/issues?q=SPEC-XXXX&type=issues&state=all&limit=50'` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Gitea Access")
-   - **GitLab**: Use MCP tools or `glab issue list --search "SPEC-XXXX"`
+   - **GitLab**: `glab issue list -R {owner}/{repo} --search "SPEC-XXXX" --all --output json --per-page 100` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "GitLab Access")
    - **Jira**: Use MCP tools to search issues with JQL containing the spec number
    - **Linear**: Use MCP tools to search issues containing the spec number
    - **Beads**: No-op — Beads epics ARE the grouping, so inform the user and exit
@@ -53,8 +53,8 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    - Does it have named views (GitHub: All Work, Board, Roadmap)?
    - Does it have an iteration/Sprint field (GitHub)?
    - Does it have board columns (Gitea: Todo, In Progress, In Review, Done)?
-   - Does it have milestones for epics (Gitea)?
-   - Are native dependency links set (Gitea)?
+   - Does it have milestones for epics (Gitea, GitLab)?
+   - Are native dependency links set (Gitea, GitLab)?
    - Are all issues correctly grouped and labeled? Does each carry exactly one `size/*` label (per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels")?
    - Are `### Branch` and `### PR Convention` sections present in issue bodies?
 
@@ -68,14 +68,14 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    - Create/rename named views (GitHub)
    - Add iteration field (GitHub)
    - Create board columns (Gitea)
-   - Create milestones (Gitea)
+   - Create milestones (Gitea, GitLab)
    - Add all issues to the project (if not already)
 
    **(c) Complete refactor**: All tier (b) changes PLUS:
    - Re-group issues across epics (move misplaced stories)
    - Fix/add labels using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern")
    - Give every issue exactly one `size/*` label per `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Size Labels" — add a missing one, collapse duplicates, and never re-size an issue that already has exactly one
-   - Create native dependency links (Gitea)
+   - Create native dependency links (Gitea, GitLab)
    - Update issue bodies with `### Branch` and `### PR Convention` sections (if missing)
 
 8. **Execute chosen tier**: Carry out the selected intervention. All enrichment steps use **graceful degradation**: if a feature is unavailable for the tracker, skip and log "Skipped {step}: {tracker} does not support {feature}".
@@ -90,9 +90,14 @@ You are retroactively grouping existing tracker issues into tracker-native proje
    - Create milestones (one per epic) with `tea milestones create`, assign stories with `tea issues edit --milestone`
    - Configure board columns from CLAUDE.md `Projects > Columns` (default: Todo, In Progress, In Review, Done)
 
+   **GitLab workspace enrichment (tier b/c)**, all through `glab` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "GitLab Access"):
+   - Create milestones (one per epic) with `glab milestone create -R {owner}/{repo} --title ...`, assign stories with `glab issue update {n} -R {owner}/{repo} --milestone "{title}"`
+   - Create a board with `glab issue board create -R {owner}/{repo} --name ...` and add one label list per column (same steps as `/sdd:plan` 5.7 "For GitLab")
+
    **Tier (c) additional steps:**
    - Re-label issues using the try-then-create pattern (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "Try-Then-Create Label Pattern")
    - Create Gitea native dependency links (`tea api -X POST repos/{owner}/{repo}/issues/{index}/dependencies`)
+   - Create GitLab issue links (`glab api -X POST projects/{encoded-path}/issues/{n}/links` with `link_type=is_blocked_by`, or `relates_to` plus a `Blocked by: #N` body line on Free tier — see `/sdd:plan` 5.7)
    - Add `### Branch` / `### PR Convention` to issue bodies that lack them (same logic as `/sdd:enrich`)
 
 9. **`--dry-run` mode**: If `--dry-run` is set, report the assessment and what WOULD be done at each tier, but don't modify anything.

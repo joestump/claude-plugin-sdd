@@ -109,7 +109,7 @@ Read the `### SDD Configuration` section per `${CLAUDE_PLUGIN_ROOT}/references/s
 
 2. **Detect the tracker**: Follow `shared-patterns.md` § "Tracker Detection". Discover tracker tools at runtime with `ToolSearch`; never assume a specific MCP server exists. No tracker → error; triage requires one.
 
-3. **Fetch the issues** with their bodies, labels, linked PRs and dependency links. On a large backlog, page through with a bounded limit and work from saved JSON rather than reading every body into context at once.
+3. **Fetch the issues** with their bodies, labels, linked PRs and dependency links. On a large backlog, page through with a bounded limit and work from saved JSON rather than reading every body into context at once. On GitLab: `glab issue list -R {owner}/{repo} --output json --per-page 100 --page {n}` (open issues; add `--label` / `--search` to narrow), linked MRs from `glab api --hostname {host} projects/{encoded-path}/issues/{n}/related_merge_requests`, links from `.../issues/{n}/links` (see `${CLAUDE_PLUGIN_ROOT}/references/shared-patterns.md` § "GitLab Access").
 
 4. **Verdict each issue** (skip with `--size-only`). Classify `BOT` first — by author or title — and set those aside untouched. For every other issue, check the code on `main` against what the issue asks for, following § "Verify before you close". Record the evidence for each verdict as you go; a verdict without evidence is `OK` by default.
 
@@ -119,7 +119,7 @@ Read the `### SDD Configuration` section per `${CLAUDE_PLUGIN_ROOT}/references/s
 
 7. **Apply**:
    - **Labels**: set exactly one `size/*` label per open issue using the try-then-create pattern (`shared-patterns.md` § "Try-Then-Create Label Pattern"). Remove any other `size/*` label and any retired second-scale label in the same pass.
-   - **Closes** (`STALE`, `SUPERSEDED`, `DUP`): post the evidence comment first, then close, per § "Closing well". If the tracker refuses the close over a dependency link, fix the link and retry; report it.
+   - **Closes** (`STALE`, `SUPERSEDED`, `DUP`): post the evidence comment first, then close, per § "Closing well". If the tracker refuses the close over a dependency link, fix the link and retry; report it. On GitLab: `glab issue note {n} -R {owner}/{repo} --message "..."`, then `glab issue close {n} -R {owner}/{repo}`.
    - **Narrowing**: rewrite partly-done issues to their remainder and comment what shipped.
    - **BLOCKED / HUMAN**: comment naming the blocker, or what a human must do. Do not close.
 

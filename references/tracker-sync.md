@@ -48,7 +48,7 @@ references:
 - `url` MUST be a fully-qualified URL pointing back to the issue in the tracker's UI.
 - `tracker` MUST be the lowercase short name of the tracker.
 - `references.specs` and `references.adrs` MUST be derived by parsing `SPEC-\d{4}` and `ADR-\d{4}` patterns from the title AND body. Deduplicate.
-- `references.blocks` and `references.blocked_by` MUST be parsed from explicit "Blocks: #N, #M" / "Blocked by: #N" lines in the body, AND from tracker-native dependency edges where the tracker exposes them (Gitea, Linear).
+- `references.blocks` and `references.blocked_by` MUST be parsed from explicit "Blocks: #N, #M" / "Blocked by: #N" lines in the body, AND from tracker-native dependency edges where the tracker exposes them (Gitea, GitLab, Linear).
 
 ### PR Data Append
 
@@ -199,18 +199,25 @@ tea api --login {login} 'repos/{owner}/{repo}/issues?state=all&type=issues&since
 
 **Fetch**:
 
+Use `glab` per `shared-patterns.md` § "GitLab Access". The incremental fetch goes through `glab api`: `glab issue list` grew `--updated-after` only in glab 1.124 (2026-10-20), and `glab api --paginate` walks every page in one call:
+
 ```bash
-glab issue list --all --updated-after {cursor-iso-date} --output json --per-page 100
+glab api --hostname {host} --paginate --output ndjson \
+  'projects/{encoded-path}/issues?scope=all&state=all&updated_after={cursor-iso-date}&order_by=updated_at&sort=asc&per_page=100'
 ```
 
-Or via MCP tools discovered with `ToolSearch` query `select:mcp__gitlab__issues_list`.
+On a first sync (no cursor), drop `updated_after`. `glab api` exits non-zero on an HTTP error, so a failed page stops the sync rather than reading as an empty one. A GitLab MCP server discovered with `ToolSearch` may be used instead where one is loaded.
 
 **Status normalization**:
 - GitLab `state: opened` → `open`
-- GitLab `state: closed` and merged via MR → `merged`
-- GitLab `state: closed` and not merged → `closed`
+- GitLab `state: closed` and closed by a merged MR → `merged` (check `glab api --hostname {host} projects/{encoded-path}/issues/{iid}/closed_by`, which lists the MRs that closed it)
+- GitLab `state: closed` otherwise → `closed`
 
-**Cursor**: ISO 8601 timestamp passed as `--updated-after`. Inclusive — increment by one second to avoid re-fetch.
+Use the issue's `iid` (the per-project `#N`) as `id`, never its global `id` field.
+
+**Native dependencies**: read `projects/{encoded-path}/issues/{iid}/links`; entries with `link_type: is_blocked_by` populate `references.blocked_by` and `blocks` populate `references.blocks`, in addition to body parsing.
+
+**Cursor**: ISO 8601 timestamp passed as `updated_after`. Inclusive — increment by one second to avoid re-fetch.
 
 ### Jira
 
