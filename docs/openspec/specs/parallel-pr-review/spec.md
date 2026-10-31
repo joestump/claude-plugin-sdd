@@ -117,7 +117,7 @@ Each reviewer agent SHALL read the PR diff, check it against the governing spec'
 #### Scenario: GitLab MR review
 
 - **WHEN** the tracker is GitLab
-- **THEN** the reviewer SHALL use MCP tools or `glab` CLI to add review comments to the merge request
+- **THEN** the reviewer SHALL use the `glab` CLI (`glab mr note create`, `glab mr approve`) per `references/shared-patterns.md` § "GitLab Access" to add review comments to the merge request, and MAY use a GitLab MCP server where one is loaded
 
 #### Scenario: Review content
 

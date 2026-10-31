@@ -76,7 +76,7 @@ Inference SHALL also fall through to step 3 when: the project is not a git repos
 
 1. **Beads**: Detect via `.beads/` directory in the project root or `bd --version` CLI check
 2. **GitHub**: Detect via an authenticated `gh` CLI (`gh auth status`)
-3. **GitLab**: Detect via `ToolSearch` for `mcp__*gitlab*` tools or `glab --version` CLI check
+3. **GitLab**: Detect via `glab auth status --hostname {host}` succeeding (an installed but logged-out `glab` does not count), or `ToolSearch` for `mcp__*gitlab*` tools
 4. **Gitea**: Detect via a `tea` CLI login whose URL matches the host (`tea logins list`). Gitea and GitHub are reached only through their CLIs, never an MCP server or a token read from the environment — see `references/shared-patterns.md` § "Gitea Access"
 5. **Jira**: Detect via `ToolSearch` for `mcp__*jira*` tools
 6. **Linear**: Detect via `ToolSearch` for `mcp__*linear*` tools

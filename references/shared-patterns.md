@@ -364,7 +364,7 @@ Used when steps 1–2 do not produce an unambiguous answer.
 
 - **Beads**: Look for a `.beads/` directory in the project root, or run `bd --version`.
 - **GitHub**: Check the `gh` CLI via `gh auth status`.
-- **GitLab**: Use `ToolSearch` to probe for MCP tools matching `gitlab`, or check `glab` CLI via `glab --version`.
+- **GitLab**: Check the `glab` CLI is logged in to the host via `glab auth status --hostname {host}` (see "GitLab Access" below). A GitLab MCP server found with `ToolSearch` also counts, but `glab --version` alone does not: an installed, logged-out `glab` cannot do anything the skills need.
 - **Gitea**: Check the `tea` CLI has a login for the host (see "Gitea Access" below).
 - **Jira**: Use `ToolSearch` to probe for MCP tools matching `jira`.
 - **Linear**: Use `ToolSearch` to probe for MCP tools matching `linear`.
@@ -406,6 +406,46 @@ Every Gitea operation goes through the `tea` CLI, the way GitHub goes through `g
 4. **`tea api` exits 0 on an HTTP error.** Read the response body (`.message`) or read the object back before reporting success; the exit code proves nothing.
 
 5. **Never `tea --debug` or `tea api -i`** in a recorded session. Both dump raw HTTP detail into the transcript, and debug output can carry the auth header.
+
+## GitLab Access
+
+<!-- Governing: SPEC-0007 REQ "Tracker Detection" -->
+
+Every GitLab step names a `glab` command, the way Gitea steps name `tea` and GitHub steps name `gh`. A GitLab MCP server discovered with `ToolSearch` may stand in for a command where it exposes the same operation, but no step depends on one. Do not `curl` the API with a token from the environment.
+
+1. **Check the login once per run** for the configured host (`gitlab.com` unless the `#### Tracker` config or the `origin` remote says otherwise):
+
+   ```bash
+   glab auth status --hostname {host}
+   ```
+
+   Non-zero exit → stop and ask the user to run `glab auth login --hostname {host}`. Never ask for, construct, or paste a token, and never run `glab auth status --show-token`.
+
+2. **Pass the project explicitly** on every subcommand: `-R {owner}/{repo}`. On GitLab `{owner}` is a namespace path and can hold subgroups (`group/subgroup`), so keep it whole rather than splitting on the first `/`. For any host other than `gitlab.com`, pass the full URL instead (`-R https://{host}/{owner}/{repo}`) so the call cannot land on `gitlab.com`.
+
+3. **Issues and merge requests are numbered separately.** Issues are `#N`, merge requests are `!N`, and each has its own sequence per project, so issue `#12` and MR `!12` are unrelated. `glab issue …` takes an issue number, `glab mr …` takes an MR number. Close keywords (`Closes #N`) go in the MR description and close the issue when the MR merges into the default branch.
+
+4. **Use the long flag for JSON: `--output json`.** The short form differs between commands (`glab issue list` uses `-O`, `glab mr list` and the `view` commands use `-F`), so a short flag copied from one command breaks the next. List commands return 30 items by default; pass `--per-page 100` and walk `--page` for more.
+
+5. **`glab issue list` returns only open issues by default.** Pass `--all` to search every state, `--closed` for closed only. `glab mr list` likewise needs `--all`, `--merged`, or `--closed`.
+
+6. **Useful subcommands**: `glab issue list|view|create|update|close|note`, `glab mr list|view|diff|create|merge|note|approve`, `glab label list|create`, `glab milestone list|create`, `glab issue board create`, `glab ci status|view`. Labels change with `glab issue update {n} --label {add} --unlabel {remove}`; assignees with `glab issue update {n} --assignee "+{username}"`, where `{username}` comes from `glab api --hostname {host} user | jq -r .username` (no `@me` shortcut for writes).
+
+7. **Anything without a subcommand goes through `glab api`**, with paths relative to `/api/v4/` and the project as its URL-encoded path (`group%2Fsubgroup%2Frepo`):
+
+   ```bash
+   glab api --hostname {host} [-X METHOD] [-f key=value ...] projects/{encoded-path}/...
+   ```
+
+   Common ones: `merge_requests/{n}/diffs` (changed files: add `--paginate --output ndjson` and read `.new_path`), `issues/{n}/links` (POST `target_project_id`, `target_issue_iid`, `link_type` for a dependency), `issues?scope=all&state=all&updated_after={iso-date}&per_page=100` (incremental fetch), `merge_requests/{n}/discussions` (review threads). `glab api` exits non-zero on an HTTP error and prints the `message`, so a failed call is visible; still read a write back before reporting it done.
+
+8. **Merge requests: review, threads, merge.**
+   - **CI state** of an MR is `.head_pipeline.status` from `glab mr view {n} -R {owner}/{repo} --output json` (`success` is the only passing value). `glab ci status` reports a *branch*, so pass `--branch {source-branch}` if you use it.
+   - **Comments**: `glab mr note create {n} -R {owner}/{repo} -m "..."` for a thread; add `--file {path} --line {n}` for a line comment and `--reply {discussion-id}` to answer an existing thread. `glab mr note list {n} -R {owner}/{repo} --state unresolved --output json` lists open threads with their discussion IDs. Resolve one with `glab api --hostname {host} -X PUT projects/{encoded-path}/merge_requests/{n}/discussions/{discussion-id} -f resolved=true`. (`glab mr note` is marked experimental in glab 1.123; on an older `glab` without it, use the same `merge_requests/{n}/discussions` endpoint through `glab api`.)
+   - **Verdicts**: `glab mr approve {n}` approves. GitLab has no "request changes" verdict a CLI can send, so a rejection is a resolvable thread carrying the findings plus `glab mr revoke {n}` if this reviewer approved earlier; unresolved threads block the merge wherever the project requires them resolved.
+   - **Merge**: `glab mr merge {n} -R {owner}/{repo} --yes --auto-merge=false --sha {reviewed-head-sha}` plus `--squash` or `--rebase` per config. `--auto-merge` defaults to **on**: without `--auto-merge=false`, a merge requested while a pipeline runs only *schedules* the merge and exits 0. `--sha` refuses the merge if commits landed after the review. Confirm `.state == "merged"` from `glab mr view {n} --output json` before reporting it merged.
+
+9. **Some features are tier-gated.** `blocks` / `is_blocked_by` issue links, group epics, and iterations need GitLab Premium or higher, and the API answers a Free-tier project with an error rather than a downgrade. When a gated write fails, use the Free fallback the calling skill names (a `relates_to` link plus a `Blocked by: #N` body line for dependencies; a milestone for an epic) and say so in the report. Do not retry the gated call.
 
 ## Team Handoff Protocol
 
@@ -474,6 +514,8 @@ On harnesses without team primitives (Codex, OpenCode, Crush — or a Claude Cod
 
 When applying labels (e.g., `epic`, `story`, `spec`), attempt to apply the label first. If the tracker returns "label not found", create the label with a default color and retry.
 
+**GitLab exception — create first, then apply.** GitLab never answers "label not found": applying a missing label through `glab issue update --label` or `glab issue create --label` silently creates it with the default color, so the retry branch never runs and the default colors below never land. On GitLab, list the project's labels once per run (`glab label list -R {owner}/{repo} --output json --per-page 100`), create each missing one with `glab label create -R {owner}/{repo} --name {label} --color "#{hex}"`, then apply (see "GitLab Access").
+
 Default colors: `epic`=#6E40C9, `story`=#1D76DB, `spec`=#0E8A16, `size/S`=#C2E0C6, `size/M`=#FEF2C0, `size/L`=#F9D0C4, `size/XL`=#B60205, other=#CCCCCC.
 
 ## Size Labels
@@ -509,7 +551,7 @@ So `-d` succeeding means "no commits exist only here"; `-d` refusing means "git 
 1. `git worktree remove {worktree-path}` — the path from CLAUDE.md `Worktrees > Base Dir` (default `.claude/worktrees/`) plus the branch name.
    - If this fails (`contains modified or untracked files`), the worktree holds uncommitted work. Keep **both** the worktree and the branch, log a one-line note (e.g. "kept {branch-name} — worktree has uncommitted changes"), and skip steps 2–3 for it. Do not pass `--force`, and do not fall through to step 2: the branch is still checked out, so it would fail with `cannot delete branch ... used by worktree at ...` and the note logged in step 3 would misreport the cause.
 2. `git branch -d {branch-name}` — the safe (non-force) form. If it succeeds, cleanup is done for this branch.
-3. If step 2 is refused (`the branch is not fully merged`), ask the tracker whether the PR was merged rather than guessing — e.g. GitHub `gh pr list --head {branch-name} --state merged --json number`, or the equivalent tracker MCP query:
+3. If step 2 is refused (`the branch is not fully merged`), ask the tracker whether the PR was merged rather than guessing — e.g. GitHub `gh pr list --head {branch-name} --state merged --json number`, GitLab `glab mr list -R {owner}/{repo} --merged --source-branch {branch-name} --output json`, or the equivalent tracker query:
    - **Merged** → the branch's work is on `main` in squashed or rebased form and nothing is lost by deleting it. `git branch -D {branch-name}`. This is the one case a forced delete is correct, and skipping it is what leaves the stale branches behind.
    - **Not merged, or the tracker cannot be reached** → leave the branch in place and log a one-line note (e.g. "kept {branch-name} — not merged, or merge state unknown"). This is the real safety net: it fires only when there is genuine doubt. It is not an error that blocks the rest of cleanup; the worktree removal in step 1 still stands regardless.
 
@@ -536,7 +578,7 @@ A disposable runtime resource is anything a worker boots to satisfy an issue's a
 Tracker-specific close keywords (or use CLAUDE.md `PR Conventions > Close Keyword`):
 
 - **GitHub/Gitea**: `Closes #{issue-number}`
-- **GitLab**: `Closes #{issue-number}` (in MR description)
+- **GitLab**: `Closes #{issue-number}` (in MR description; issue and MR numbers are separate sequences, so `#N` always means an issue — see "GitLab Access")
 - **Beads**: `bd resolve`
 - **Jira**: `{PROJECT-KEY}-{number}` reference
 - **Linear**: `{TEAM}-{number}` reference
@@ -760,7 +802,7 @@ Run this before dispatching worker agents in `/sdd:work` (after team creation, b
 
 2. **For each open PR, extract:**
    - PR number and associated issue number
-   - Files modified (`gh pr diff {number} --name-only` or equivalent)
+   - Files modified (`gh pr diff {number} --name-only`; GitLab: `glab api --hostname {host} projects/{encoded-path}/merge_requests/{number}/diffs --paginate --output ndjson | jq -r .new_path`, per "GitLab Access")
    - New types, structs, interfaces, or shared helpers introduced (scan the diff for type/struct/interface/class/function definitions)
    - Current status (draft, ready for review, approved, merged)
 
@@ -822,6 +864,8 @@ Run this after all PRs in a `/sdd:work` batch are ready (status `in-review`), be
 1. **Collect PR file lists.** For each open PR in the batch:
    ```bash
    gh pr diff {number} --name-only
+   # GitLab ("GitLab Access"):
+   # glab api --hostname {host} projects/{encoded-path}/merge_requests/{number}/diffs --paginate --output ndjson | jq -r .new_path
    ```
    Store as `PR#{number} → Set<file-path>`.
 
@@ -910,7 +954,7 @@ To find existing issues referencing a spec:
 
 - **GitHub**: `gh issue list --search "SPEC-XXXX" --json number,title,body,labels --limit 100`
 - **Gitea**: `tea api --login {login} 'repos/{owner}/{repo}/issues?q=SPEC-XXXX&type=issues&state=all&limit=50'` (see "Gitea Access")
-- **GitLab**: Use MCP tools or `glab issue list --search "SPEC-XXXX"`
+- **GitLab**: `glab issue list -R {owner}/{repo} --search "SPEC-XXXX" --all --output json --per-page 100` (see "GitLab Access" — without `--all` only open issues come back)
 - **Jira**: Use MCP tools with JQL containing the spec number
 - **Linear**: Use MCP tools to search issues containing the spec number
 - **Beads**: Use `bd list` or similar
@@ -921,7 +965,7 @@ To find open PRs referencing a spec:
 
 - **GitHub**: `gh pr list --search "SPEC-XXXX" --json number,title,headRefName,body,url --limit 50` or `gh pr view {number} --json ...` for specific PRs
 - **Gitea**: `tea api --login {login} 'repos/{owner}/{repo}/issues?q=SPEC-XXXX&type=pulls&state=open&limit=50'`, then `repos/{owner}/{repo}/pulls/{n}` for each (see "Gitea Access")
-- **GitLab**: Use MCP tools or `glab mr list --search "SPEC-XXXX"`
+- **GitLab**: `glab mr list -R {owner}/{repo} --search "SPEC-XXXX" --output json --per-page 100` (open MRs), then `glab mr view {number} -R {owner}/{repo} --output json` for specific MRs
 
 ## Grill-First Interrogation Pattern
 
