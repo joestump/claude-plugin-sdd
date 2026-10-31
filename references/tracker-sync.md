@@ -199,7 +199,7 @@ tea api --login {login} 'repos/{owner}/{repo}/issues?state=all&type=issues&since
 
 **Fetch**:
 
-Use `glab` per `shared-patterns.md` § "GitLab Access". `glab issue list` has no updated-since filter, so the incremental fetch goes through `glab api`:
+Use `glab` per `shared-patterns.md` § "GitLab Access". The incremental fetch goes through `glab api`: `glab issue list` grew `--updated-after` only in glab 1.124 (2026-10-20), and `glab api --paginate` walks every page in one call:
 
 ```bash
 glab api --hostname {host} --paginate --output ndjson \
