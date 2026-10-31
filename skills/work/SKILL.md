@@ -169,7 +169,7 @@ You are picking up tracker issues and implementing them in parallel using git wo
    ```bash
    gh issue edit {issue-number} --add-label "queued"
    ```
-   **For Gitea:** `tea issues edit --login {login} --repo {owner}/{repo} --add-labels in-progress {number}` (see shared-patterns.md § "Gitea Access").
+   **For Gitea:** `tea issues edit --login {login} --repo {owner}/{repo} --add-labels queued {number}` (see shared-patterns.md § "Gitea Access").
    **For GitLab:** `glab issue update {issue-number} -R {owner}/{repo} --label queued` (see shared-patterns.md § "GitLab Access").
 
 6. **Verify git state**:
