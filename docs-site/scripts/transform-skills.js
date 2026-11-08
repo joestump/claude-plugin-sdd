@@ -324,16 +324,52 @@ function extractGoverningRefs(body) {
 const CANONICAL_TITLES = new Set(['Process', 'Rules']);
 
 /**
- * Render the Governing Artifacts pill list as a single line of inline ADR
- * and SPEC references that transformAdrReferences/transformSpecReferences
- * will rewrite into anchor tags.
+ * Link a single governing id, mirroring exactly what
+ * transformAdrReferences/transformSpecReferences emit for a bare mention:
+ * same mappings, same emoji, same href, same rfc-ref class.
+ *
+ * The line the pill section renders starts with an HTML tag, and both
+ * transforms skip such a line unless it already carries an rfc-keyword or
+ * rfc-ref class. Relying on them to linkify the pills therefore never
+ * worked (issue #279), so the anchors are built here, at render time,
+ * against the very mappings the transforms use.
+ *
+ * Unmapped ids degrade to plain text, the transforms' own graceful path.
+ */
+function renderGoverningToken(id) {
+  const adrMatch = id.match(/^ADR-(\d{4})$/);
+  if (adrMatch) {
+    const adrPath = ADR_MAPPING[adrMatch[1]];
+    if (!adrPath) return id;
+    return `<a href="${BASE_URL}${adrPath}" className="rfc-ref">${ADR_EMOJI} ${id}</a>`;
+  }
+
+  const specMatch = id.match(/^([A-Z]+)-(\d{3,4})$/);
+  if (specMatch) {
+    const prefix = specMatch[1];
+    const artifactPath = SPEC_MAPPING[id];
+    const specPath = artifactPath || SPEC_MAPPING[prefix];
+    if (!specPath) return id;
+    const emoji = SPEC_EMOJIS[prefix];
+    const displayText = emoji ? `${emoji} ${id}` : id;
+    const fragment = artifactPath ? '' : `#${id.toLowerCase()}`;
+    return `<a href="${BASE_URL}${specPath}${fragment}" className="rfc-ref">${displayText}</a>`;
+  }
+
+  return id;
+}
+
+/**
+ * Render the Governing Artifacts pill list as a single line of ADR and
+ * SPEC references, each already linked (renderGoverningToken) so the line
+ * survives the reference transforms' HTML-tag line skip intact.
  *
  * Returns an empty string when there are no references (silent omission per
  * SPEC-0021 REQ "Governing-Comment Aggregation").
  */
 function renderGoverningSection({ adrs, specs }) {
   if (adrs.length === 0 && specs.length === 0) return '';
-  const tokens = [...adrs, ...specs].join(' &middot; ');
+  const tokens = [...adrs, ...specs].map(renderGoverningToken).join(' &middot; ');
   return [
     '## Governing Artifacts',
     '',
@@ -870,6 +906,8 @@ module.exports = {
   demoteHeaders,
   extractGoverningRefs,
   truncateDescription,
+  renderGoverningSection,
+  postProcessForMdx,
   generateSkillPage,
   generateIndexPage,
   loadSkill,
