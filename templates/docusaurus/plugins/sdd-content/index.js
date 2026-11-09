@@ -179,6 +179,15 @@ function isKnownTag(tagName) {
   return false;
 }
 
+// The generated index pages and the graph page's orphan tables embed artifact
+// titles raw, unlike per-page content, which the transforms push through
+// escapeMdxUnsafe. MDX-escape first, then escape the pipes that
+// escapeMdxUnsafe leaves alone: a bare | in a title would split the row into
+// extra table columns.
+function escapeTableCell(text) {
+  return escapeMdxUnsafe(text).replace(/\|/g, '\\|');
+}
+
 // ============================================================================
 // Graph Building (from graph-data.js, using lib-artifact-transforms)
 // ============================================================================
@@ -1006,7 +1015,7 @@ function generateSpecsIndex(specsSource, docsDest, graph, baseUrl) {
       docs = `[Design](./${designSlug})`;
     }
 
-    rows.push(`| ${label} | ${docs} |`);
+    rows.push(`| ${escapeTableCell(label)} | ${docs} |`);
   }
 
   if (rows.length === 0) return;
@@ -1057,7 +1066,8 @@ function generateDecisionsIndex(adrsSource, docsDest, graph, baseUrl) {
     }
 
     const slug = file.replace(/\.md$/, '');
-    rows.push(`| ${strike(id, status)} | ${strike(`[${title}](./${slug})`, status)} | \`${status}\` |`);
+    const link = `[${escapeTableCell(title)}](./${slug})`;
+    rows.push(`| ${strike(id, status)} | ${strike(link, status)} | \`${status}\` |`);
   }
 
   if (rows.length === 0) return;
@@ -1133,12 +1143,12 @@ function generateGraphPage(graph, docsDest) {
     (title || '').replace(new RegExp(`^${id}:\\s*`), '');
   const orphanAdrSection = orphanAdrs.length
     ? `| ADR | Title |\n|-----|-------|\n${orphanAdrs
-        .map((id) => `| ${id} | ${stripIdPrefix(nodes[id] && nodes[id].title, id)} |`)
+        .map((id) => `| ${id} | ${escapeTableCell(stripIdPrefix(nodes[id] && nodes[id].title, id))} |`)
         .join('\n')}`
     : '_No orphan ADRs — every ADR has at least one implementing spec._';
   const orphanSpecSection = orphanSpecs.length
     ? `| Spec | Title |\n|------|-------|\n${orphanSpecs
-        .map((id) => `| ${id} | ${stripIdPrefix(nodes[id] && nodes[id].title, id)} |`)
+        .map((id) => `| ${id} | ${escapeTableCell(stripIdPrefix(nodes[id] && nodes[id].title, id))} |`)
         .join('\n')}`
     : '_No orphan specs — every spec is governed by at least one ADR._';
 
